@@ -1,10 +1,13 @@
-const Home = () => {
-    return(
-        <>
-            <h1 className="text-2xl font-bold">Hello World</h1>
-        </>
-    )
-}
+import {Hero} from "../components/landing/Hero";
+import {Features} from "../components/landing/Features";
 
+function Home() {
+  return (
+    <>
+      <Hero />
+      <Features />
+    </>
+  );
+}
 
 export default Home;

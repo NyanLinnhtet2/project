@@ -3,7 +3,20 @@ import { centralDBConnection } from "../../db/db";
 
 const userSchema = new Schema({
   name: String,
-  email: String,
+  email: { type: String, unique: true },
+  password: String,
+  role: {
+    type: String,
+    enum: ["admin", "manager", "cashier"],
+    default: "admin",
+  },
+  branch: { type: String, default: "" },
 });
 
-export const CentralUser = centralDBConnection!.model("User", userSchema);
+export const getCentralUserModel = () => {
+  if (!centralDBConnection) {
+    throw new Error("Central DB not connected");
+  }
+
+  return centralDBConnection.model("User", userSchema);
+};

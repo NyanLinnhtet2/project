@@ -42,15 +42,31 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+      res.status(500).json({
+        message: "JWT secret not configured",
+      });
+      return;
+    }
+
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
         role: user.role,
       },
-      "1234@secret",
+      jwtSecret,
       { expiresIn: "1d" },
     );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
 
     res.status(200).json({
       message: "Login successful",
@@ -60,9 +76,20 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        image: user.image,
+        branch: user.branch,
       },
     });
   } catch (error) {
     res.status(500).json({ error });
   }
+};
+
+export const logout = (req: Request, res: Response) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+  res.status(200).json({ message: "Logout successful" });
 };

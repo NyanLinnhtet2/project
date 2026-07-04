@@ -9,7 +9,7 @@ const stockSchema = new Schema({
 
 export const getYGBranchSaleModel = () => {
   if (!ygBranchDBConnection) {
-    throw new Error("YG Branch DB is not connected (call after connectDB)");
+    throw new Error("YG Branch DB is not connected");
   }
 
   return ygBranchDBConnection.model("Stock", stockSchema);

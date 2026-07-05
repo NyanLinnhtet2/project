@@ -2,6 +2,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authServices";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  LogIn,
+  Store,
+  Shield,
+  TrendingUp,
+  CheckCircle,
+  Building2,
+  Package,
+  ShoppingCart,
+  Users,
+  Database,
+  Cloud,
+  Wifi,
+  Server,
+} from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,7 +36,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validation
     if (!email || !password) {
       setError("Email နှင့် Password ထည့်သွင်းရန် လိုအပ်ပါသည်။");
       return;
@@ -28,9 +46,7 @@ export default function Login() {
 
     try {
       const response = await loginUser(email, password);
-
       console.log("Login successful:", response);
-
       localStorage.setItem("userInfo", JSON.stringify(response.user));
 
       if (response.user.role === "admin") {
@@ -50,596 +66,374 @@ export default function Login() {
     }
   };
 
+  const features = [
+    {
+      icon: Package,
+      label: "ကုန်ပစ္စည်းစီမံခန့်ခွဲခြင်း",
+      desc: "ကုန်ပစ္စည်းများကို လွယ်ကူစွာ စီမံနိုင်သည်",
+    },
+    {
+      icon: Building2,
+      label: "Branch များကို စီမံခန့်ခွဲခြင်း",
+      desc: "Branch များကို ချိတ်ဆက်စီမံနိုင်သည်",
+    },
+    {
+      icon: TrendingUp,
+      label: "အရောင်းစာရင်းများ ကြည့်ရှုနိုင်ခြင်း",
+      desc: "အရောင်းစာရင်းနှင့် Report များကို ကြည့်ရှုနိုင်သည်",
+    },
+    {
+      icon: Database,
+      label: "Data Synchronization",
+      desc: "Branch များအကြား Data Synchronization ဆောင်ရွက်သည်",
+    },
+  ];
+
+  const stats = [
+    {
+      label: "Branches Connected",
+      value: "3",
+      icon: Building2,
+      color: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Products Managed",
+      value: "1000+",
+      icon: Package,
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Orders Processed",
+      value: "50K+",
+      icon: ShoppingCart,
+      color: "bg-purple-50 text-purple-600",
+    },
+    {
+      label: "Active Users",
+      value: "20+",
+      icon: Users,
+      color: "bg-orange-50 text-orange-600",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#FAF7F2] font-sans text-[#2C2115] flex flex-col justify-between">
-      <main className="mx-auto max-w-7xl w-full px-6 pt-16 pb-12 grid lg:grid-cols-12 gap-12 items-start relative z-10">
-        {/* Left Side - Content */}
-        <div className="lg:col-span-6 flex flex-col justify-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#D5C7B3] bg-white px-4 py-1.5 text-sm font-medium text-[#B27B32] shadow-sm w-fit">
-            <span>✨ Smart • Simple • Synchronized</span>
-          </div>
-
-          <h2 className="mt-6 text-4xl font-extrabold tracking-tight md:text-5xl text-[#1A1105] leading-[1.2]">
-            Distributed <br />
-            <span className="text-[#B27B32]">Clothing Shop</span> <br />
-            Management System
-          </h2>
-
-          <p className="mt-4 text-base text-[#615545] leading-relaxed max-w-xl">
-            အဝတ်အထည်ဆိုင်များကို တစ်နေရာတည်းမှ စီမံခန့်ခွဲနိုင်ပြီး
-            ကုန်ပစ္စည်းများ၊ အရောင်းအဝယ်များ၊ လက်ကျန်ပစ္စည်းများနှင့်
-            အစီရင်ခံစာများကို လွယ်ကူစွာ စီမံနိုင်ပါသည်။
-          </p>
-
-          <div className="mt-8 space-y-5 max-w-lg">
-            <div className="flex gap-4 items-start">
-              <div className="p-2.5 bg-white border border-[#EFE9DC] rounded-xl text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-[#1A1105] text-sm md:text-base">
-                  ကုန်ပစ္စည်းစီမံခန့်ခွဲခြင်း
-                </h4>
-                <p className="text-xs md:text-sm text-[#8C7E6B] mt-0.5">
-                  ကုန်ပစ္စည်းများကို လွယ်ကူစွာ စီမံနိုင်သည်။
-                </p>
-              </div>
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30">
+      <div className="mx-auto max-w-7xl px-6 py-12 lg:py-16">
+        <div className="grid lg:grid-cols-12 gap-12 items-start">
+          {/* Left Side - Content */}
+          <div className="lg:col-span-6 flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-50 to-indigo-50 px-5 py-2 text-sm font-medium text-blue-700 shadow-sm border border-blue-100/50 w-fit">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              </span>
+              Smart • Simple • Synchronized
             </div>
 
-            <div className="flex gap-4 items-start">
-              <div className="p-2.5 bg-white border border-[#EFE9DC] rounded-xl text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-[#1A1105] text-sm md:text-base">
-                  Branch များကို စီမံခန့်ခွဲခြင်း
-                </h4>
-                <p className="text-xs md:text-sm text-[#8C7E6B] mt-0.5">
-                  Branch များကို ချိတ်ဆက်စီမံနိုင်သည်။
-                </p>
-              </div>
+            <h2 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl leading-[1.15]">
+              <span className="block text-slate-900">Distributed</span>
+              <span className="block bg-linear-to-r from-blue-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent">
+                Clothing Shop
+              </span>
+              <span className="block text-slate-900">Management System</span>
+            </h2>
+
+            <p className="mt-4 text-base text-slate-600 leading-relaxed max-w-xl">
+              အဝတ်အထည်ဆိုင်များကို တစ်နေရာတည်းမှ စီမံခန့်ခွဲနိုင်ပြီး
+              ကုန်ပစ္စည်းများ၊ အရောင်းအဝယ်များ၊ လက်ကျန်ပစ္စည်းများနှင့်
+              အစီရင်ခံစာများကို လွယ်ကူစွာ စီမံနိုင်ပါသည်။
+            </p>
+
+            {/* Features List */}
+            <div className="mt-8 space-y-4 max-w-lg">
+              {features.map((feature, index) => {
+                const Icon = feature.icon;
+                return (
+                  <div key={index} className="flex gap-4 items-start group">
+                    <div className="p-2.5 bg-white border border-slate-200 rounded-xl text-blue-600 shadow-sm transition-all group-hover:shadow-md group-hover:scale-105">
+                      <Icon size={20} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm md:text-base">
+                        {feature.label}
+                      </h4>
+                      <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+                        {feature.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="flex gap-4 items-start">
-              <div className="p-2.5 bg-white border border-[#EFE9DC] rounded-xl text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <line x1="18" y1="20" x2="18" y2="10" />
-                  <line x1="12" y1="20" x2="12" y2="4" />
-                  <line x1="6" y1="20" x2="6" y2="14" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-[#1A1105] text-sm md:text-base">
-                  အရောင်းစာရင်းများ ကြည့်ရှုနိုင်ခြင်း
-                </h4>
-                <p className="text-xs md:text-sm text-[#8C7E6B] mt-0.5">
-                  အရောင်းစာရင်းနှင့် Report များကို ကြည့်ရှုနိုင်သည်။
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="p-2.5 bg-white border border-[#EFE9DC] rounded-xl text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-[#1A1105] text-sm md:text-base">
-                  Data Synchronization
-                </h4>
-                <p className="text-xs md:text-sm text-[#8C7E6B] mt-0.5">
-                  Branch များအကြား Data Synchronization ဆောင်ရွက်သည်။
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 rounded-2xl overflow-hidden relative max-w-xl h-48 border border-white/40 shadow-inner bg-[#EFE9DC]">
-            <img
-              src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=800"
-              alt="Shop Banner"
-              className="w-full h-full object-cover opacity-85 mix-blend-multiply"
-            />
-            <div className="absolute inset-0 bg-linear-to-t from-[#FAF7F2] via-transparent to-transparent" />
-          </div>
-        </div>
-
-        {/* Right Side - Login Form */}
-        <div className="lg:col-span-6 flex justify-center lg:justify-end w-full">
-          <div className="w-full max-w-md rounded-4xl border border-white/80 bg-white/95 p-8 shadow-xl backdrop-blur-md">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FAF7F2] border border-[#EFE9DC] text-[#B27B32]">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M20.38 3.46L16 2a1 1 0 0 0-1.24.76L14 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a1 1 0 0 0-.62-.91Z" />
-              </svg>
-            </div>
-
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold text-[#1A1105]">
-                အကောင့်ဝင်ရန်
-              </h3>
-              <p className="text-xs text-[#8C7E6B] mt-1">
-                သင့်အကောင့်ဖြင့် Login ဝင်ပါ။
-              </p>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start gap-2">
-                <span className="mt-0.5">⚠️</span>
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <div>
-                <label className="block text-xs font-semibold text-[#615545] mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#8C7E6B]">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                      <polyline points="22,6 12,13 2,6" />
-                    </svg>
-                  </span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setError(null);
-                    }}
-                    placeholder="ဥပမာ - admin@gmail.com"
-                    className="w-full pl-11 pr-4 py-3 border border-[#D5C7B3] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#B27B32]/30 focus:border-[#B27B32] disabled:opacity-50"
-                    disabled={loading}
-                  />
+            {/* Image Banner */}
+            <div className="mt-8 rounded-2xl overflow-hidden relative max-w-xl h-48 border border-slate-200/60 shadow-sm">
+              <img
+                src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=800"
+                alt="Shop Banner"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-slate-900/20 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center gap-2 text-white text-sm font-medium">
+                  <CheckCircle size={16} className="text-emerald-400" />
+                  <span>Connected with 3+ branches</span>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#615545] mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#8C7E6B]">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
+          {/* Right Side - Login Form */}
+          <div className="lg:col-span-6 flex justify-center lg:justify-end w-full">
+            <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-xl border border-slate-200/60">
+              <div className="text-center mb-8">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200">
+                  <Store size={28} />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900">
+                  အကောင့်ဝင်ရန်
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  သင့်အကောင့်ဖြင့် Login ဝင်ပါ။
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start gap-3">
+                  <span className="text-red-500">⚠️</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                {/* Email Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+                      <Mail size={18} />
+                    </span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setError(null);
+                      }}
+                      placeholder="admin@gmail.com"
+                      className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all disabled:opacity-50"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+                      <Lock size={18} />
+                    </span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setError(null);
+                      }}
+                      placeholder="Enter your password"
+                      className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all disabled:opacity-50"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 transition-colors"
                     >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                  </span>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError(null);
-                    }}
-                    placeholder="Password ထည့်ပါ"
-                    className="w-full pl-11 pr-11 py-3 border border-[#D5C7B3] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#B27B32]/30 focus:border-[#B27B32] disabled:opacity-50"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-[#8C7E6B] hover:text-[#1A1105] transition-colors"
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Remember Me & Forgot Password */}
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    Remember Me
+                  </label>
+                  <a
+                    href="#forgot"
+                    className="text-blue-600 hover:text-blue-700 hover:underline"
                   >
-                    {showPassword ? (
+                    စကားဝှက်မေ့နေပါသလား?
+                  </a>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full mt-2 flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all ${
+                    loading
+                      ? "opacity-70 cursor-not-allowed"
+                      : "hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+                  }`}
+                >
+                  {loading ? (
+                    <>
                       <svg
+                        className="animate-spin h-5 w-5 text-white"
                         xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
                         fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
                         viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
                       >
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
-                    )}
-                  </button>
+                      ဝင်ရောက်နေသည်...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn size={18} />
+                      အကောင့်ဝင်ရန်
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Info Box */}
+              <div className="mt-5 p-4 rounded-xl bg-blue-50 border border-blue-100 text-xs text-slate-600 flex gap-3 leading-relaxed">
+                <div className="text-blue-600 shrink-0 mt-0.5">
+                  <Shield size={16} />
+                </div>
+                <p>
+                  အကောင့်အသစ်ဖွင့်၍ မရပါ။ အသုံးပြုမည့်အကောင့်ကို{" "}
+                  <span className="font-bold text-slate-900">
+                    System Administrator
+                  </span>{" "}
+                  မှသာ ဖန်တီးပေးပါမည်။
+                </p>
+              </div>
+
+              <div className="mt-6 flex items-center justify-center gap-3 text-xs text-slate-400">
+                <div className="h-px bg-slate-200 w-full" />
+                <span className="shrink-0 font-medium">သို့မဟုတ်</span>
+                <div className="h-px bg-slate-200 w-full" />
+              </div>
+
+              {/* Tech Stack */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full">
+                  <Cloud size={14} className="text-blue-500" />
+                  <span>Cloud</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full">
+                  <Wifi size={14} className="text-emerald-500" />
+                  <span>Sync</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full">
+                  <Server size={14} className="text-purple-500" />
+                  <span>Secure</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
 
-              <div className="flex items-center justify-between text-xs font-medium">
-                <label className="flex items-center gap-2 text-[#615545] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-[#D5C7B3] text-[#B27B32] focus:ring-[#B27B32]"
-                  />
-                  Remember Me
-                </label>
-                <a href="#forgot" className="text-[#B27B32] hover:underline">
-                  စကားဝှက်မေ့နေပါသလား?
-                </a>
+        {/* Stats Section */}
+        <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4 max-w-4xl mx-auto">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div key={index} className="text-center group">
+                <div className="flex justify-center mb-3">
+                  <div
+                    className={`rounded-xl ${stat.color} p-3 transition-all group-hover:scale-110 group-hover:shadow-md`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-slate-900">
+                  {stat.value}
+                </p>
+                <p className="text-xs text-slate-500 font-medium">
+                  {stat.label}
+                </p>
               </div>
+            );
+          })}
+        </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-[#B27B32] py-3.5 font-bold text-white shadow-md transition duration-300 ${
-                  loading
-                    ? "opacity-70 cursor-not-allowed"
-                    : "hover:bg-[#966524] hover:shadow-lg"
-                }`}
+        {/* Features Grid */}
+        <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-5 max-w-6xl mx-auto">
+          {[
+            {
+              icon: Package,
+              label: "Inventory Control",
+              desc: "Real-time inventory management",
+            },
+            {
+              icon: Database,
+              label: "Branch Sync",
+              desc: "Seamless data synchronization",
+            },
+            {
+              icon: ShoppingCart,
+              label: "Order Management",
+              desc: "Fast and accurate orders",
+            },
+            {
+              icon: TrendingUp,
+              label: "Reports & Analytics",
+              desc: "Powerful insights",
+            },
+            {
+              icon: Shield,
+              label: "Secure & Reliable",
+              desc: "Enterprise-grade security",
+            },
+          ].map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={index}
+                className="text-center p-4 bg-white rounded-2xl border border-slate-100/50 transition-all hover:shadow-md hover:-translate-y-1"
               >
-                {loading ? (
-                  <>
-                    <svg
-                      className="animate-spin h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    ဝင်ရောက်နေသည်...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                    </svg>
-                    အကောင့်ဝင်ရန်
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-5 p-4 rounded-xl bg-[#F6F0E5] border border-[#E9DEC9] text-xs text-[#615545] flex gap-3 leading-relaxed">
-              <div className="text-[#B27B32] shrink-0 mt-0.5">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
+                <div className="flex justify-center mb-3">
+                  <div className="p-2.5 rounded-xl bg-linear-to-br from-blue-50 to-indigo-50">
+                    <Icon className="h-5 w-5 text-blue-600" />
+                  </div>
+                </div>
+                <h4 className="text-sm font-semibold text-slate-900">
+                  {item.label}
+                </h4>
+                <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
               </div>
-              <p>
-                အကောင့်အသစ်ဖွင့်၍ မရပါ။ အသုံးပြုမည့်အကောင့်ကို{" "}
-                <span className="font-bold text-[#1A1105]">
-                  System Administrator
-                </span>{" "}
-                မှသာ ဖန်တီးပေးပါမည်။
-              </p>
-            </div>
-
-            <div className="mt-6 flex items-center justify-center gap-3 text-xs text-[#8C7E6B]">
-              <div className="h-px bg-[#EFE9DC] w-full" />
-              <span className="shrink-0 font-medium">သို့မဟုတ်</span>
-              <div className="h-px bg-[#EFE9DC] w-full" />
-            </div>
-          </div>
+            );
+          })}
         </div>
-      </main>
-
-      {/* Footer Section */}
-      <section className="w-full bg-[#FAF7F2] pb-16">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto max-w-3xl text-center mb-12">
-            <h3 className="text-xl md:text-2xl font-extrabold text-[#1A1105] relative inline-block pb-3">
-              သင့်အတွက် လိုအပ်မည့် အင်္ဂါရပ်များ
-              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-px bg-[#B27B32] rounded-full" />
-            </h3>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5 items-stretch border-t border-b border-dashed border-[#D5C7B3]/60 py-10">
-            <div className="flex flex-col items-center text-center px-4 border-r-0 border-b border-dashed border-[#E3D9C6] last:border-0 lg:border-b-0 lg:border-r lg:last:border-r-0 pb-6 lg:pb-0">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#FAF0DC] text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                </svg>
-              </div>
-              <h4 className="text-sm font-bold text-[#1A1105]">
-                Inventory Control
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-[#615545]">
-                လက်ကျန်ကုန်ပစ္စည်းများကို Real-time နှင့် အထွေထွေစုံစမ်းတိုင်ပင်
-                စီမံနိုင်သည်
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center text-center px-4 border-r-0 border-b border-dashed border-[#E3D9C6] last:border-0 lg:border-b-0 lg:border-r lg:last:border-r-0 pb-6 lg:pb-0">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#FAF0DC] text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                </svg>
-              </div>
-              <h4 className="text-sm font-bold text-[#1A1105]">
-                Branch Synchronization
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-[#615545]">
-                Branch များနှင့် Central Server အကြား Data များကို ချောမွေ့စွာ
-                Synchronize လုပ်နိုင်သည်
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center text-center px-4 border-r-0 border-b border-dashed border-[#E3D9C6] last:border-0 lg:border-b-0 lg:border-r lg:last:border-r-0 pb-6 lg:pb-0">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#FAF0DC] text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <circle cx="9" cy="21" r="1" />
-                  <circle cx="20" cy="21" r="1" />
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                </svg>
-              </div>
-              <h4 className="text-sm font-bold text-[#1A1105]">
-                Order Management
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-[#615545]">
-                အော်ဒါများကို လွယ်ကူမြန်ဆန်စွာ စီမံနိုင်ပြီး တိကျသော
-                အစီရင်ခံစာများရယူနိုင်သည်
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center text-center px-4 border-r-0 border-b border-dashed border-[#E3D9C6] last:border-0 lg:border-b-0 lg:border-r lg:last:border-r-0 pb-6 lg:pb-0">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#FAF0DC] text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <line x1="18" y1="20" x2="18" y2="10" />
-                  <line x1="12" y1="20" x2="12" y2="4" />
-                  <line x1="6" y1="20" x2="6" y2="14" />
-                </svg>
-              </div>
-              <h4 className="text-sm font-bold text-[#1A1105]">
-                Reports & Analytics
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-[#615545]">
-                Powerful Report များနှင့် Analytics များဖြင့် သင့်လုပ်ငန်းကို
-                မိမိတိုးတက်အောင် စီမံနိုင်သည်
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center text-center px-4 pb-6 lg:pb-0">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#FAF0DC] text-[#B27B32] shadow-sm">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              </div>
-              <h4 className="text-sm font-bold text-[#1A1105]">
-                Secure & Reliable
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-[#615545]">
-                Enterprise-grade Security ဖြင့် သင့် Data များကို
-                လုံခြုံစိတ်ချရစွာ ကာကွယ်ထားပါသည်
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-12 mx-auto max-w-5xl rounded-2xl border border-[#EFE9DC] bg-white p-6 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-6 items-center divide-x-0 divide-y md:divide-y-0 md:divide-x divide-[#EFE9DC]">
-            <div className="flex items-center gap-4 justify-center px-4 pt-2 md:pt-0">
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-xl font-extrabold text-[#1A1105]">3</h4>
-                <p className="text-[11px] text-[#8C7E6B] font-bold">
-                  Branches Connected
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 justify-center px-4 pt-4 md:pt-0">
-              <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-xl font-extrabold text-[#1A1105]">1000+</h4>
-                <p className="text-[11px] text-[#8C7E6B] font-bold">
-                  Products Managed
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 justify-center px-4 pt-4 md:pt-0">
-              <div className="p-3 rounded-xl bg-purple-50 text-purple-600">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-xl font-extrabold text-[#1A1105]">50K+</h4>
-                <p className="text-[11px] text-[#8C7E6B] font-bold">
-                  Orders Processed
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 justify-center px-4 pt-4 md:pt-0">
-              <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="text-xl font-extrabold text-[#1A1105]">20+</h4>
-                <p className="text-[11px] text-[#8C7E6B] font-bold">
-                  Active Users
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

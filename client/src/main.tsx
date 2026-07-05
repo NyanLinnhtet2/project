@@ -43,9 +43,7 @@ const router = createBrowserRouter([
       {
         path: "overviews",
         element: (
-          <ProtectedRoute
-            allowedRoles={["superadmin", "admin", "branch_admin"]}
-          >
+          <ProtectedRoute allowedRoles={["admin"]}>
             <Overview />
           </ProtectedRoute>
         ),
@@ -53,9 +51,7 @@ const router = createBrowserRouter([
       {
         path: "branches",
         element: (
-          <ProtectedRoute
-            allowedRoles={["superadmin", "admin", "branch_admin"]}
-          >
+          <ProtectedRoute allowedRoles={["admin"]}>
             <Branch />
           </ProtectedRoute>
         ),
@@ -63,9 +59,7 @@ const router = createBrowserRouter([
       {
         path: "products",
         element: (
-          <ProtectedRoute
-            allowedRoles={["superadmin", "admin", "branch_admin"]}
-          >
+          <ProtectedRoute allowedRoles={["admin"]}>
             <Product />
           </ProtectedRoute>
         ),
@@ -73,7 +67,7 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: (
-          <ProtectedRoute allowedRoles={["superadmin", "admin"]}>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <div>Admin Settings Page</div>
           </ProtectedRoute>
         ),

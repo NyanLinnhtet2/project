@@ -16,7 +16,7 @@ export const createCategory = async (req: Request, res: Response) => {
       return;
     }
 
-    const existingCategory = await Category.findOne(categoryName);
+    const existingCategory = await Category.findOne({ categoryName });
 
     if (existingCategory) {
       res.status(409).json({
@@ -42,6 +42,7 @@ export const createCategory = async (req: Request, res: Response) => {
       message: "Internal Server Error",
       error,
     });
+    console.log("Create Error : ", error);
   }
 };
 

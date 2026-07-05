@@ -11,7 +11,7 @@ interface IBranch extends Document {
   status: "active" | "inactive";
 }
 
-const branchSchema = new Schema({
+const branchSchema = new Schema<IBranch>({
   name: String,
   code: String,
   address: String,
@@ -29,5 +29,5 @@ export const getCentralBranchModel = () => {
     throw new Error("Central DB not connected");
   }
 
-  return centralDBConnection.model("Branch", branchSchema);
+  return centralDBConnection.model<IBranch>("Branch", branchSchema);
 };

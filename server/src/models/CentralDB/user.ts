@@ -13,7 +13,7 @@ interface IUser extends Document {
   };
 }
 
-const userSchema = new Schema({
+const userSchema = new Schema<IUser>({
   name: String,
   email: { type: String, unique: true },
   password: String,
@@ -34,5 +34,5 @@ export const getCentralUserModel = () => {
     throw new Error("Central DB not connected");
   }
 
-  return centralDBConnection.model("User", userSchema);
+  return centralDBConnection.model<IUser>("User", userSchema);
 };

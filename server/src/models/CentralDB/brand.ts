@@ -1,13 +1,13 @@
-import { Schema, Document } from "mongoose";
+import { Schema } from "mongoose";
 import { centralDBConnection } from "../../db/db";
 
-export interface ICategory extends Document {
+interface IBrand extends Document {
   name: string;
   description: string;
   status: "active" | "inactive";
 }
 
-const categorySchema = new Schema<ICategory>(
+const brandSchema = new Schema<IBrand>(
   {
     name: {
       type: String,
@@ -15,10 +15,12 @@ const categorySchema = new Schema<ICategory>(
       unique: true,
       trim: true,
     },
+
     description: {
       type: String,
       default: "",
     },
+
     status: {
       type: String,
       enum: ["active", "inactive"],
@@ -30,10 +32,10 @@ const categorySchema = new Schema<ICategory>(
   },
 );
 
-export const getCentralCategoryModel = () => {
+export const getCentralBrandModel = () => {
   if (!centralDBConnection) {
     throw new Error("Central DB not connected");
   }
 
-  return centralDBConnection.model<ICategory>("Category", categorySchema);
+  return centralDBConnection.model<IBrand>("Brand", brandSchema);
 };

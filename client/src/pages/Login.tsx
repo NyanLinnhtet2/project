@@ -1,5 +1,5 @@
 // src/pages/Login.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authServices";
 import {
@@ -115,6 +115,13 @@ export default function Login() {
       color: "bg-orange-50 text-orange-600",
     },
   ];
+
+  useEffect(() => {
+    const userInfo = localStorage.getItem("userInfo");
+    if (userInfo != null) {
+      navigate("/admin/overviews");
+    }
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30">

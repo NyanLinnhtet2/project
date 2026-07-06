@@ -16,11 +16,8 @@ export const createBranch = async (req: Request, res: Response) => {
       });
     }
 
-    // 🌟 ၁။ Branch Database အမည်ကို အလိုအလျောက် သတ်မှတ်ခြင်း 🌟
-    // ဥပမာ - Code က "MDY" ဆိုရင် Database နာမည်က "branch_mdy" ဖြစ်သွားပါမည်
     const branchDbName = `branch_${code.toLowerCase()}`;
 
-    // ၂။ Central DB ထဲတွင် Branch အသစ်ကို အရင်သိမ်းပါမည်
     const newBranch = await Branch.create({
       name,
       code,
@@ -32,17 +29,16 @@ export const createBranch = async (req: Request, res: Response) => {
       status: status || "active",
     });
 
-    // 🌟 ၃။ Branch Database အသစ်ကို ဖန်တီးခြင်း (Auto Create DB) 🌟
     const branchDb = getBranchConnection(branchDbName);
 
-    // MongoDB သည် Collection ထဲသို့ Data စဝင်မှသာ Database ကို တကယ်ဆောက်ပေးမည်ဖြစ်၍
-    // System Config ကဲ့သို့ Dummy Collection တစ်ခုဖန်တီးပြီး Data စထည့်ပါမည်
     const ConfigSchema = new mongoose.Schema({
       branchId: String,
       initializedAt: { type: Date, default: Date.now },
     });
 
-    const ConfigModel = branchDb.model("SystemConfig", ConfigSchema);
+    const ConfigModel =
+      branchDb.models.SystemConfig ||
+      branchDb.model("SystemConfig", ConfigSchema);
 
     await ConfigModel.create({
       branchId: newBranch._id.toString(),

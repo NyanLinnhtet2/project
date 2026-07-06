@@ -12,8 +12,10 @@ import { Overview } from "./pages/admin/Overview";
 import { Branch } from "./pages/admin/Branch";
 import { Product } from "./pages/admin/Product";
 import { ProtectedRoute } from "./routes/ProtectRoute";
+import { Employees } from "./pages/admin/Employees";
 
 const router = createBrowserRouter([
+  // Public Routes
   {
     path: "/",
     element: <Layout />,
@@ -36,6 +38,7 @@ const router = createBrowserRouter([
     ],
   },
 
+  // Admin Routes
   {
     path: "/admin/*",
     element: <AdminLayout />,
@@ -65,10 +68,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "settings",
+        path: "employees",
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
-            <div>Admin Settings Page</div>
+            <Employees />
           </ProtectedRoute>
         ),
       },

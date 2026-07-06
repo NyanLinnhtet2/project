@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, NavLink } from "react-router-dom";
 import type { NavLinkRenderProps } from "react-router-dom";
 import {
@@ -11,6 +11,7 @@ import {
   Phone,
   ChevronDown,
 } from "lucide-react";
+import type { User } from "../../types/user";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +34,16 @@ function Navbar() {
     },
   ];
 
+  const [userInfo, setUserInfo] = useState<User | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setUserInfo(JSON.parse(localStorage.getItem("userInfo") || "null"));
+    }, 0);
+
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-sm">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
@@ -52,7 +63,6 @@ function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Menu */}
         <nav className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -87,18 +97,38 @@ function Navbar() {
           })}
         </nav>
 
-        {/* Right Section */}
         <div className="hidden lg:flex items-center gap-3">
-          <Link
-            to="/login"
-            className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
-          >
-            <LogIn
-              size={18}
-              className="transition-transform duration-300 group-hover:scale-110"
-            />
-            Login
-          </Link>
+          {userInfo ? (
+            <Link
+              to="/admin/overviews"
+              className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-300 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
+            >
+              <div className="flex items-center gap-3">
+                <img
+                  src={
+                    userInfo?.image?.url ||
+                    `https://ui-avatars.com/api/?name=${userInfo?.name}&background=random`
+                  }
+                  alt="User Avatar"
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+                <span className="text-sm font-medium text-slate-700">
+                  {userInfo?.name}
+                </span>
+              </div>
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
+            >
+              <LogIn
+                size={18}
+                className="transition-transform duration-300 group-hover:scale-110"
+              />
+              Login
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu Button */}

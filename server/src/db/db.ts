@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const connections: Record<string, mongoose.Connection> = {};
 
-// Central DB connection (optional if you need it)
+// Central DB connection 
 export let centralDBConnection: mongoose.Connection | null = null;
 
 /**
@@ -16,13 +16,14 @@ export const connectDB = async (): Promise<void> => {
       throw new Error("No Database URL in .env");
     }
 
+    // 🌟 ဤနေရာတွင် centralDBConnection ကို ချိတ်ဆက်ထားပါသည်
     centralDBConnection = await mongoose
       .createConnection(centralURL)
       .asPromise();
 
-    console.log(`CentralDB connected: ${centralDBConnection.host}`);
+    console.log(`✅ CentralDB connected: ${centralDBConnection.host}`);
   } catch (err) {
-    console.error("Database connection error:", err);
+    console.error("❌ Database connection error:", err);
     process.exit(1);
   }
 };
@@ -33,11 +34,18 @@ export const connectDB = async (): Promise<void> => {
 export const getBranchConnection = (
   dbName: string
 ): mongoose.Connection => {
+  // Cache လုပ်ထားသော Connection ရှိလျှင် ယူသုံးမည်
   if (connections[dbName]) {
     return connections[dbName];
   }
 
-  const conn = mongoose.connection.useDb(dbName, {
+  // 🌟 [အရေးကြီး] Central DB ချိတ်ဆက်မှု မရှိသေးလျှင် Error ပြမည်
+  if (!centralDBConnection) {
+    throw new Error("Central DB is not connected yet!");
+  }
+
+  // 🌟 [FIX] default `mongoose.connection` အစား အပေါ်တွင် ချိတ်ထားသော `centralDBConnection` ကို အသုံးပြုပါ 🌟
+  const conn = centralDBConnection.useDb(dbName, {
     useCache: true,
   });
 

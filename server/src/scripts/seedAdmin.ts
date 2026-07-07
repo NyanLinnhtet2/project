@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
-
 import { connectDB as connectCentralDB } from "../db/db";
 import { getCentralUserModel } from "../models/CentralDB/user";
 
@@ -13,28 +12,55 @@ const seedAdmin = async () => {
     const User = getCentralUserModel();
 
     const existingAdmin = await User.findOne({
-      email: "admin@gmail.com",
+      email: "admin@clothhub.com",
     });
 
     if (existingAdmin) {
       console.log("⚠️ Admin already exists.");
+      console.log(`📧 Email: ${existingAdmin.email}`);
+      console.log(`👤 Name: ${existingAdmin.name}`);
+      console.log(`🔑 Role: ${existingAdmin.role}`);
       process.exit(0);
     }
 
-    const hashedPassword = await bcrypt.hash("admin@123", 10);
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash("admin123", saltRounds);
 
-    await User.create({
-      name: "Admin",
-      email: "admin@gmail.com",
+    // Create admin with full User interface fields
+    const admin = await User.create({
+      name: "System Admin",
+      email: "admin@clothhub.com",
       password: hashedPassword,
+      phone: "09-123456789",
+      position: "System Administrator",
       role: "admin",
-      branch: "",
+      branch: "System",
+      joinDate: new Date(),
+      status: "active",
+      image: {
+        url: "https://ui-avatars.com/api/?name=System+Admin&background=6366f1&color=fff&size=128",
+        public_id: "default_admin",
+      },
     });
 
     console.log("✅ Admin created successfully.");
+    console.log("📋 Admin Details:");
+    console.log(`   👤 Name: ${admin.name}`);
+    console.log(`   📧 Email: ${admin.email}`);
+    console.log(`   🔑 Password: admin123`);
+    console.log(`   🏢 Branch: ${admin.branch}`);
+    console.log(`   👔 Role: ${admin.role}`);
+    console.log(`   📅 Join Date: ${admin.joinDate}`);
+    console.log("⚠️ Please change the default password after first login!");
     process.exit(0);
-  } catch (error) {
-    console.error("❌ Seed Error:", error);
+  } catch (error: any) {
+    console.error("❌ Seed Error:", error.message);
+    if (error.code === 11000) {
+      console.error(
+        "⚠️ Duplicate key error - Admin may already exist with this email.",
+      );
+    }
     process.exit(1);
   }
 };

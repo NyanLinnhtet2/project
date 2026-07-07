@@ -6,6 +6,7 @@ import branchRoute from "./routes/branchRoute";
 import categoryRoute from "./routes/categoryRoute";
 import brandRoute from "./routes/brandRoute";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 dotenv.config({
   path: "./.env",
@@ -14,6 +15,8 @@ dotenv.config({
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
+
 app.use(
   cors({
     origin: process.env.CLIENT_URL,

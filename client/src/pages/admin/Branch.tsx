@@ -11,18 +11,14 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { useState } from "react";
+import type {
+  Branch as BranchType,
+  CreateBranchData,
+} from "../../types/branch";
+import { createBranchApi, getBranchesApi } from "../../services/branchService";
+import { useEffect } from "react";
+import toast from "react-hot-toast";
 
-// Define types
-interface BranchFormData {
-  branchName: string;
-  code: string;
-  phone: string;
-  manager: string;
-  address: string;
-  status: "Active" | "Inactive";
-}
-
-// Sample managers data
 const managers = [
   { id: "1", name: "Aung Aung" },
   { id: "2", name: "Kyaw Kyaw" },
@@ -33,14 +29,16 @@ const managers = [
 
 export const Branch = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [formData, setFormData] = useState<BranchFormData>({
-    branchName: "",
+  const [formData, setFormData] = useState<CreateBranchData>({
+    name: "",
     code: "",
     phone: "",
     manager: "",
     address: "",
-    status: "Active",
+    email: "",
+    status: "active",
   });
+  const [branches, setBranches] = useState<BranchType[]>([]); // Replace 'any' with your Branch type if available
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -54,61 +52,41 @@ export const Branch = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Form Data:", formData);
-    setIsModalOpen(false);
-    setFormData({
-      branchName: "",
-      code: "",
-      phone: "",
-      manager: "",
-      address: "",
-      status: "Active",
-    });
+
+    try {
+      const response = await createBranchApi(formData);
+      toast.success(`${response.message}`);
+      console.log("Form Data:", formData);
+      setIsModalOpen(false);
+      setFormData({
+        name: "",
+        code: "",
+        phone: "",
+        manager: "",
+        address: "",
+        email: "",
+        status: "active",
+      });
+    } catch (error) {
+      console.log("Create Branch Error : ", error);
+    }
   };
 
-  // Sample branch data
-  const branches = [
-    {
-      id: 1,
-      name: "Yangon Branch",
-      code: "YGN001",
-      phone: "09-123456789",
-      manager: "Aung Aung",
-      address: "Hledan Township",
-      status: "Active",
-      employees: 45,
-      revenue: "$2.4M",
-    },
-    {
-      id: 2,
-      name: "Mandalay Branch",
-      code: "MDY001",
-      phone: "09-987654321",
-      manager: "Kyaw Kyaw",
-      address: "Chan Aye Tharzan",
-      status: "Active",
-      employees: 32,
-      revenue: "$1.8M",
-    },
-    {
-      id: 3,
-      name: "Naypyidaw Branch",
-      code: "NPT001",
-      phone: "09-456789123",
-      manager: "Su Su",
-      address: "Zabuthiri Township",
-      status: "Inactive",
-      employees: 0,
-      revenue: "$0",
-    },
-  ];
+  useEffect(() => {
+    const fetchBranches = async () => {
+      const response = await getBranchesApi();
+      console.log(response);
+      setBranches(response.data);
+    };
+
+    fetchBranches();
+  }, [branches]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -206,7 +184,7 @@ export const Branch = () => {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {branches.map((branch) => (
             <div
-              key={branch.id}
+              key={branch._id}
               className="group rounded-2xl bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50"
             >
               <div className="flex items-start justify-between">
@@ -217,7 +195,7 @@ export const Branch = () => {
                     </h3>
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        branch.status === "Active"
+                        branch.status === "active"
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-red-100 text-red-700"
                       }`}
@@ -254,13 +232,13 @@ export const Branch = () => {
                   <div>
                     <p className="text-xs text-slate-400">Employees</p>
                     <p className="font-semibold text-slate-900">
-                      {branch.employees}
+                      0{/* {branch.employees} */}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Revenue</p>
                     <p className="font-semibold text-slate-900">
-                      {branch.revenue}
+                      0 {/* {branch.revenue} */}
                     </p>
                   </div>
                 </div>
@@ -299,6 +277,20 @@ export const Branch = () => {
 
               {/* Modal Body */}
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Branch Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter branch name"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    required
+                  />
+                </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -306,10 +298,10 @@ export const Branch = () => {
                     </label>
                     <input
                       type="text"
-                      name="branchName"
-                      value={formData.branchName}
+                      name="email"
+                      value={formData.email}
                       onChange={handleInputChange}
-                      placeholder="Enter branch name"
+                      placeholder="Enter branch email"
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                       required
                     />
@@ -354,7 +346,6 @@ export const Branch = () => {
                       value={formData.manager}
                       onChange={handleInputChange}
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                      required
                     >
                       <option value="">Select Manager</option>
                       {managers.map((manager) => (
@@ -391,8 +382,8 @@ export const Branch = () => {
                     onChange={handleInputChange}
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
                   </select>
                 </div>
 
@@ -419,7 +410,6 @@ export const Branch = () => {
     </div>
   );
 };
-
 
 const Code = ({ size, className }: { size: number; className: string }) => (
   <svg

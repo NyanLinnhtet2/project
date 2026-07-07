@@ -21,14 +21,14 @@ const menus = [
     icon: LayoutDashboard,
   },
   {
-    title: "Employees",
-    path: "/admin/employees",
-    icon: User,
-  },
-  {
     title: "Branches",
     path: "/admin/branches",
     icon: GitBranch,
+  },
+  {
+    title: "Employees",
+    path: "/admin/employees",
+    icon: User,
   },
   {
     title: "Products",

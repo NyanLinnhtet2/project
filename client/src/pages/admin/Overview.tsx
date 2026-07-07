@@ -10,6 +10,8 @@ import {
   Store,
   Activity,
 } from "lucide-react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 // Move stats data outside component
 const stats = [
@@ -110,6 +112,17 @@ const branchPerformance = [
 ];
 
 export const Overview = () => {
+
+  const navigate = useNavigate();
+
+  useEffect(()=>{
+    const userInfo = JSON.parse(localStorage.getItem("userInfo") || "");
+
+    if(userInfo === "" && userInfo.role !== "admin"){
+      navigate("/");
+    }
+  },[navigate])
+
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">

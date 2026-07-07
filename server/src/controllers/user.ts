@@ -94,42 +94,32 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
     const CentralUser = getCentralUserModel();
     const Branch = getCentralBranchModel();
 
-    // Check if email already exists
     const existingUser = await CentralUser.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already exists",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already exists" });
     }
 
-    // Check if branch exists
     const branchExists = await Branch.findOne({ name: branch });
     if (!branchExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch not found",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Branch not found" });
     }
 
     // Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Handle image upload with default values
-    let image = {
-      url: "",
-      public_id: "",
-    };
+    let image = { url: "", public_id: "" };
 
     if (req.file) {
-      // If file uploaded, use the file URL
       image = {
         url: `/uploads/${req.file.filename}`,
         public_id: req.file.filename,
       };
     } else {
-      // Default image using UI Avatars API
       const encodedName = encodeURIComponent(name);
       image = {
         url: `https://ui-avatars.com/api/?name=${encodedName}&background=6366f1&color=fff&size=128`,
@@ -151,7 +141,14 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
       joinDate: new Date(),
     });
 
-    // Remove password from response
+    // 🌟 [BONUS LOGIC]: ဖန်တီးလိုက်သော User သည် Manager ဖြစ်ခဲ့လျှင် Branch ဘက်တွင်ပါ အလိုအလျောက် သွားရောက် Update လုပ်ပေးမည် 🌟
+    if (role === "manager") {
+      await Branch.findOneAndUpdate(
+        { name: branch }, // သက်ဆိုင်ရာ Branch ကိုရှာမည်
+        { manager: newEmployee.name }, // "Not Assigned" အစား Manager အမည်ကို ထည့်ပေးမည် (ID ထည့်ချင်လျှင် newEmployee._id.toString() ဟု သုံးနိုင်သည်)
+      );
+    }
+
     const employeeResponse = newEmployee.toObject();
     delete employeeResponse.password;
 
@@ -161,21 +158,17 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
       data: employeeResponse,
     });
   } catch (error: any) {
-    // Handle duplicate key error
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already exists",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email already exists" });
     }
-
     res.status(500).json({
       success: false,
       message: error.message || "Failed to create employee",
     });
   }
 };
-
 // Update employee
 export const updateEmployee = async (req: MulterRequest, res: Response) => {
   try {

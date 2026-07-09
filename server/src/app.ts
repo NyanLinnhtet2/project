@@ -5,6 +5,7 @@ import userRoute from "./routes/userRoute";
 import branchRoute from "./routes/branchRoute";
 import categoryRoute from "./routes/categoryRoute";
 import brandRoute from "./routes/brandRoute";
+import employeeRoute from "./routes/employeeRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
@@ -28,6 +29,7 @@ app.use("/api/auth", userRoute);
 app.use("/api/branches", branchRoute);
 app.use("/api/category", categoryRoute);
 app.use("/api/brands", brandRoute);
+app.use("/api/employees", employeeRoute);
 
 const PORT = process.env.PORT || 5000;
 

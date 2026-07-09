@@ -22,8 +22,14 @@ export const getBranchesApi = async () => {
   return data;
 };
 
-export const getBranchByIdApi = async (id: string) => {
-  const { data } = await axios.get(`${API_URL}/branches/${id}`);
+export const updateBranchApi = async (
+  id: string,
+  branchData: UpdateBranchData,
+) => {
+  const { data } = await axios.put(
+    `${API_URL}/branches/update-branch/${id}`,
+    branchData,
+  );
   return data;
 };
 
@@ -32,11 +38,8 @@ export const getBranchesWithParamsApi = async (params: GetBranchesParams) => {
   return data;
 };
 
-export const updateBranchApi = async (
-  id: string,
-  branchData: UpdateBranchData,
-) => {
-  const { data } = await axios.put(`${API_URL}/branches/update-branch/${id}`, branchData);
+export const getBranchByIdApi = async (id: string) => {
+  const { data } = await axios.get(`${API_URL}/branches/${id}`);
   return data;
 };
 

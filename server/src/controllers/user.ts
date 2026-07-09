@@ -2,20 +2,12 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { getCentralUserModel } from "../models/CentralDB/user";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
+import { uploadSingleImage, deleteImage } from "../utils/cloudinary";
 
-interface MulterRequest extends Request {
-  file?: {
-    filename: string;
-    [key: string]: any;
-  };
-}
-
-// Get all employees
 export const getEmployees = async (req: Request, res: Response) => {
   try {
     const CentralUser = getCentralUserModel();
 
-    // Get all users with role employee, manager, cashier, admin
     const employees = await CentralUser.find({
       role: { $in: ["admin", "manager", "cashier"] },
     }).select("-password");
@@ -33,7 +25,6 @@ export const getEmployees = async (req: Request, res: Response) => {
   }
 };
 
-// Get employee by ID
 export const getEmployeeById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -48,7 +39,6 @@ export const getEmployeeById = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if user has valid role
     if (!["admin", "manager", "cashier"].includes(employee.role)) {
       return res.status(400).json({
         success: false,
@@ -69,13 +59,21 @@ export const getEmployeeById = async (req: Request, res: Response) => {
   }
 };
 
-// Create new employee
-export const createEmployee = async (req: MulterRequest, res: Response) => {
+export const createEmployee = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, position, branch, role, status, password } =
-      req.body;
+    const {
+      name,
+      email,
+      phone,
+      position,
+      branch,
+      role,
+      status,
+      password,
+      salary,
+      avatar,
+    } = req.body;
 
-    // Validate required fields
     if (
       !name ||
       !email ||
@@ -96,16 +94,18 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
 
     const existingUser = await CentralUser.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
     }
 
     const branchExists = await Branch.findOne({ name: branch });
     if (!branchExists) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(400).json({
+        success: false,
+        message: "Branch not found",
+      });
     }
 
     // Hash password
@@ -114,15 +114,24 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
 
     let image = { url: "", public_id: "" };
 
-    if (req.file) {
-      image = {
-        url: `/uploads/${req.file.filename}`,
-        public_id: req.file.filename,
-      };
-    } else {
+    if (avatar) {
+      try {
+        const uploadedImage = await uploadSingleImage(avatar, "employees");
+        image = {
+          url: uploadedImage.image_url,
+          public_id: uploadedImage.public_id,
+        };
+      } catch (error) {
+        console.error("Image upload failed:", error);
+        // Continue with default avatar if upload fails
+      }
+    }
+
+    // If no image uploaded, use default avatar
+    if (!image.url) {
       const encodedName = encodeURIComponent(name);
       image = {
-        url: `https://ui-avatars.com/api/?name=${encodedName}&background=6366f1&color=fff&size=128`,
+        url: `https://ui-avatars.com/api/?name=${encodedName}&background=6366f1&color=fff&size=256`,
         public_id: `default_${Date.now()}`,
       };
     }
@@ -137,20 +146,21 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
       role,
       status: status || "active",
       password: hashedPassword,
+      salary: salary || 0,
       image: image,
       joinDate: new Date(),
     });
 
-    // 🌟 [BONUS LOGIC]: ဖန်တီးလိုက်သော User သည် Manager ဖြစ်ခဲ့လျှင် Branch ဘက်တွင်ပါ အလိုအလျောက် သွားရောက် Update လုပ်ပေးမည် 🌟
+    // If role is manager, update branch manager
     if (role === "manager") {
       await Branch.findOneAndUpdate(
-        { name: branch }, // သက်ဆိုင်ရာ Branch ကိုရှာမည်
-        { manager: newEmployee.name }, // "Not Assigned" အစား Manager အမည်ကို ထည့်ပေးမည် (ID ထည့်ချင်လျှင် newEmployee._id.toString() ဟု သုံးနိုင်သည်)
+        { name: branch },
+        { manager: newEmployee.name },
       );
     }
 
     const employeeResponse = newEmployee.toObject();
-    delete employeeResponse.password;
+    delete (employeeResponse as any).password;
 
     res.status(201).json({
       success: true,
@@ -159,9 +169,10 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
     });
   } catch (error: any) {
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists",
+      });
     }
     res.status(500).json({
       success: false,
@@ -169,12 +180,23 @@ export const createEmployee = async (req: MulterRequest, res: Response) => {
     });
   }
 };
+
 // Update employee
-export const updateEmployee = async (req: MulterRequest, res: Response) => {
+export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, position, branch, role, status, password } =
-      req.body;
+    const {
+      name,
+      email,
+      phone,
+      position,
+      branch,
+      role,
+      status,
+      password,
+      salary,
+      avatar,
+    } = req.body;
 
     const CentralUser = getCentralUserModel();
 
@@ -219,6 +241,7 @@ export const updateEmployee = async (req: MulterRequest, res: Response) => {
       branch,
       role,
       status,
+      salary: salary || 0,
     };
 
     // If password is provided, hash it
@@ -227,12 +250,27 @@ export const updateEmployee = async (req: MulterRequest, res: Response) => {
       updateData.password = await bcrypt.hash(password, saltRounds);
     }
 
-    // Handle image update
-    if (req.file) {
-      updateData.image = {
-        url: `/uploads/${req.file.filename}`,
-        public_id: req.file.filename,
-      };
+    // ✅ Handle image update with Cloudinary
+    if (avatar) {
+      try {
+        // Delete old image if exists and not default
+        if (
+          employee.image?.public_id &&
+          !employee.image.public_id.startsWith("default_")
+        ) {
+          await deleteImage(employee.image.public_id);
+        }
+
+        // Upload new image
+        const uploadedImage = await uploadSingleImage(avatar, "employees");
+        updateData.image = {
+          url: uploadedImage.image_url,
+          public_id: uploadedImage.public_id,
+        };
+      } catch (error) {
+        console.error("Image upload failed:", error);
+        // Keep existing image if upload fails
+      }
     }
 
     // Update employee
@@ -242,20 +280,24 @@ export const updateEmployee = async (req: MulterRequest, res: Response) => {
       { new: true, runValidators: true },
     ).select("-password");
 
+    // If role changed to manager, update branch manager
+    if (role === "manager" && branch) {
+      const Branch = getCentralBranchModel();
+      await Branch.findOneAndUpdate({ name: branch }, { manager: name });
+    }
+
     res.status(200).json({
       success: true,
       message: "Employee updated successfully",
       data: updatedEmployee,
     });
   } catch (error: any) {
-    // Handle duplicate key error
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
         message: "Email already exists",
       });
     }
-
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update employee",
@@ -269,7 +311,6 @@ export const deleteEmployee = async (req: Request, res: Response) => {
     const { id } = req.params;
     const CentralUser = getCentralUserModel();
 
-    // Check if employee exists
     const employee = await CentralUser.findById(id);
     if (!employee) {
       return res.status(404).json({
@@ -289,7 +330,24 @@ export const deleteEmployee = async (req: Request, res: Response) => {
       }
     }
 
+    // ✅ Delete image from Cloudinary if not default
+    if (
+      employee.image?.public_id &&
+      !employee.image.public_id.startsWith("default_")
+    ) {
+      await deleteImage(employee.image.public_id);
+    }
+
     await CentralUser.findByIdAndDelete(id);
+
+    // If employee was manager, update branch
+    if (employee.role === "manager") {
+      const Branch = getCentralBranchModel();
+      await Branch.findOneAndUpdate(
+        { name: employee.branch },
+        { manager: "Not Assigned" },
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -322,15 +380,20 @@ export const getEmployeeStats = async (req: Request, res: Response) => {
       status: "inactive",
     });
 
-    const onLeave = await CentralUser.countDocuments({
+    const suspended = await CentralUser.countDocuments({
       role: { $in: ["admin", "manager", "cashier"] },
       status: "suspended",
     });
 
-    // Get role distribution
     const adminCount = await CentralUser.countDocuments({ role: "admin" });
     const managerCount = await CentralUser.countDocuments({ role: "manager" });
     const cashierCount = await CentralUser.countDocuments({ role: "cashier" });
+
+    // Total salary
+    const totalSalary = await CentralUser.aggregate([
+      { $match: { role: { $in: ["admin", "manager", "cashier"] } } },
+      { $group: { _id: null, total: { $sum: "$salary" } } },
+    ]);
 
     res.status(200).json({
       success: true,
@@ -339,7 +402,8 @@ export const getEmployeeStats = async (req: Request, res: Response) => {
         total,
         active,
         inactive,
-        onLeave,
+        suspended,
+        totalSalary: totalSalary[0]?.total || 0,
         roles: {
           admin: adminCount,
           manager: managerCount,
@@ -359,15 +423,15 @@ export const getEmployeeStats = async (req: Request, res: Response) => {
 export const getEmployeesByBranch = async (req: Request, res: Response) => {
   try {
     const { branchName } = req.params;
-    const CentralUser = getCentralUserModel();
 
-    // Fix: Properly handle branchName parameter
     if (!branchName) {
       return res.status(400).json({
         success: false,
         message: "Branch name is required",
       });
     }
+
+    const CentralUser = getCentralUserModel();
 
     const employees = await CentralUser.find({
       branch: branchName,

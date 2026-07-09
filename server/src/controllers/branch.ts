@@ -1,10 +1,52 @@
-// src/controllers/branchController.ts
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
 import { getCentralUserModel } from "../models/CentralDB/user";
 import { getBranchConnection } from "../db/db";
-// Create Branch
+import { getOrderModel } from "../models/BranchDB/order";
+import { getBranchEmployeeModel } from "../models/BranchDB/employee";
+
+const getBranchStatsFromDB = async (branch: any) => {
+  try {
+    const branchDb = getBranchConnection(branch.dbName);
+    const Order = getOrderModel(branchDb);
+    const Employee = getBranchEmployeeModel(branchDb);
+
+    const [employeeStats, revenueData, totalOrders] = await Promise.all([
+      // "Not Assigned" ကိုမရေတွက်ရန် Aggregation
+      Employee.aggregate([
+        {
+          $match: {
+            status: "active",
+            name: { $ne: "Not Assigned" },
+          },
+        },
+        {
+          $count: "total",
+        },
+      ]),
+      Order.aggregate([
+        { $match: { status: "completed" } },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]),
+      Order.countDocuments({ status: "completed" }),
+    ]);
+
+    return {
+      employeeCount: employeeStats[0]?.total || 0,
+      revenue: revenueData[0]?.total || 0,
+      totalOrders,
+    };
+  } catch (error) {
+    console.error(`Error fetching stats for branch ${branch._id}:`, error);
+    return {
+      employeeCount: 0,
+      revenue: 0,
+      totalOrders: 0,
+    };
+  }
+};
+
 export const createBranch = async (req: Request, res: Response) => {
   try {
     const Branch = getCentralBranchModel();
@@ -19,7 +61,6 @@ export const createBranch = async (req: Request, res: Response) => {
     }
 
     const branchDbName = `branch_${code.toLowerCase()}`;
-
     const assignedManager =
       manager && manager.trim() !== "" ? manager : "Not Assigned";
 
@@ -36,6 +77,7 @@ export const createBranch = async (req: Request, res: Response) => {
 
     const branchDb = getBranchConnection(branchDbName);
 
+    // System Config ဖန်တီးခြင်း
     const ConfigSchema = new mongoose.Schema({
       branchId: String,
       initializedAt: { type: Date, default: Date.now },
@@ -49,12 +91,36 @@ export const createBranch = async (req: Request, res: Response) => {
       branchId: newBranch._id.toString(),
     });
 
+    // ⭐ Branch DB အတွက် နမူနာ ဒေတာများဖန်တီးခြင်း
+    const Order = getOrderModel(branchDb);
+    const Employee = getBranchEmployeeModel(branchDb);
+
+    // နမူနာ အော်ဒါတစ်ခုဖန်တီးခြင်း
+    await Order.create({
+      orderNumber: `ORD-${code}-001`,
+      customerName: "Test Customer",
+      items: [],
+      totalAmount: 0,
+      status: "pending",
+    });
+
+    // နမူနာ ဝန်ထမ်းတစ်ဦးဖန်တီးခြင်း
+    await Employee.create({
+      name: assignedManager,
+      email: email || `manager@${code.toLowerCase()}.com`,
+      phone: phone || "09-000000000",
+      position: "Manager",
+      salary: 0,
+      status: "active",
+    });
+
     return res.status(201).json({
       success: true,
       message: "Branch and its Database created successfully",
       data: newBranch,
     });
   } catch (error: any) {
+    console.error("Create branch error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -62,21 +128,15 @@ export const createBranch = async (req: Request, res: Response) => {
   }
 };
 
-// Get all branches with optional filters
 export const getBranches = async (req: Request, res: Response) => {
   try {
     const Branch = getCentralBranchModel();
     const { status, search } = req.query;
 
-    // Build filter object
     const filter: any = {};
-
-    // Filter by status
     if (status && status !== "All") {
       filter.status = status;
     }
-
-    // Search by name, code, or manager
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -87,11 +147,26 @@ export const getBranches = async (req: Request, res: Response) => {
 
     const branches = await Branch.find(filter).sort({ createdAt: -1 });
 
+    // ⭐ Branch တစ်ခုချင်းစီရဲ့ စာရင်းအင်းများကိုဆွဲယူခြင်း
+    const branchesWithStats = await Promise.all(
+      branches.map(async (branch) => {
+        const stats = await getBranchStatsFromDB(branch);
+        return {
+          ...branch.toObject(),
+          employeeCount: stats.employeeCount,
+          revenue: stats.revenue,
+          totalOrders: stats.totalOrders,
+          lastUpdated: new Date(),
+        };
+      }),
+    );
+
     return res.status(200).json({
       success: true,
-      data: branches,
+      data: branchesWithStats,
     });
   } catch (error: any) {
+    console.error("Get branches error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -99,14 +174,12 @@ export const getBranches = async (req: Request, res: Response) => {
   }
 };
 
-// Get branch by ID
 export const getBranchById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const Branch = getCentralBranchModel();
 
     const branch = await Branch.findById(id);
-
     if (!branch) {
       return res.status(404).json({
         success: false,
@@ -114,11 +187,19 @@ export const getBranchById = async (req: Request, res: Response) => {
       });
     }
 
+    const stats = await getBranchStatsFromDB(branch);
+
     return res.status(200).json({
       success: true,
-      data: branch,
+      data: {
+        ...branch.toObject(),
+        employeeCount: stats.employeeCount,
+        revenue: stats.revenue,
+        totalOrders: stats.totalOrders,
+      },
     });
   } catch (error: any) {
+    console.error("Get branch by ID error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -130,13 +211,12 @@ export const updateBranch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const Branch = getCentralBranchModel();
-    
     const { code, ...updateData } = req.body;
 
     const updatedBranch = await Branch.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!updatedBranch) {
@@ -152,6 +232,7 @@ export const updateBranch = async (req: Request, res: Response) => {
       data: updatedBranch,
     });
   } catch (error: any) {
+    console.error("Update branch error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -173,14 +254,12 @@ export const deleteBranch = async (req: Request, res: Response) => {
       });
     }
 
-    // မှတ်ချက် - Central DB မှ Branch Data ကို ဖျက်လိုက်ခြင်းဖြစ်ပါသည်။
-    // အကယ်၍ Branch Database (branch_xxx) ကိုပါ အပြီးတိုင် ဖျက်ချင်ပါက mongoose connection မှတဆင့် `db.dropDatabase()` ကို ဆက်လက်ရေးသားနိုင်ပါသည်။
-
     return res.status(200).json({
       success: true,
       message: "Branch deleted successfully",
     });
   } catch (error: any) {
+    console.error("Delete branch error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -188,36 +267,31 @@ export const deleteBranch = async (req: Request, res: Response) => {
   }
 };
 
-// Get branch stats
 export const getBranchStats = async (req: Request, res: Response) => {
   try {
     const Branch = getCentralBranchModel();
-    const CentralUser = getCentralUserModel();
 
-    const total = await Branch.countDocuments();
-    const active = await Branch.countDocuments({ status: "active" });
-    const inactive = await Branch.countDocuments({ status: "inactive" });
-
-    // Get employees count per branch
-    const branchesWithEmployees = await Branch.aggregate([
-      {
-        $lookup: {
-          from: "users",
-          localField: "name",
-          foreignField: "branch",
-          as: "employees",
-        },
-      },
-      {
-        $project: {
-          name: 1,
-          code: 1,
-          status: 1,
-          manager: 1,
-          employeeCount: { $size: "$employees" },
-        },
-      },
+    const [total, active, inactive, branches] = await Promise.all([
+      Branch.countDocuments(),
+      Branch.countDocuments({ status: "active" }),
+      Branch.countDocuments({ status: "inactive" }),
+      Branch.find().select("name code status manager"),
     ]);
+
+    const branchesWithEmployees = await Promise.all(
+      branches.map(async (branch) => {
+        const stats = await getBranchStatsFromDB(branch);
+        return {
+          name: branch.name,
+          code: branch.code,
+          status: branch.status,
+          manager: branch.manager,
+          employeeCount: stats.employeeCount,
+          revenue: stats.revenue,
+          totalOrders: stats.totalOrders,
+        };
+      }),
+    );
 
     return res.status(200).json({
       success: true,
@@ -229,6 +303,7 @@ export const getBranchStats = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
+    console.error("Get branch stats error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -236,7 +311,6 @@ export const getBranchStats = async (req: Request, res: Response) => {
   }
 };
 
-// Update branch status only
 export const updateBranchStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -260,14 +334,13 @@ export const updateBranchStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // Update branch status
     const updatedBranch = await Branch.findByIdAndUpdate(
       id,
       { status },
       { new: true },
     );
 
-    // Update all employees in this branch
+    // Branch ရဲ့ ဝန်ထမ်းအားလုံးကိုပါ Update လုပ်ခြင်း
     await CentralUser.updateMany(
       { branch: branch.name },
       { status: status === "active" ? "active" : "inactive" },
@@ -277,6 +350,26 @@ export const updateBranchStatus = async (req: Request, res: Response) => {
       success: true,
       message: `Branch status updated to ${status}`,
       data: updatedBranch,
+    });
+  } catch (error: any) {
+    console.error("Update branch status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+export const getBranchesForDropdown = async (req: Request, res: Response) => {
+  try {
+    const Branch = getCentralBranchModel();
+    const branches = await Branch.find({ status: "active" })
+      .select("name code status")
+      .sort({ name: 1 });
+
+    return res.status(200).json({
+      success: true,
+      data: branches,
     });
   } catch (error: any) {
     return res.status(500).json({

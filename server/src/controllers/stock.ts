@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getYGNBranchStockModel } from "../models/YGNBranchDB/stock";
+import { getYGNBranchStockModel } from "../models/BranchDB/stock";
 
 export const updateBranchStock = async (req: Request, res: Response) => {
   try {

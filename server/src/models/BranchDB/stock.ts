@@ -1,5 +1,5 @@
 import { Schema, Types } from "mongoose";
-import { ygBranchDBConnection } from "../../db/db";
+// import { ygBranchDBConnection } from "../../db/db";
 
 interface IStock {
   product: Types.ObjectId;
@@ -24,9 +24,9 @@ const stockSchema = new Schema(
   { timestamps: true },
 );
 
-export const getYGNBranchStockModel = () => {
-  if (!ygBranchDBConnection) {
-    throw new Error("YGN Branch DB connection not found");
-  }
-  return ygBranchDBConnection.model("Stock", stockSchema);
-};
+// export const getYGNBranchStockModel = () => {
+//   if (!ygBranchDBConnection) {
+//     throw new Error("YGN Branch DB connection not found");
+//   }
+//   return ygBranchDBConnection.model("Stock", stockSchema);
+// };

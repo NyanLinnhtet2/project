@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
-import { getCentralUserModel } from "../models/CentralDB/user";
 import { getBranchConnection } from "../db/db";
 import { getOrderModel } from "../models/BranchDB/order";
 import { getBranchEmployeeModel } from "../models/BranchDB/employee";
@@ -311,20 +310,11 @@ export const getBranchStats = async (req: Request, res: Response) => {
   }
 };
 
-export const updateBranchStatus = async (req: Request, res: Response) => {
+// Update branch stats from branch DB
+export const updateBranchStats = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-
-    if (!status || !["active", "inactive"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Must be active or inactive",
-      });
-    }
-
     const Branch = getCentralBranchModel();
-    const CentralUser = getCentralUserModel();
 
     const branch = await Branch.findById(id);
     if (!branch) {
@@ -334,25 +324,28 @@ export const updateBranchStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const updatedBranch = await Branch.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true },
-    );
+    const branchDb = getBranchConnection(branch.dbName);
+    const BranchEmployee = getBranchEmployeeModel(branchDb);
 
-    // Branch ရဲ့ ဝန်ထမ်းအားလုံးကိုပါ Update လုပ်ခြင်း
-    await CentralUser.updateMany(
-      { branch: branch.name },
-      { status: status === "active" ? "active" : "inactive" },
-    );
+    // Get employee count (excluding "Not Assigned")
+    const employeeCount = await BranchEmployee.countDocuments({
+      status: "active",
+      name: { $ne: "Not Assigned" },
+      isActive: true,
+    });
+
+    // Update branch with employee count
+    await Branch.findByIdAndUpdate(id, {
+      employeeCount,
+      lastUpdated: new Date(),
+    });
 
     return res.status(200).json({
       success: true,
-      message: `Branch status updated to ${status}`,
-      data: updatedBranch,
+      message: "Branch stats updated successfully",
+      data: { employeeCount },
     });
   } catch (error: any) {
-    console.error("Update branch status error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -378,3 +371,4 @@ export const getBranchesForDropdown = async (req: Request, res: Response) => {
     });
   }
 };
+

@@ -10,8 +10,25 @@ cloudinary.config({
   api_secret: process.env.API_SECRET!,
 });
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+export const validateImageSize = (base64String: string) => {
+  const sizeInBytes = Buffer.from(base64String, "base64").length;
+
+  if (sizeInBytes > MAX_FILE_SIZE) {
+    throw new Error(
+      `Image size (${(sizeInBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size of 5MB. Please compress your image.`,
+    );
+  }
+
+  return true;
+};
+
 export const uploadSingleImage = async (image: string, folder_name: string) => {
   try {
+
+    validateImageSize(image);
+
     const response = await cloudinary.uploader.upload(image, {
       folder: folder_name,
     });
@@ -42,6 +59,9 @@ export const updateImage = async (
   oldPublicId?: string,
 ) => {
   try {
+
+    validateImageSize(image);
+
     if (oldPublicId) {
       await deleteImage(oldPublicId);
     }

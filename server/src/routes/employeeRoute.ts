@@ -9,10 +9,10 @@ import {
   getEmployeeStats,
   getEmployeesByBranch,
   updateEmployeeStatus,
+  getManagersForDropdown,
 } from "../controllers/user";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { allowRoles } from "../middleware/roleMiddleware";
-import { getBranchesForDropdown } from "../controllers/branch";
 
 const router = express.Router();
 
@@ -26,11 +26,12 @@ router.get(
 );
 
 router.get(
-  "/dropdown",
+  "/managers",
   authMiddleware,
-  allowRoles("admin", "manager"),
-  getBranchesForDropdown,
+  allowRoles("admin"),
+  getManagersForDropdown,
 );
+
 router.get(
   "/branch/:branchName",
   authMiddleware,

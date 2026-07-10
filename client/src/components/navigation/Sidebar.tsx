@@ -13,6 +13,8 @@ import {
   Bell,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
+import { useEffect, useState } from "react";
+import type { User as UserInfo } from "../../types/user";
 
 const menus = [
   {
@@ -44,6 +46,7 @@ const menus = [
 
 export const Sidebar = () => {
   const navigate = useNavigate();
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   const logutHandler = async () => {
     try {
@@ -55,6 +58,15 @@ export const Sidebar = () => {
       console.log("Logout Error : ", error);
     }
   };
+
+  useEffect(() => {
+    const raw = localStorage.getItem("userInfo");
+    const t = setTimeout(() => {
+      setUserInfo(raw ? JSON.parse(raw) : null);
+    }, 0);
+
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <aside className="flex h-screen w-72 flex-col bg-linear-to-b from-white to-slate-50/80 shadow-xl shadow-slate-200/50 overflow-hidden">
@@ -148,9 +160,11 @@ export const Sidebar = () => {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-slate-800 truncate">
-                Admin
+                {userInfo?.name}
               </h3>
-              <p className="text-xs text-slate-500 truncate">admin@gmail.com</p>
+              <p className="text-xs text-slate-500 truncate">
+                {userInfo?.email}
+              </p>
             </div>
             <button className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 shrink-0">
               <Settings size={15} />

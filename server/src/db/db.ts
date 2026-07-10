@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const connections: Record<string, mongoose.Connection> = {};
 
-// Central DB connection 
+// Central DB connection
 export let centralDBConnection: mongoose.Connection | null = null;
 
 /**
@@ -31,9 +31,7 @@ export const connectDB = async (): Promise<void> => {
 /**
  * Get or Create Branch DB Connection
  */
-export const getBranchConnection = (
-  dbName: string
-): mongoose.Connection => {
+export const getBranchConnection = (dbName: string): mongoose.Connection => {
   // Cache လုပ်ထားသော Connection ရှိလျှင် ယူသုံးမည်
   if (connections[dbName]) {
     return connections[dbName];

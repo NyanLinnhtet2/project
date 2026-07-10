@@ -8,6 +8,7 @@ import brandRoute from "./routes/brandRoute";
 import employeeRoute from "./routes/employeeRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { Request, Response, NextFunction } from "express";
 
 dotenv.config({
   path: "./.env",
@@ -17,6 +18,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
+
 
 app.use(
   cors({
@@ -30,6 +32,27 @@ app.use("/api/branches", branchRoute);
 app.use("/api/category", categoryRoute);
 app.use("/api/brands", brandRoute);
 app.use("/api/employees", employeeRoute);
+
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (
+      err.type === "entity.too.large" ||
+      err.message?.includes("request entity too large")
+    ) {
+      return res.status(413).json({
+        success: false,
+        message:
+          "Image file is too large. Maximum size allowed is 5MB. Please compress your image and try again.",
+      });
+    }
+    next(err);
+  },
+);
 
 const PORT = process.env.PORT || 5000;
 

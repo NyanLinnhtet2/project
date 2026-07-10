@@ -43,8 +43,14 @@ export const getBranchByIdApi = async (id: string) => {
   return data;
 };
 
-// Branch ကို ဖျက်ရန် API
 export const deleteBranchApi = async (id: string) => {
   const { data } = await axios.delete(`${API_URL}/branches/${id}`);
   return data;
 };
+
+export const getBranchesForDropdownApi = async () => {
+  const { data } = await axios.get(`${API_URL}/branches/dropdown`);
+  return data;
+};
+
+

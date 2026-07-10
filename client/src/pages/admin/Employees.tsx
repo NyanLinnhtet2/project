@@ -28,15 +28,111 @@ import {
   updateEmployeeApi,
   deleteEmployeeApi,
   getEmployeeStatsApi,
-  getBranchesForDropdownApi,
 } from "../../services/employeeServices";
+import { getBranchesForDropdownApi } from "../../services/branchService";
 import toast from "react-hot-toast";
 import type {
   Employee,
   CreateEmployeeData,
   UpdateEmployeeData,
 } from "../../types/employee";
+import { validateImageFile, compressImage } from "../../utils/imageCompressing";
 
+// ============================================================
+// Confirm Dialog Component
+// ============================================================
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  type?: "danger" | "warning" | "info";
+}
+
+const ConfirmDialog = ({
+  isOpen,
+  title,
+  message,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  onConfirm,
+  onCancel,
+  type = "danger",
+}: ConfirmDialogProps) => {
+  if (!isOpen) return null;
+
+  const getTypeStyles = () => {
+    switch (type) {
+      case "danger":
+        return {
+          bg: "bg-red-50",
+          border: "border-red-200",
+          icon: "text-red-600",
+          button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+        };
+      case "warning":
+        return {
+          bg: "bg-amber-50",
+          border: "border-amber-200",
+          icon: "text-amber-600",
+          button: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500",
+        };
+      default:
+        return {
+          bg: "bg-blue-50",
+          border: "border-blue-200",
+          icon: "text-blue-600",
+          button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+        };
+    }
+  };
+
+  const styles = getTypeStyles();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div
+        className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
+      >
+        {/* Icon */}
+        <div className="flex justify-center mb-4">
+          <div className={`rounded-full p-3 ${styles.bg}`}>
+            <AlertCircle size={32} className={styles.icon} />
+          </div>
+        </div>
+
+        {/* Title & Message */}
+        <h3 className="text-xl font-bold text-slate-900 text-center mb-2">
+          {title}
+        </h3>
+        <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl px-4 py-2.5 font-medium text-white transition hover:scale-105 active:scale-95 ${styles.button}`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// Types
+// ============================================================
 interface Branch {
   _id: string;
   name: string;
@@ -58,6 +154,9 @@ interface EmployeeFormData {
   avatarPreview: string;
 }
 
+// ============================================================
+// Main Component
+// ============================================================
 export const Employees = () => {
   // States
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -76,6 +175,15 @@ export const Employees = () => {
     null,
   );
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+  const [deleting,setDeleting] = useState<boolean>(false);
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -137,7 +245,6 @@ export const Employees = () => {
     },
   ];
 
-  // Apply filters
   useEffect(() => {
     let filtered = [...employees];
 
@@ -158,17 +265,21 @@ export const Employees = () => {
       );
     }
 
-    const t = setTimeout(() => setFilteredEmployees(filtered), 0);
+    const t = setTimeout(() => {
+      setFilteredEmployees(filtered);
+    }, 0);
+
     return () => clearTimeout(t);
   }, [searchTerm, statusFilter, employees]);
 
-  // Fetch branches from API
+  // ============================================================
+  // API Functions
+  // ============================================================
   const fetchBranches = async () => {
     try {
       setIsFetchingBranches(true);
       const response = await getBranchesForDropdownApi();
       if (response.success) {
-        // Filter only active branches
         const activeBranches = response.data.filter(
           (branch: Branch) => branch.status === "active",
         );
@@ -184,7 +295,6 @@ export const Employees = () => {
     }
   };
 
-  // Fetch employees from API
   const fetchEmployees = async () => {
     try {
       setIsLoading(true);
@@ -209,7 +319,6 @@ export const Employees = () => {
     }
   };
 
-  // Fetch stats
   const fetchStats = async () => {
     try {
       const response = await getEmployeeStatsApi();
@@ -221,7 +330,6 @@ export const Employees = () => {
     }
   };
 
-  // Fetch employees on mount
   useEffect(() => {
     const t = setTimeout(() => {
       fetchEmployees();
@@ -232,7 +340,9 @@ export const Employees = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // Handle input change
+  // ============================================================
+  // Handlers
+  // ============================================================
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -245,38 +355,31 @@ export const Employees = () => {
     }));
   };
 
-  // Handle file change for avatar
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be less than 5MB");
-        return;
-      }
+    if (!file) return;
 
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "image/gif",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(
-          "Please upload a valid image file (JPEG, PNG, JPG, GIF, WebP)",
-        );
-        return;
-      }
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast.error(validation.message || "Invalid image file");
+      return;
+    }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          avatar: file,
-          avatarPreview: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
+    try {
+      toast.loading("Compressing image...");
+      const compressedImage = await compressImage(file, 5);
+      toast.dismiss();
+
+      setFormData((prev) => ({
+        ...prev,
+        avatar: file,
+        avatarPreview: compressedImage,
+      }));
+
+      toast.success("Image uploaded successfully!");
+    } catch (error) {
+      toast.error("Failed to process image. Please try again.");
+      console.error("Image processing error:", error);
     }
   };
 
@@ -291,7 +394,6 @@ export const Employees = () => {
     }
   };
 
-  // Reset form
   const resetForm = () => {
     setFormData({
       name: "",
@@ -312,7 +414,6 @@ export const Employees = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate required fields
     if (
       !formData.name ||
       !formData.email ||
@@ -328,7 +429,6 @@ export const Employees = () => {
     try {
       setIsSubmitting(true);
 
-      // Convert avatar to base64 for Cloudinary
       let avatarBase64 = "";
       if (formData.avatar) {
         const reader = new FileReader();
@@ -430,14 +530,18 @@ export const Employees = () => {
     }
   };
 
-  // Delete employee
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      return;
-    }
+  // Delete employee - show custom confirmation
+  const handleDeleteClick = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
-      const response = await deleteEmployeeApi(id);
+      const response = await deleteEmployeeApi(deleteTarget.id);
       if (response.success) {
         toast.success(response.message || "Employee deleted successfully!");
         await fetchEmployees();
@@ -451,7 +555,16 @@ export const Employees = () => {
         err.message ||
         "Failed to delete employee";
       toast.error(errorMessage);
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+      setDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
   };
 
   // View employee
@@ -479,7 +592,9 @@ export const Employees = () => {
     setIsEditModalOpen(true);
   };
 
-  // Get status badge
+  // ============================================================
+  // Helper Functions
+  // ============================================================
   const getStatusBadge = (status: string) => {
     const statusMap = {
       active: { label: "Active", className: "bg-emerald-100 text-emerald-700" },
@@ -515,7 +630,6 @@ export const Employees = () => {
     );
   };
 
-  // Format currency
   const formatCurrency = (amount: number) => {
     if (!amount) return "0 MMK";
     return new Intl.NumberFormat("my-MM", {
@@ -526,10 +640,12 @@ export const Employees = () => {
     }).format(amount);
   };
 
-  // Loading state
+  // ============================================================
+  // Loading & Error States
+  // ============================================================
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading employees...</p>
@@ -538,10 +654,9 @@ export const Employees = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
@@ -559,14 +674,29 @@ export const Employees = () => {
     );
   }
 
+  // ============================================================
+  // Main Render
+  // ============================================================
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
+     
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Employee"
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        confirmText={deleting ? "Deleting..." : "Delete"}
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        type="danger"
+      />
+
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Users size={24} className="text-white" />
               </div>
               <div>
@@ -586,7 +716,7 @@ export const Employees = () => {
                 resetForm();
                 setIsModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
             >
               <UserPlus size={20} />
               Add New Employee
@@ -830,7 +960,7 @@ export const Employees = () => {
                           </button>
                           <button
                             onClick={() =>
-                              handleDelete(employee._id, employee.name)
+                              handleDeleteClick(employee._id, employee.name)
                             }
                             className="rounded-xl bg-red-100 p-2 text-red-600 transition hover:bg-red-200"
                           >
@@ -847,11 +977,12 @@ export const Employees = () => {
         )}
       </div>
 
-      {/* Add Employee Modal */}
+      {/* ============================================================
+          Add Employee Modal
+          ============================================================ */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <h2 className="text-2xl font-bold text-slate-900">
                 Add New Employee
@@ -867,12 +998,11 @@ export const Employees = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="relative">
-                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
+                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
                     {formData.avatarPreview ? (
                       <img
                         src={formData.avatarPreview}
@@ -1100,7 +1230,7 @@ export const Employees = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1117,7 +1247,9 @@ export const Employees = () => {
         </div>
       )}
 
-      {/* Edit Employee Modal */}
+      {/* ============================================================
+          Edit Employee Modal
+          ============================================================ */}
       {isEditModalOpen && editingEmployee && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1141,7 +1273,7 @@ export const Employees = () => {
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="relative">
-                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
+                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
                     {formData.avatarPreview ? (
                       <img
                         src={formData.avatarPreview}
@@ -1364,7 +1496,7 @@ export const Employees = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1381,7 +1513,9 @@ export const Employees = () => {
         </div>
       )}
 
-      {/* View Employee Modal */}
+      {/* ============================================================
+          View Employee Modal
+          ============================================================ */}
       {isViewModalOpen && selectedEmployee && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
@@ -1480,7 +1614,7 @@ export const Employees = () => {
                     setIsViewModalOpen(false);
                     handleEdit(selectedEmployee);
                   }}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95"
                 >
                   Edit Employee
                 </button>

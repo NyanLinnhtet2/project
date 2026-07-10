@@ -13,6 +13,7 @@ import { Branch } from "./pages/admin/Branch";
 import { Product } from "./pages/admin/Product";
 import { ProtectedRoute } from "./routes/ProtectRoute";
 import { Employees } from "./pages/admin/Employees";
+import Orders from "./pages/Orders";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -72,6 +73,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <Employees />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "orders",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Orders />
           </ProtectedRoute>
         ),
       },

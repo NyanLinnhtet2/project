@@ -1,5 +1,5 @@
-// src/services/employeeService.ts
 import axios from "axios";
+
 import type { CreateEmployeeData, UpdateEmployeeData } from "../types/employee";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -62,8 +62,7 @@ export const updateEmployeeStatusApi = async (id: string, status: string) => {
   return data;
 };
 
-// Get all branches for dropdown
-export const getBranchesForDropdownApi = async () => {
-  const { data } = await axios.get(`${API_URL}/branches/dropdown`);
+export const getManagersForDropdownApi = async () => {
+  const { data } = await axios.get(`${API_URL}/employees/managers`);
   return data;
 };

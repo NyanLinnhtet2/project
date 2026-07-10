@@ -12,6 +12,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type {
@@ -25,15 +26,110 @@ import {
   updateBranchApi,
   deleteBranchApi,
 } from "../../services/branchService";
+import { getManagersForDropdownApi } from "../../services/employeeServices";
 import toast from "react-hot-toast";
 
-const managers = [
-  { id: "1", name: "Aung Aung" },
-  { id: "2", name: "Kyaw Kyaw" },
-  { id: "3", name: "Su Su" },
-  { id: "4", name: "Mg Mg" },
-  { id: "5", name: "Hla Hla" },
-];
+// ============================================================
+// Confirm Dialog Component
+// ============================================================
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  type?: "danger" | "warning" | "info";
+}
+
+const ConfirmDialog = ({
+  isOpen,
+  title,
+  message,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  onConfirm,
+  onCancel,
+  type = "danger",
+}: ConfirmDialogProps) => {
+  if (!isOpen) return null;
+
+  const getTypeStyles = () => {
+    switch (type) {
+      case "danger":
+        return {
+          bg: "bg-red-50",
+          border: "border-red-200",
+          icon: "text-red-600",
+          button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+        };
+      case "warning":
+        return {
+          bg: "bg-amber-50",
+          border: "border-amber-200",
+          icon: "text-amber-600",
+          button: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500",
+        };
+      default:
+        return {
+          bg: "bg-blue-50",
+          border: "border-blue-200",
+          icon: "text-blue-600",
+          button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+        };
+    }
+  };
+
+  const styles = getTypeStyles();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div
+        className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
+      >
+        {/* Icon */}
+        <div className="flex justify-center mb-4">
+          <div className={`rounded-full p-3 ${styles.bg}`}>
+            <AlertTriangle size={32} className={styles.icon} />
+          </div>
+        </div>
+
+        {/* Title & Message */}
+        <h3 className="text-xl font-bold text-slate-900 text-center mb-2">
+          {title}
+        </h3>
+        <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl px-4 py-2.5 font-medium text-white transition hover:scale-105 active:scale-95 ${styles.button}`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// Types
+// ============================================================
+interface Manager {
+  _id: string;
+  name: string;
+  email: string;
+  branch: string;
+}
 
 export const Branch = () => {
   // States
@@ -42,11 +138,19 @@ export const Branch = () => {
   const [editingBranch, setEditingBranch] = useState<BranchType | null>(null);
   const [branches, setBranches] = useState<BranchType[]>([]);
   const [filteredBranches, setFilteredBranches] = useState<BranchType[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isLoadingManagers, setIsLoadingManagers] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [deleting, setDeleting] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -65,36 +169,22 @@ export const Branch = () => {
     status: "active",
   });
 
-  // Fetch branches on mount
-
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...branches];
-
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (branch) =>
-          branch.name.toLowerCase().includes(term) ||
-          branch.code.toLowerCase().includes(term) ||
-          branch.manager?.toLowerCase().includes(term),
-      );
+  // Fetch managers from API
+  const fetchManagers = async () => {
+    try {
+      setIsLoadingManagers(true);
+      const response = await getManagersForDropdownApi();
+      if (response.success) {
+        setManagers(response.data);
+      } else {
+        console.error("Failed to fetch managers:", response.message);
+      }
+    } catch (error) {
+      console.error("Error fetching managers:", error);
+    } finally {
+      setIsLoadingManagers(false);
     }
-
-    // Status filter
-    if (statusFilter !== "All") {
-      filtered = filtered.filter(
-        (branch) => branch.status === statusFilter.toLowerCase(),
-      );
-    }
-
-    const t = setTimeout(() => {
-      setFilteredBranches(filtered);
-    }, 0);
-
-    return () => clearTimeout(t);
-  }, [searchTerm, statusFilter, branches]);
+  };
 
   // Fetch branches from API
   const fetchBranches = async () => {
@@ -108,7 +198,6 @@ export const Branch = () => {
         setBranches(response.data);
         setFilteredBranches(response.data);
 
-        // Calculate stats
         const total = response.data.length;
         const active = response.data.filter(
           (b: BranchType) => b.status === "active",
@@ -148,13 +237,42 @@ export const Branch = () => {
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     const t = setTimeout(() => {
       fetchBranches();
+      fetchManagers();
     }, 0);
 
     return () => clearTimeout(t);
   }, []);
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = [...branches];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (branch) =>
+          branch.name.toLowerCase().includes(term) ||
+          branch.code.toLowerCase().includes(term) ||
+          branch.manager?.toLowerCase().includes(term),
+      );
+    }
+
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(
+        (branch) => branch.status === statusFilter.toLowerCase(),
+      );
+    }
+
+    const t = setTimeout(() => {
+      setFilteredBranches(filtered);
+    }, 0);
+
+    return () => clearTimeout(t);
+  }, [searchTerm, statusFilter, branches]);
 
   // Handle form input change
   const handleInputChange = (
@@ -173,7 +291,6 @@ export const Branch = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate required fields
     if (
       !formData.name ||
       !formData.code ||
@@ -192,7 +309,8 @@ export const Branch = () => {
         toast.success(response.message || "Branch created successfully!");
         setIsModalOpen(false);
         resetForm();
-        await fetchBranches(); // Auto refresh
+        await fetchBranches();
+        await fetchManagers();
       } else {
         toast.error(response.message || "Failed to create branch");
       }
@@ -231,6 +349,7 @@ export const Branch = () => {
         setEditingBranch(null);
         resetForm();
         await fetchBranches();
+        await fetchManagers();
       } else {
         toast.error(response.message || "Failed to update branch");
       }
@@ -243,17 +362,21 @@ export const Branch = () => {
     }
   };
 
-  // Handle delete branch
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      return;
-    }
+  // Handle delete branch - show custom confirmation
+  const handleDeleteClick = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+    setShowDeleteConfirm(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const response = await deleteBranchApi(id);
+      const response = await deleteBranchApi(deleteTarget.id);
       if (response.success) {
         toast.success(response.message || "Branch deleted successfully!");
-        await fetchBranches(); // Auto refresh
+        await fetchBranches();
+        await fetchManagers();
       } else {
         toast.error(response.message || "Failed to delete branch");
       }
@@ -261,7 +384,16 @@ export const Branch = () => {
       const errorMessage =
         err.response?.data?.message || err.message || "Failed to delete branch";
       toast.error(errorMessage);
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+      setDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
   };
 
   // Handle edit button click
@@ -322,7 +454,7 @@ export const Branch = () => {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading branches...</p>
@@ -334,7 +466,7 @@ export const Branch = () => {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
@@ -353,13 +485,25 @@ export const Branch = () => {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
+      {/* Custom Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Branch"
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        confirmText={deleting ? "Delete..." : "Delete"}
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        type="danger"
+      />
+
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Building2 size={24} className="text-white" />
               </div>
               <div>
@@ -378,14 +522,14 @@ export const Branch = () => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
           >
             <Plus size={20} />
             Add New Branch
           </button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Same as before */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <p className="text-sm font-medium text-slate-500">Total Branches</p>
@@ -553,7 +697,7 @@ export const Branch = () => {
                       <Pencil size={16} />
                     </button>
                     <button
-                      onClick={() => handleDelete(branch._id, branch.name)}
+                      onClick={() => handleDeleteClick(branch._id, branch.name)}
                       className="rounded-xl bg-red-100 p-2 text-red-600 transition hover:bg-red-200"
                     >
                       <Trash2 size={16} />
@@ -570,7 +714,6 @@ export const Branch = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <h2 className="text-2xl font-bold text-slate-900">
                 Add New Branch
@@ -586,7 +729,6 @@ export const Branch = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -661,12 +803,23 @@ export const Branch = () => {
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   >
                     <option value="">Select Manager</option>
-                    {managers.map((manager) => (
-                      <option key={manager.id} value={manager.name}>
-                        {manager.name}
+                    {isLoadingManagers ? (
+                      <option value="" disabled>
+                        Loading managers...
                       </option>
-                    ))}
+                    ) : (
+                      managers.map((manager) => (
+                        <option key={manager._id} value={manager.name}>
+                          {manager.name} ({manager.branch || "No Branch"})
+                        </option>
+                      ))
+                    )}
                   </select>
+                  {!isLoadingManagers && managers.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      No managers found. Please create a manager first.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -713,7 +866,7 @@ export const Branch = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -734,7 +887,6 @@ export const Branch = () => {
       {isEditModalOpen && editingBranch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <h2 className="text-2xl font-bold text-slate-900">Edit Branch</h2>
               <button
@@ -749,7 +901,6 @@ export const Branch = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
             <form onSubmit={handleUpdate} className="mt-6 space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -824,11 +975,17 @@ export const Branch = () => {
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   >
                     <option value="">Select Manager</option>
-                    {managers.map((manager) => (
-                      <option key={manager.id} value={manager.name}>
-                        {manager.name}
+                    {isLoadingManagers ? (
+                      <option value="" disabled>
+                        Loading managers...
                       </option>
-                    ))}
+                    ) : (
+                      managers.map((manager) => (
+                        <option key={manager._id} value={manager.name}>
+                          {manager.name} ({manager.branch || "No Branch"})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
                 <div>
@@ -877,7 +1034,7 @@ export const Branch = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">

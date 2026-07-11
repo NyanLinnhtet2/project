@@ -8,11 +8,20 @@ import {
   Building2,
   Phone,
   User,
-  MoreVertical,
   Loader2,
   AlertCircle,
   CheckCircle,
   AlertTriangle,
+  Mail,
+  MapPin,
+  Calendar,
+  DollarSign,
+  Users,
+  Package,
+  Clock,
+  Database,
+  SortAsc,
+  SortDesc,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type {
@@ -41,6 +50,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   type?: "danger" | "warning" | "info";
+  isLoading?: boolean;
 }
 
 const ConfirmDialog = ({
@@ -52,6 +62,7 @@ const ConfirmDialog = ({
   onConfirm,
   onCancel,
   type = "danger",
+  isLoading = false,
 }: ConfirmDialogProps) => {
   if (!isOpen) return null;
 
@@ -88,32 +99,38 @@ const ConfirmDialog = ({
       <div
         className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
       >
-        {/* Icon */}
         <div className="flex justify-center mb-4">
           <div className={`rounded-full p-3 ${styles.bg}`}>
             <AlertTriangle size={32} className={styles.icon} />
           </div>
         </div>
 
-        {/* Title & Message */}
         <h3 className="text-xl font-bold text-slate-900 text-center mb-2">
           {title}
         </h3>
         <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
 
-        {/* Buttons */}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50"
+            disabled={isLoading}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 rounded-xl px-4 py-2.5 font-medium text-white transition hover:scale-105 active:scale-95 ${styles.button}`}
+            disabled={isLoading}
+            className={`flex-1 rounded-xl px-4 py-2.5 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${styles.button}`}
           >
-            {confirmText}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={18} className="animate-spin" />
+                Deleting...
+              </span>
+            ) : (
+              confirmText
+            )}
           </button>
         </div>
       </div>
@@ -122,7 +139,216 @@ const ConfirmDialog = ({
 };
 
 // ============================================================
-// Types
+// View Branch Modal
+// ============================================================
+interface ViewBranchModalProps {
+  isOpen: boolean;
+  branch: BranchType | null;
+  onClose: () => void;
+  onEdit: () => void;
+}
+
+const ViewBranchModal = ({
+  isOpen,
+  branch,
+  onClose,
+  onEdit,
+}: ViewBranchModalProps) => {
+  if (!isOpen || !branch) return null;
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    }
+    if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(1)}K`;
+    }
+    return `$${amount}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    if (status === "active") {
+      return (
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">
+          Active
+        </span>
+      );
+    }
+    return (
+      <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-700">
+        Inactive
+      </span>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-linear-to-br from-blue-600 to-blue-700 p-2 shadow-lg shadow-blue-200">
+              <Building2 size={20} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">
+                {branch.name}
+              </h2>
+              <p className="text-sm text-slate-500">Branch Details</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 transition hover:bg-slate-100"
+          >
+            <X size={20} className="text-slate-500" />
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-6">
+          <div className="flex flex-wrap items-center gap-4">
+            {getStatusBadge(branch.status)}
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+              Code: {branch.code}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+              Database: {branch.dbName}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <MapPin size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Address</p>
+                  <p className="text-sm text-slate-600">{branch.address}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Phone size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Phone</p>
+                  <p className="text-sm text-slate-600">{branch.phone}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Mail size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Email</p>
+                  <p className="text-sm text-slate-600">
+                    {branch.email || "Not provided"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <User size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Manager</p>
+                  <p className="text-sm text-slate-600">
+                    {branch.manager || "Not Assigned"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Users size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    Employees
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {branch.employeeCount || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <DollarSign size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Revenue</p>
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {formatCurrency(branch.revenue || 0)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Package size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    Total Orders
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {branch.totalOrders || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Database size={18} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Database</p>
+                  <p className="text-sm font-mono text-slate-600">
+                    {branch.dbName}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
+              <div className="flex items-center gap-2">
+                <Calendar size={16} />
+                <span>Created: {formatDate(branch.createdAt)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock size={16} />
+                <span>Last Updated: {formatDate(branch.updatedAt)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-slate-200">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                onEdit();
+              }}
+              className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95"
+            >
+              Edit Branch
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// Main Component
 // ============================================================
 interface Manager {
   _id: string;
@@ -131,10 +357,22 @@ interface Manager {
   branch: string;
 }
 
+// Sort types
+type SortField =
+  | "name"
+  | "code"
+  | "status"
+  | "createdAt"
+  | "employeeCount"
+  | "revenue";
+type SortOrder = "asc" | "desc";
+
 export const Branch = () => {
   // States
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+  const [viewingBranch, setViewingBranch] = useState<BranchType | null>(null);
   const [editingBranch, setEditingBranch] = useState<BranchType | null>(null);
   const [branches, setBranches] = useState<BranchType[]>([]);
   const [filteredBranches, setFilteredBranches] = useState<BranchType[]>([]);
@@ -146,11 +384,16 @@ export const Branch = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
-  const [deleting, setDeleting] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
+
+  // ✅ Sorting states
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -237,7 +480,6 @@ export const Branch = () => {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     const t = setTimeout(() => {
       fetchBranches();
@@ -247,10 +489,11 @@ export const Branch = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // Apply filters
+  // ✅ Apply filters and sorting
   useEffect(() => {
     let filtered = [...branches];
 
+    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -261,18 +504,39 @@ export const Branch = () => {
       );
     }
 
+    // Status filter
     if (statusFilter !== "All") {
       filtered = filtered.filter(
         (branch) => branch.status === statusFilter.toLowerCase(),
       );
     }
 
+    // ✅ Sorting
+    filtered.sort((a, b) => {
+      let aValue = a[sortField as keyof BranchType];
+      let bValue = b[sortField as keyof BranchType];
+
+      // Handle string comparison
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      // Handle null/undefined values
+      if (aValue == null) aValue = "";
+      if (bValue == null) bValue = "";
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
     const t = setTimeout(() => {
       setFilteredBranches(filtered);
     }, 0);
 
     return () => clearTimeout(t);
-  }, [searchTerm, statusFilter, branches]);
+  }, [searchTerm, statusFilter, branches, sortField, sortOrder]);
 
   // Handle form input change
   const handleInputChange = (
@@ -370,7 +634,7 @@ export const Branch = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-    setDeleting(true);
+    setIsDeleting(true);
     try {
       const response = await deleteBranchApi(deleteTarget.id);
       if (response.success) {
@@ -387,13 +651,19 @@ export const Branch = () => {
     } finally {
       setShowDeleteConfirm(false);
       setDeleteTarget(null);
-      setDeleting(false);
+      setIsDeleting(false);
     }
   };
 
   const handleCancelDelete = () => {
     setShowDeleteConfirm(false);
     setDeleteTarget(null);
+  };
+
+  // Handle view branch
+  const handleView = (branch: BranchType) => {
+    setViewingBranch(branch);
+    setIsViewModalOpen(true);
   };
 
   // Handle edit button click
@@ -451,10 +721,9 @@ export const Branch = () => {
     return `$${amount}`;
   };
 
-  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading branches...</p>
@@ -463,10 +732,9 @@ export const Branch = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
@@ -485,17 +753,33 @@ export const Branch = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
-      {/* Custom Delete Confirmation Dialog */}
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Delete Branch"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmText={deleting ? "Delete..." : "Delete"}
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone and will remove all associated data.`}
+        confirmText="Delete Branch"
         cancelText="Cancel"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
         type="danger"
+        isLoading={isDeleting}
+      />
+
+      {/* View Branch Modal */}
+      <ViewBranchModal
+        isOpen={isViewModalOpen}
+        branch={viewingBranch}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingBranch(null);
+        }}
+        onEdit={() => {
+          if (viewingBranch) {
+            handleEdit(viewingBranch);
+          }
+        }}
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
@@ -503,7 +787,7 @@ export const Branch = () => {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Building2 size={24} className="text-white" />
               </div>
               <div>
@@ -522,14 +806,14 @@ export const Branch = () => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
           >
             <Plus size={20} />
             Add New Branch
           </button>
         </div>
 
-        {/* Stats Cards - Same as before */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <p className="text-sm font-medium text-slate-500">Total Branches</p>
@@ -607,11 +891,38 @@ export const Branch = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            <select className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white">
-              <option>Sort by: Latest</option>
-              <option>Name A-Z</option>
-              <option>Name Z-A</option>
+
+            {/* ✅ Sorting Dropdown */}
+            <select
+              value={sortField}
+              onChange={(e) => setSortField(e.target.value as SortField)}
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+            >
+              <option value="name">Sort by Name</option>
+              <option value="code">Sort by Code</option>
+              <option value="status">Sort by Status</option>
+              <option value="createdAt">Sort by Date</option>
+              <option value="employeeCount">Sort by Employees</option>
+              <option value="revenue">Sort by Revenue</option>
             </select>
+
+            {/* ✅ Sort Order Toggle */}
+            <button
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white"
+            >
+              {sortOrder === "asc" ? (
+                <>
+                  <SortAsc size={16} />
+                  Asc
+                </>
+              ) : (
+                <>
+                  <SortDesc size={16} />
+                  Desc
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -645,9 +956,6 @@ export const Branch = () => {
                       {branch.address}
                     </p>
                   </div>
-                  <button className="rounded-lg p-1.5 opacity-0 transition hover:bg-slate-100 group-hover:opacity-100">
-                    <MoreVertical size={18} className="text-slate-400" />
-                  </button>
                 </div>
 
                 <div className="mt-4 space-y-2.5">
@@ -687,7 +995,10 @@ export const Branch = () => {
                     </div>
                   </div>
                   <div className="flex gap-1.5">
-                    <button className="rounded-xl bg-slate-100 p-2 transition hover:bg-slate-200">
+                    <button
+                      onClick={() => handleView(branch)}
+                      className="rounded-xl bg-slate-100 p-2 transition hover:bg-slate-200"
+                    >
                       <Eye size={16} className="text-slate-600" />
                     </button>
                     <button
@@ -866,7 +1177,7 @@ export const Branch = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -929,6 +1240,7 @@ export const Branch = () => {
                     placeholder="e.g., YGN001"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                     required
+                    readOnly
                   />
                 </div>
               </div>
@@ -1034,7 +1346,7 @@ export const Branch = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">

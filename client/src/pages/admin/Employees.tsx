@@ -20,6 +20,8 @@ import {
   Image as ImageIcon,
   Loader2,
   DollarSign,
+  SortAsc,
+  SortDesc,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -154,6 +156,18 @@ interface EmployeeFormData {
   avatarPreview: string;
 }
 
+// Sort types
+type SortField =
+  | "name"
+  | "email"
+  | "position"
+  | "branch"
+  | "salary"
+  | "role"
+  | "status"
+  | "joinDate";
+type SortOrder = "asc" | "desc";
+
 // ============================================================
 // Main Component
 // ============================================================
@@ -175,7 +189,11 @@ export const Employees = () => {
     null,
   );
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
-  const [deleting,setDeleting] = useState<boolean>(false);
+  const [deleting, setDeleting] = useState<boolean>(false);
+
+  // ✅ Sorting states
+  const [sortField, setSortField] = useState<SortField>("joinDate");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
@@ -245,9 +263,11 @@ export const Employees = () => {
     },
   ];
 
+  // ✅ Updated useEffect with sorting (keeping your style)
   useEffect(() => {
     let filtered = [...employees];
 
+    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -259,22 +279,46 @@ export const Employees = () => {
       );
     }
 
+    // Status filter
     if (statusFilter !== "All") {
       filtered = filtered.filter(
         (emp) => emp.status === statusFilter.toLowerCase(),
       );
     }
 
+    // ✅ Sorting
+    filtered.sort((a, b) => {
+      let aValue = a[sortField as keyof Employee];
+      let bValue = b[sortField as keyof Employee];
+
+      // Handle string comparison
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      // Handle null/undefined values
+      if (aValue == null) aValue = "";
+      if (bValue == null) bValue = "";
+
+      // For salary (number)
+      if (sortField === "salary") {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      }
+
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
     const t = setTimeout(() => {
       setFilteredEmployees(filtered);
     }, 0);
 
     return () => clearTimeout(t);
-  }, [searchTerm, statusFilter, employees]);
+  }, [searchTerm, statusFilter, employees, sortField, sortOrder]);
 
-  // ============================================================
-  // API Functions
-  // ============================================================
   const fetchBranches = async () => {
     try {
       setIsFetchingBranches(true);
@@ -340,9 +384,6 @@ export const Employees = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // ============================================================
-  // Handlers
-  // ============================================================
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -645,7 +686,7 @@ export const Employees = () => {
   // ============================================================
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading employees...</p>
@@ -656,7 +697,7 @@ export const Employees = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
@@ -678,8 +719,7 @@ export const Employees = () => {
   // Main Render
   // ============================================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/50 p-6">
-     
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Delete Employee"
@@ -696,7 +736,7 @@ export const Employees = () => {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Users size={24} className="text-white" />
               </div>
               <div>
@@ -716,7 +756,7 @@ export const Employees = () => {
                 resetForm();
                 setIsModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
             >
               <UserPlus size={20} />
               Add New Employee
@@ -833,11 +873,40 @@ export const Employees = () => {
               <option value="Inactive">Inactive</option>
               <option value="Suspended">Suspended</option>
             </select>
-            <select className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white">
-              <option>Sort by: Latest</option>
-              <option>Name A-Z</option>
-              <option>Name Z-A</option>
+
+            {/* ✅ Sorting Dropdown */}
+            <select
+              value={sortField}
+              onChange={(e) => setSortField(e.target.value as SortField)}
+              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+            >
+              <option value="name">Sort by Name</option>
+              <option value="email">Sort by Email</option>
+              <option value="position">Sort by Position</option>
+              <option value="branch">Sort by Branch</option>
+              <option value="salary">Sort by Salary</option>
+              <option value="role">Sort by Role</option>
+              <option value="status">Sort by Status</option>
+              <option value="joinDate">Sort by Join Date</option>
             </select>
+
+            {/* ✅ Sort Order Toggle */}
+            <button
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white"
+            >
+              {sortOrder === "asc" ? (
+                <>
+                  <SortAsc size={16} />
+                  Asc
+                </>
+              ) : (
+                <>
+                  <SortDesc size={16} />
+                  Desc
+                </>
+              )}
+            </button>
           </div>
         </div>
 
@@ -1002,7 +1071,7 @@ export const Employees = () => {
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="relative">
-                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
+                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
                     {formData.avatarPreview ? (
                       <img
                         src={formData.avatarPreview}
@@ -1230,7 +1299,7 @@ export const Employees = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1273,7 +1342,7 @@ export const Employees = () => {
               {/* Avatar Upload */}
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="relative">
-                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
+                  <div className="h-24 w-24 rounded-2xl overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
                     {formData.avatarPreview ? (
                       <img
                         src={formData.avatarPreview}
@@ -1496,7 +1565,7 @@ export const Employees = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1614,7 +1683,7 @@ export const Employees = () => {
                     setIsViewModalOpen(false);
                     handleEdit(selectedEmployee);
                   }}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95"
+                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95"
                 >
                   Edit Employee
                 </button>

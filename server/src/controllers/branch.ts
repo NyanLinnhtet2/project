@@ -4,6 +4,7 @@ import { getCentralBranchModel } from "../models/CentralDB/branches";
 import { getBranchConnection } from "../db/db";
 import { getOrderModel } from "../models/BranchDB/order";
 import { getBranchEmployeeModel } from "../models/BranchDB/employee";
+import { getCentralUserModel } from "../models/CentralDB/user";
 
 const getBranchStatsFromDB = async (branch: any) => {
   try {
@@ -115,7 +116,7 @@ export const createBranch = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       success: true,
-      message: "Branch and its Database created successfully",
+      message: "Branch created successfully",
       data: newBranch,
     });
   } catch (error: any) {
@@ -244,18 +245,49 @@ export const deleteBranch = async (req: Request, res: Response) => {
     const { id } = req.params;
     const Branch = getCentralBranchModel();
 
-    const deletedBranch = await Branch.findByIdAndDelete(id);
+    const branch = await Branch.findById(id);
 
-    if (!deletedBranch) {
+    if (!branch) {
       return res.status(404).json({
         success: false,
         message: "Branch not found",
       });
     }
 
+    const CentralUser = getCentralUserModel();
+    const employeeCount = await CentralUser.countDocuments({
+      branch: branch.name,
+      role: { $in: ["admin", "manager", "cashier"] },
+    });
+
+    if (employeeCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete branch with ${employeeCount} employees. Please reassign or delete employees first.`,
+      });
+    }
+
+    await Branch.findByIdAndDelete(id);
+
+    try {
+      const branchDb = getBranchConnection(branch.dbName);
+
+      await branchDb.dropDatabase();
+      console.log(`✅ Dropped branch database: ${branch.dbName}`);
+    } catch (dbError) {
+      console.error(
+        `Error dropping branch database ${branch.dbName}:`,
+        dbError,
+      );
+    }
+
     return res.status(200).json({
       success: true,
       message: "Branch deleted successfully",
+      data: {
+        branchName: branch.name,
+        dbName: branch.dbName,
+      },
     });
   } catch (error: any) {
     console.error("Delete branch error:", error);
@@ -371,4 +403,3 @@ export const getBranchesForDropdown = async (req: Request, res: Response) => {
     });
   }
 };
-

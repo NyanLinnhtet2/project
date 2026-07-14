@@ -1,35 +1,40 @@
-import { Router } from "express";
+// src/routes/categoryRoutes.ts
+import express from "express";
 import {
-  createCategory,
-  deleteCategory,
-  getAllCategories,
+  getCategories,
   getCategoryById,
+  createCategory,
   updateCategory,
+  deleteCategory,
+  getCategoryStats,
+  getCategoriesWithCount,
 } from "../controllers/category";
-
 import { authMiddleware } from "../middleware/authMiddleware";
 import { allowRoles } from "../middleware/roleMiddleware";
 
-const router = Router();
+const router = express.Router();
 
-router.post("/create-category", authMiddleware, allowRoles("admin"), createCategory);
-
-router.get("/", authMiddleware, getAllCategories);
-
-router.get("/:id", authMiddleware, getCategoryById);
-
-router.put(
-  "/update-category/:id",
+router.get("/", authMiddleware, allowRoles("admin", "manager"), getCategories);
+router.get(
+  "/stats",
   authMiddleware,
-  allowRoles("admin"),
-  updateCategory,
+  allowRoles("admin", "manager"),
+  getCategoryStats,
 );
-
-router.delete(
-  "/delete-category/:id",
+router.get(
+  "/with-count",
   authMiddleware,
-  allowRoles("admin"),
-  deleteCategory,
+  allowRoles("admin", "manager"),
+  getCategoriesWithCount,
 );
+router.get(
+  "/:id",
+  authMiddleware,
+  allowRoles("admin", "manager"),
+  getCategoryById,
+);
+router.post("/create", authMiddleware, allowRoles("admin"), createCategory);
+router.put("/:id", authMiddleware, allowRoles("admin"), updateCategory);
+router.delete("/:id", authMiddleware, allowRoles("admin"), deleteCategory);
 
 export default router;

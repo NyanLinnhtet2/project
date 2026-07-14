@@ -8,7 +8,7 @@ import brandRoute from "./routes/brandRoute";
 import employeeRoute from "./routes/employeeRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { Request, Response, NextFunction } from "express";
+import productRoute from "./routes/productRoute";
 
 dotenv.config({
   path: "./.env",
@@ -19,7 +19,6 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
@@ -29,9 +28,10 @@ app.use(
 
 app.use("/api/auth", userRoute);
 app.use("/api/branches", branchRoute);
-app.use("/api/category", categoryRoute);
+app.use("/api/categories", categoryRoute);
 app.use("/api/brands", brandRoute);
 app.use("/api/employees", employeeRoute);
+app.use("/api/products", productRoute);
 
 app.use(
   (

@@ -468,13 +468,9 @@ export const Branch = () => {
         setError(response.message || "Failed to fetch branches");
         toast.error(response.message || "Failed to fetch branches");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to fetch branches";
-      setError(errorMessage);
-      toast.error(errorMessage);
+    } catch (error) {
+      setError(`${(error as { data: { message: string } }).data.message}`);
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -578,10 +574,8 @@ export const Branch = () => {
       } else {
         toast.error(response.message || "Failed to create branch");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message || err.message || "Failed to create branch";
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -617,10 +611,8 @@ export const Branch = () => {
       } else {
         toast.error(response.message || "Failed to update branch");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message || err.message || "Failed to update branch";
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -644,10 +636,8 @@ export const Branch = () => {
       } else {
         toast.error(response.message || "Failed to delete branch");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message || err.message || "Failed to delete branch";
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setShowDeleteConfirm(false);
       setDeleteTarget(null);

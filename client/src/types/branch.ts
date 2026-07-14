@@ -9,11 +9,10 @@ export interface Branch {
   dbName: string;
   status: "active" | "inactive";
 
-  // ⭐ Branch DB ကနေ ဆွဲယူထားသော စာရင်းအင်းများ
-  employeeCount: number; // ဝန်ထမ်းဦးရေ
-  revenue: number; // ဝင်ငွေ
-  totalOrders: number; // စုစုပေါင်းအော်ဒါ
-  lastUpdated?: string; // နောက်ဆုံး Update လုပ်သည့်ရက်
+  employeeCount: number;
+  revenue: number;
+  totalOrders: number;
+  lastUpdated?: string;
 
   createdAt: string;
   updatedAt: string;

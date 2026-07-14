@@ -1,4 +1,3 @@
-// src/routes/employeeRoutes.ts
 import express from "express";
 import {
   getEmployees,

@@ -351,13 +351,9 @@ export const Employees = () => {
         setError(response.message || "Failed to fetch employees");
         toast.error(response.message || "Failed to fetch employees");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to fetch employees";
-      setError(errorMessage);
-      toast.error(errorMessage);
+    } catch (error) {
+      setError(`${(error as { data: { message: string } }).data.message}`);
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -503,12 +499,8 @@ export const Employees = () => {
       } else {
         toast.error(response.message || "Failed to create employee");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to create employee";
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -560,12 +552,8 @@ export const Employees = () => {
       } else {
         toast.error(response.message || "Failed to update employee");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to update employee";
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -590,12 +578,8 @@ export const Employees = () => {
       } else {
         toast.error(response.message || "Failed to delete employee");
       }
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to delete employee";
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
     } finally {
       setShowDeleteConfirm(false);
       setDeleteTarget(null);

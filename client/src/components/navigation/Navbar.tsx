@@ -120,7 +120,7 @@ function Navbar() {
           ) : (
             <Link
               to="/login"
-              className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
+              className="group cursor-pointer inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
             >
               <LogIn
                 size={18}
@@ -131,7 +131,6 @@ function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           className="relative rounded-2xl border border-slate-200 bg-white p-2.5 transition-all hover:bg-slate-50 hover:shadow-md lg:hidden"
@@ -144,7 +143,6 @@ function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {menuOpen && (
         <div className="border-t border-slate-200/60 bg-white/95 backdrop-blur-xl lg:hidden">
           <div className="space-y-1 px-6 py-5">
@@ -180,7 +178,7 @@ function Navbar() {
               <Link
                 to="/login"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-4 py-3.5 font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 active:scale-95"
+                className="flex items-center justify-center cursor-pointer gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-4 py-3.5 font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 active:scale-95"
               >
                 <LogIn size={18} />
                 Login

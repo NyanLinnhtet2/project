@@ -21,6 +21,7 @@ import {
   Wifi,
   Server,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -32,7 +33,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Submit Handler
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -46,8 +46,9 @@ export default function Login() {
 
     try {
       const response = await loginUser(email, password);
-      console.log("Login successful:", response);
       localStorage.setItem("userInfo", JSON.stringify(response.user));
+
+      toast.success(`${response.message}`);
 
       if (response.user.role === "admin") {
         navigate("/admin/overviews");
@@ -127,7 +128,6 @@ export default function Login() {
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30">
       <div className="mx-auto max-w-7xl px-6 py-12 lg:py-16">
         <div className="grid lg:grid-cols-12 gap-12 items-start">
-          {/* Left Side - Content */}
           <div className="lg:col-span-6 flex flex-col justify-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-50 to-indigo-50 px-5 py-2 text-sm font-medium text-blue-700 shadow-sm border border-blue-100/50 w-fit">
               <span className="relative flex h-2 w-2">
@@ -286,11 +286,10 @@ export default function Login() {
                   </a>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full mt-2 flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all ${
+                  className={`w-full cursor-pointer mt-2 flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all ${
                     loading
                       ? "opacity-70 cursor-not-allowed"
                       : "hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"

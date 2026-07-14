@@ -11,6 +11,7 @@ import { AdminLayout } from "./layout/AdminLayout";
 import { Overview } from "./pages/admin/Overview";
 import { Branch } from "./pages/admin/Branch";
 import { Product } from "./pages/admin/Product";
+import { CategoryBrand } from "./pages/admin/CategoryBrandManagement";
 import { ProtectedRoute } from "./routes/ProtectRoute";
 import { Employees } from "./pages/admin/Employees";
 import Orders from "./pages/Orders";
@@ -82,6 +83,15 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <Orders />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: "categoryandbrands",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <CategoryBrand />
           </ProtectedRoute>
         ),
       },

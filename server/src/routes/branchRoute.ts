@@ -1,4 +1,3 @@
-// src/routes/branchRoutes.ts
 import express from "express";
 import {
   createBranch,

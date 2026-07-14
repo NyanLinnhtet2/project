@@ -15,6 +15,7 @@ import {
 import { logoutUser } from "../../services/authServices";
 import { useEffect, useState } from "react";
 import type { User as UserInfo } from "../../types/user";
+import { toast } from "react-hot-toast";
 
 const menus = [
   {
@@ -38,6 +39,11 @@ const menus = [
     icon: Package,
   },
   {
+    title: "Categories and Brands",
+    path: "/admin/categoryandbrands",
+    icon: Package
+  },
+  {
     title: "Orders",
     path: "/admin/orders",
     icon: ShoppingCart,
@@ -53,6 +59,7 @@ export const Sidebar = () => {
       const response = await logoutUser();
       console.log(response);
       localStorage.removeItem("userInfo");
+      toast.success(`${response.message}`);
       navigate("/login");
     } catch (error) {
       console.log("Logout Error : ", error);
@@ -186,7 +193,7 @@ export const Sidebar = () => {
 
         {/* Logout Button */}
         <button
-          className="group flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-linear-to-r from-red-50 to-red-50/50 py-2 text-sm font-medium text-red-600 transition-all hover:from-red-100 hover:to-red-100 hover:shadow-md hover:shadow-red-200/50 active:scale-95"
+          className="group cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-linear-to-r from-red-50 to-red-50/50 py-2 text-sm font-medium text-red-600 transition-all hover:from-red-100 hover:to-red-100 hover:shadow-md hover:shadow-red-200/50 active:scale-95"
           onClick={logutHandler}
         >
           <LogOut className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />

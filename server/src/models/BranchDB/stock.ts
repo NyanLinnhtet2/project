@@ -1,32 +1,49 @@
-import { Schema, Types } from "mongoose";
-// import { ygBranchDBConnection } from "../../db/db";
+// src/models/BranchDB/stock.ts
+import { Schema, Document, Connection, Model } from "mongoose";
 
-interface IStock {
-  product: Types.ObjectId;
+export interface IBranchStock extends Document {
+  productId: string; // Reference to Central DB Product
+  productSku: string;
+  productName: string;
   quantity: number;
+  branch: string;
+  unit: string;
+  lastUpdated: Date;
+  status: "in-stock" | "low-stock" | "out-of-stock";
 }
 
-const stockSchema = new Schema(
+const stockSchema = new Schema<IBranchStock>(
   {
-    product: {
-      type: Schema.Types.ObjectId,
-      ref: "Product",
-      required: true,
-      unique: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
+    productId: { type: String, required: true, index: true },
+    productSku: { type: String, required: true, index: true },
+    productName: { type: String, required: true },
+    quantity: { type: Number, required: true, default: 0, min: 0 },
+    branch: { type: String, required: true, index: true },
+    unit: { type: String, required: true, default: "pcs" },
+    lastUpdated: { type: Date, default: Date.now },
+    status: {
+      type: String,
+      enum: ["in-stock", "low-stock", "out-of-stock"],
+      default: "out-of-stock",
     },
   },
   { timestamps: true },
 );
 
-// export const getYGNBranchStockModel = () => {
-//   if (!ygBranchDBConnection) {
-//     throw new Error("YGN Branch DB connection not found");
-//   }
-//   return ygBranchDBConnection.model("Stock", stockSchema);
-// };
+stockSchema.pre<IBranchStock>("save", function () {
+  if (this.quantity <= 0) {
+    this.status = "out-of-stock";
+  } else if (this.quantity < 10) {
+    this.status = "low-stock";
+  } else {
+    this.status = "in-stock";
+  }
+  this.lastUpdated = new Date();
+});
+
+export const getStockModel = (branchDb: Connection): Model<IBranchStock> => {
+  if (branchDb.models["Stock"]) {
+    return branchDb.models["Stock"] as Model<IBranchStock>;
+  }
+  return branchDb.model<IBranchStock>("Stock", stockSchema);
+};

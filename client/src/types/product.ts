@@ -1,3 +1,8 @@
+export interface ProductVariant {
+  size?: string;
+  color?: string;
+}
+
 export interface Product {
   _id: string;
   name: string;
@@ -7,15 +12,14 @@ export interface Product {
   shopName: string;
   price: number;
   cost: number;
-  stock: number;
   unit: string;
-  status: "active" | "inactive" | "out-of-stock";
+  status: "active" | "inactive";
   image: {
     url: string;
     public_id: string;
   };
   description: string;
-  branch: string;
+  variants: ProductVariant[];
   createdAt: string;
   updatedAt: string;
 }
@@ -28,12 +32,11 @@ export interface CreateProductData {
   shopName?: string;
   price: number;
   cost?: number;
-  stock: number;
   unit: string;
-  status?: "active" | "inactive" | "out-of-stock";
+  status?: "active" | "inactive";
   description?: string;
-  branch: string;
   avatar?: string;
+  variants?: ProductVariant[];
 }
 
 export interface UpdateProductData {
@@ -44,10 +47,23 @@ export interface UpdateProductData {
   shopName?: string;
   price?: number;
   cost?: number;
-  stock?: number;
   unit?: string;
-  status?: "active" | "inactive" | "out-of-stock";
+  status?: "active" | "inactive";
   description?: string;
-  branch?: string;
   avatar?: string;
+  variants?: ProductVariant[];
+}
+
+export interface CategoryWithCount {
+  _id: string;
+  name: string;
+  status: string;
+  productCount: number;
+}
+
+export interface BrandWithCount {
+  _id: string;
+  name: string;
+  status: string;
+  productCount: number;
 }

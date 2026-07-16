@@ -1,30 +1,21 @@
-// src/services/productService.ts
-import axios from "axios";
-import type {
-  Product,
-  CreateProductData,
-  UpdateProductData,
-} from "../types/product";
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-axios.defaults.withCredentials = true;
+import api from "../api/axiosInstance";
+import type { CreateProductData, UpdateProductData } from "../types/product";
 
 // Get all products
-export const getProductsApi = async (params?: Product) => {
-  const { data } = await axios.get(`${API_URL}/products`, { params });
+export const getProductsApi = async (params?: any) => {
+  const { data } = await api.get(`/products`, { params });
   return data;
 };
 
 // Get product by ID
 export const getProductByIdApi = async (id: string) => {
-  const { data } = await axios.get(`${API_URL}/products/${id}`);
+  const { data } = await api.get(`/products/${id}`);
   return data;
 };
 
 // Create product
 export const createProductApi = async (productData: CreateProductData) => {
-  const { data } = await axios.post(`${API_URL}/products/create`, productData);
+  const { data } = await api.post(`/products/create`, productData);
   return data;
 };
 
@@ -33,26 +24,32 @@ export const updateProductApi = async (
   id: string,
   productData: UpdateProductData,
 ) => {
-  const { data } = await axios.put(`${API_URL}/products/${id}`, productData);
+  const { data } = await api.put(`/products/${id}`, productData);
   return data;
 };
 
 // Delete product
 export const deleteProductApi = async (id: string) => {
-  const { data } = await axios.delete(`${API_URL}/products/${id}`);
-  return data;
-};
-
-// Update product stock
-export const updateProductStockApi = async (id: string, quantity: number) => {
-  const { data } = await axios.patch(`${API_URL}/products/${id}/stock`, {
-    quantity,
-  });
+  const { data } = await api.delete(`/products/${id}`);
   return data;
 };
 
 // Get product stats
 export const getProductStatsApi = async () => {
-  const { data } = await axios.get(`${API_URL}/products/stats`);
+  const { data } = await api.get(`/products/stats`);
+  return data;
+};
+
+// Get categories with product count
+export const getCategoriesWithCountApi = async (params?: any) => {
+  const { data } = await api.get(`/categories/with-count`, {
+    params,
+  });
+  return data;
+};
+
+// Get brands with product count
+export const getBrandsWithCountApi = async (params?: any) => {
+  const { data } = await api.get(`/brands/with-count`, { params });
   return data;
 };

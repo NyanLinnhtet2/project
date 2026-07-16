@@ -9,6 +9,7 @@ import employeeRoute from "./routes/employeeRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import productRoute from "./routes/productRoute";
+// import inventoryRoute from "./routes/inventoryRoute";
 
 dotenv.config({
   path: "./.env",
@@ -32,6 +33,7 @@ app.use("/api/categories", categoryRoute);
 app.use("/api/brands", brandRoute);
 app.use("/api/employees", employeeRoute);
 app.use("/api/products", productRoute);
+// app.use("/api/inventory", inventoryRoute);
 
 app.use(
   (

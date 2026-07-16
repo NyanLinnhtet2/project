@@ -20,6 +20,8 @@ import {
   SortDesc,
   AlertTriangle,
   Store,
+  PlusCircle,
+  MinusCircle,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -28,16 +30,18 @@ import {
   updateProductApi,
   deleteProductApi,
   getProductStatsApi,
+  getCategoriesWithCountApi,
+  getBrandsWithCountApi,
 } from "../../services/productService";
-import { getCategoriesApi } from "../../services/categoryService";
-import { getBrandsApi } from "../../services/brandService";
-import { getBranchesForDropdownApi } from "../../services/branchService";
 import { validateImageFile, compressImage } from "../../utils/imageCompressing";
 import toast from "react-hot-toast";
 import type {
   Product as Products,
   CreateProductData,
   UpdateProductData,
+  CategoryWithCount,
+  BrandWithCount,
+  ProductVariant,
 } from "../../types/product";
 
 // ============================================================
@@ -171,10 +175,6 @@ const ViewProductModal = ({
     const statusMap = {
       active: { label: "Active", className: "bg-emerald-100 text-emerald-700" },
       inactive: { label: "Inactive", className: "bg-red-100 text-red-700" },
-      "out-of-stock": {
-        label: "Out of Stock",
-        className: "bg-amber-100 text-amber-700",
-      },
     };
     const s = statusMap[status as keyof typeof statusMap] || statusMap.inactive;
     return (
@@ -257,14 +257,8 @@ const ViewProductModal = ({
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <Package size={18} className="text-slate-400" />
-                    <span className="text-slate-600">
-                      Stock: {product.stock || 0} {product.unit}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
                     <Layers size={18} className="text-slate-400" />
-                    <span className="text-slate-600">{product.branch}</span>
+                    <span className="text-slate-600">Unit: {product.unit}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
                     <CalendarIcon size={18} className="text-slate-400" />
@@ -276,6 +270,35 @@ const ViewProductModal = ({
               </div>
             </div>
           </div>
+
+          {/* Variants Section - Simplified */}
+          {product.variants && product.variants.length > 0 && (
+            <div className="border-t border-slate-200 pt-4">
+              <h4 className="text-sm font-semibold text-slate-700 mb-3">
+                Available Variants
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {product.variants.map((variant, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+                  >
+                    {variant.size && <span>Size: {variant.size}</span>}
+                    {variant.size && variant.color && <span>•</span>}
+                    {variant.color && (
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="inline-block h-3 w-3 rounded-full border border-slate-300"
+                          style={{ backgroundColor: variant.color.toLowerCase() }}
+                        />
+                        {variant.color}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {product.description && (
             <div className="border-t border-slate-200 pt-4">
@@ -312,42 +335,140 @@ const ViewProductModal = ({
 };
 
 // ============================================================
+// Variant Form Component - Simplified
+// ============================================================
+interface VariantFormProps {
+  variants: ProductVariant[];
+  onChange: (variants: ProductVariant[]) => void;
+}
+
+const VariantForm = ({ variants, onChange }: VariantFormProps) => {
+  const addVariant = () => {
+    onChange([
+      ...variants,
+      {
+        size: "",
+        color: "",
+      },
+    ]);
+  };
+
+  const removeVariant = (index: number) => {
+    const newVariants = variants.filter((_, i) => i !== index);
+    onChange(newVariants);
+  };
+
+  const updateVariant = (index: number, field: keyof ProductVariant, value: string) => {
+    const newVariants = [...variants];
+    newVariants[index] = { ...newVariants[index], [field]: value };
+    onChange(newVariants);
+  };
+
+  // Common sizes and colors for suggestions
+  const commonSizes = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
+  const commonColors = ["Black", "White", "Red", "Blue", "Green", "Yellow", "Pink", "Purple", "Orange", "Gray", "Brown", "Navy"];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-medium text-slate-700">
+          Product Variants (Size & Color)
+        </label>
+        <button
+          type="button"
+          onClick={addVariant}
+          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100"
+        >
+          <PlusCircle size={16} />
+          Add Variant
+        </button>
+      </div>
+
+      {variants.length === 0 ? (
+        <p className="text-sm text-slate-400">No variants added yet. Click "Add Variant" to create one.</p>
+      ) : (
+        <div className="space-y-3">
+          {variants.map((variant, index) => (
+            <div key={index} className="relative rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+              <button
+                type="button"
+                onClick={() => removeVariant(index)}
+                className="absolute right-2 top-2 rounded-lg p-1 text-red-500 transition hover:bg-red-50"
+              >
+                <MinusCircle size={18} />
+              </button>
+              
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">Size</label>
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="text"
+                      value={variant.size || ""}
+                      onChange={(e) => updateVariant(index, "size", e.target.value)}
+                      placeholder="e.g., M, L, XL"
+                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
+                      list={`sizes-${index}`}
+                    />
+                    <datalist id={`sizes-${index}`}>
+                      {commonSizes.map((size) => (
+                        <option key={size} value={size} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600">Color</label>
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="text"
+                      value={variant.color || ""}
+                      onChange={(e) => updateVariant(index, "color", e.target.value)}
+                      placeholder="e.g., Red, Blue"
+                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
+                      list={`colors-${index}`}
+                    />
+                    <datalist id={`colors-${index}`}>
+                      {commonColors.map((color) => (
+                        <option key={color} value={color} />
+                      ))}
+                    </datalist>
+                    {variant.color && (
+                      <div className="flex items-center">
+                        <span
+                          className="inline-block h-8 w-8 rounded-lg border border-slate-200"
+                          style={{ backgroundColor: variant.color.toLowerCase() }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
 // Main Component
 // ============================================================
-interface Branch {
-  _id: string;
-  name: string;
-  code: string;
-  status: string;
-}
-
-interface Category {
-  _id: string;
-  name: string;
-  status: string;
-}
-
-interface Brand {
-  _id: string;
-  name: string;
-  status: string;
-}
-
 interface ProductFormData {
   name: string;
   sku: string;
   category: string;
   brand: string;
-  shopName: string; // ✅ Added shopName
+  shopName: string;
   price: string;
   cost: string;
-  stock: string;
   unit: string;
   description: string;
-  status: "active" | "inactive" | "out-of-stock";
-  branch: string;
+  status: "active" | "inactive";
   image: File | null;
   imagePreview: string;
+  variants: ProductVariant[];
 }
 
 type SortField =
@@ -357,7 +478,6 @@ type SortField =
   | "brand"
   | "shopName"
   | "price"
-  | "stock"
   | "status"
   | "createdAt";
 type SortOrder = "asc" | "desc";
@@ -366,13 +486,11 @@ export const Product = () => {
   // States
   const [products, setProducts] = useState<Products[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Products[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
+  const [brands, setBrands] = useState<BrandWithCount[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [isFetchingBranches, setIsFetchingBranches] = useState<boolean>(false);
   const [isFetchingCategories, setIsFetchingCategories] =
     useState<boolean>(false);
   const [isFetchingBrands, setIsFetchingBrands] = useState<boolean>(false);
@@ -397,9 +515,7 @@ export const Product = () => {
     total: 0,
     active: 0,
     inactive: 0,
-    outOfStock: 0,
     totalValue: 0,
-    branches: [],
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -409,16 +525,15 @@ export const Product = () => {
     sku: "",
     category: "",
     brand: "",
-    shopName: "", // ✅ Added shopName
+    shopName: "",
     price: "",
     cost: "",
-    stock: "",
     unit: "pcs",
     description: "",
     status: "active",
-    branch: "",
     image: null,
     imagePreview: "",
+    variants: [],
   });
 
   const units = ["pcs", "pairs", "sets", "boxes", "dozens"];
@@ -426,33 +541,12 @@ export const Product = () => {
   // ============================================================
   // API Functions
   // ============================================================
-  const fetchBranches = async () => {
-    try {
-      setIsFetchingBranches(true);
-      const response = await getBranchesForDropdownApi();
-      if (response.success) {
-        const activeBranches = response.data.filter(
-          (branch: Branch) => branch.status === "active",
-        );
-        setBranches(activeBranches);
-      }
-    } catch (error) {
-      console.error("Error fetching branches:", error);
-      toast.error("Failed to load branches");
-    } finally {
-      setIsFetchingBranches(false);
-    }
-  };
-
   const fetchCategories = async () => {
     try {
       setIsFetchingCategories(true);
-      const response = await getCategoriesApi();
+      const response = await getCategoriesWithCountApi({ status: "active" });
       if (response.success) {
-        const activeCategories = response.data.filter(
-          (cat: Category) => cat.status === "active",
-        );
-        setCategories(activeCategories);
+        setCategories(response.data);
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -465,12 +559,9 @@ export const Product = () => {
   const fetchBrands = async () => {
     try {
       setIsFetchingBrands(true);
-      const response = await getBrandsApi();
+      const response = await getBrandsWithCountApi({ status: "active" });
       if (response.success) {
-        const activeBrands = response.data.filter(
-          (brand: Brand) => brand.status === "active",
-        );
-        setBrands(activeBrands);
+        setBrands(response.data);
       }
     } catch (error) {
       console.error("Error fetching brands:", error);
@@ -519,13 +610,12 @@ export const Product = () => {
   };
 
   // ============================================================
-  // Effects - Using your style with setTimeout
+  // Effects
   // ============================================================
   useEffect(() => {
     const t = setTimeout(() => {
       fetchProducts();
       fetchStats();
-      fetchBranches();
       fetchCategories();
       fetchBrands();
     }, 0);
@@ -569,7 +659,7 @@ export const Product = () => {
       if (aValue == null) aValue = "";
       if (bValue == null) bValue = "";
 
-      if (sortField === "price" || sortField === "stock") {
+      if (sortField === "price") {
         aValue = Number(aValue) || 0;
         bValue = Number(bValue) || 0;
       }
@@ -647,6 +737,13 @@ export const Product = () => {
     }
   };
 
+  const handleVariantsChange = (variants: ProductVariant[]) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants,
+    }));
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -656,13 +753,12 @@ export const Product = () => {
       shopName: "",
       price: "",
       cost: "",
-      stock: "",
       unit: "pcs",
       description: "",
       status: "active",
-      branch: "",
       image: null,
       imagePreview: "",
+      variants: [],
     });
   };
 
@@ -677,8 +773,7 @@ export const Product = () => {
       !formData.sku ||
       !formData.category ||
       !formData.brand ||
-      !formData.price ||
-      !formData.branch
+      !formData.price
     ) {
       toast.error("Please fill in all required fields");
       return;
@@ -701,15 +796,14 @@ export const Product = () => {
         sku: formData.sku,
         category: formData.category,
         brand: formData.brand,
-        shopName: formData.shopName, // ✅ Added shopName
+        shopName: formData.shopName,
         price: Number(formData.price),
         cost: Number(formData.cost) || 0,
-        stock: Number(formData.stock) || 0,
         unit: formData.unit,
         status: formData.status,
         description: formData.description,
-        branch: formData.branch,
         avatar: avatarBase64 || undefined,
+        variants: formData.variants,
       };
 
       const response = await createProductApi(productData);
@@ -720,6 +814,8 @@ export const Product = () => {
         resetForm();
         await fetchProducts();
         await fetchStats();
+        await fetchCategories();
+        await fetchBrands();
       } else {
         toast.error(response.message || "Failed to create product");
       }
@@ -752,15 +848,14 @@ export const Product = () => {
         sku: formData.sku,
         category: formData.category,
         brand: formData.brand,
-        shopName: formData.shopName, // ✅ Added shopName
+        shopName: formData.shopName,
         price: Number(formData.price),
         cost: Number(formData.cost) || 0,
-        stock: Number(formData.stock) || 0,
         unit: formData.unit,
         status: formData.status,
         description: formData.description,
-        branch: formData.branch,
         avatar: avatarBase64 || undefined,
+        variants: formData.variants,
       };
 
       const response = await updateProductApi(editingProduct._id, updateData);
@@ -772,6 +867,8 @@ export const Product = () => {
         resetForm();
         await fetchProducts();
         await fetchStats();
+        await fetchCategories();
+        await fetchBrands();
       } else {
         toast.error(response.message || "Failed to update product");
       }
@@ -797,6 +894,8 @@ export const Product = () => {
         toast.success(response.message || "Product deleted successfully!");
         await fetchProducts();
         await fetchStats();
+        await fetchCategories();
+        await fetchBrands();
       } else {
         toast.error(response.message || "Failed to delete product");
       }
@@ -826,16 +925,15 @@ export const Product = () => {
       sku: product.sku,
       category: product.category,
       brand: product.brand,
-      shopName: product.shopName || "", // ✅ Added shopName
+      shopName: product.shopName || "",
       price: product.price.toString(),
       cost: product.cost?.toString() || "",
-      stock: product.stock?.toString() || "0",
       unit: product.unit,
       description: product.description || "",
       status: product.status,
-      branch: product.branch,
       image: null,
       imagePreview: product.image?.url || "",
+      variants: product.variants || [],
     });
     setIsEditModalOpen(true);
   };
@@ -847,10 +945,6 @@ export const Product = () => {
     const statusMap = {
       active: { label: "Active", className: "bg-emerald-100 text-emerald-700" },
       inactive: { label: "Inactive", className: "bg-red-100 text-red-700" },
-      "out-of-stock": {
-        label: "Out of Stock",
-        className: "bg-amber-100 text-amber-700",
-      },
     };
     const s = statusMap[status as keyof typeof statusMap] || statusMap.inactive;
     return (
@@ -948,7 +1042,7 @@ export const Product = () => {
                   Product Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  Manage your entire product inventory
+                  Manage your product catalog
                 </p>
               </div>
             </div>
@@ -1002,14 +1096,14 @@ export const Product = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">
-                  Out of Stock
+                  Inactive Products
                 </p>
-                <p className="mt-2 text-3xl font-bold text-amber-600">
-                  {stats.outOfStock}
+                <p className="mt-2 text-3xl font-bold text-red-600">
+                  {stats.inactive}
                 </p>
               </div>
-              <div className="rounded-xl bg-amber-50 p-3">
-                <AlertCircle size={20} className="text-amber-600" />
+              <div className="rounded-xl bg-red-50 p-3">
+                <AlertCircle size={20} className="text-red-600" />
               </div>
             </div>
           </div>
@@ -1054,7 +1148,6 @@ export const Product = () => {
               <option value="All">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-              <option value="out-of-stock">Out of Stock</option>
             </select>
             <select
               value={categoryFilter}
@@ -1064,7 +1157,7 @@ export const Product = () => {
               <option value="All">All Categories</option>
               {categories.map((cat) => (
                 <option key={cat._id} value={cat.name}>
-                  {cat.name}
+                  {cat.name} ({cat.productCount})
                 </option>
               ))}
             </select>
@@ -1079,7 +1172,6 @@ export const Product = () => {
               <option value="brand">Sort by Brand</option>
               <option value="shopName">Sort by Shop</option>
               <option value="price">Sort by Price</option>
-              <option value="stock">Sort by Stock</option>
               <option value="status">Sort by Status</option>
               <option value="createdAt">Sort by Date</option>
             </select>
@@ -1154,6 +1246,11 @@ export const Product = () => {
                   <div className="absolute top-2 right-2">
                     {getStatusBadge(product.status)}
                   </div>
+                  {product.variants && product.variants.length > 0 && (
+                    <div className="absolute bottom-2 left-2 rounded-lg bg-black/70 px-2 py-1 text-xs text-white">
+                      {product.variants.length} variants
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4">
@@ -1172,14 +1269,16 @@ export const Product = () => {
                         {formatCurrency(product.price)}
                       </p>
                       <p className="text-xs text-slate-400">
+                        Cost: {formatCurrency(product.cost || 0)}
+                      </p>
+                      <p className="text-xs text-slate-400">
                         SKU: {product.sku}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-slate-600">
-                        Stock: {product.stock || 0}
+                        Unit: {product.unit}
                       </p>
-                      <p className="text-xs text-slate-400">{product.unit}</p>
                     </div>
                   </div>
 
@@ -1188,13 +1287,31 @@ export const Product = () => {
                     <span>{product.category}</span>
                   </div>
 
+                  {/* Variant tags in grid view */}
+                  {product.variants && product.variants.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {product.variants.slice(0, 3).map((variant, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600"
+                        >
+                          {variant.size && variant.color 
+                            ? `${variant.size}/${variant.color}`
+                            : variant.size || variant.color}
+                        </span>
+                      ))}
+                      {product.variants.length > 3 && (
+                        <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">
+                          +{product.variants.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-medium text-slate-600">
-                        {product.branch.charAt(0)}
-                      </div>
-                      <span className="text-xs text-slate-500 truncate max-w-[80px]">
-                        {product.branch}
+                      <span className="text-xs text-slate-500 truncate max-w-[120px]">
+                        {product.shopName || "No shop"}
                       </span>
                     </div>
                     <div className="flex gap-1.5">
@@ -1243,7 +1360,16 @@ export const Product = () => {
                       Price
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Stock
+                      Cost
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Unit
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Variants
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Shop
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Status
@@ -1295,10 +1421,41 @@ export const Product = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`text-sm font-medium ${(product.stock || 0) === 0 ? "text-red-600" : "text-slate-600"}`}
-                        >
-                          {product.stock || 0} {product.unit}
+                        <span className="text-sm text-slate-600">
+                          {formatCurrency(product.cost || 0)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">
+                          {product.unit}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {product.variants && product.variants.length > 0 ? (
+                            product.variants.slice(0, 2).map((variant, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                              >
+                                {variant.size && variant.color 
+                                  ? `${variant.size}/${variant.color}`
+                                  : variant.size || variant.color}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                          {product.variants && product.variants.length > 2 && (
+                            <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                              +{product.variants.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-slate-600">
+                          {product.shopName || "N/A"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -1459,7 +1616,7 @@ export const Product = () => {
                     ) : (
                       categories.map((cat) => (
                         <option key={cat._id} value={cat.name}>
-                          {cat.name}
+                          {cat.name} ({cat.productCount} products)
                         </option>
                       ))
                     )}
@@ -1490,7 +1647,7 @@ export const Product = () => {
                     ) : (
                       brands.map((brand) => (
                         <option key={brand._id} value={brand.name}>
-                          {brand.name}
+                          {brand.name} ({brand.productCount} products)
                         </option>
                       ))
                     )}
@@ -1503,51 +1660,19 @@ export const Product = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Shop Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="shopName"
-                    value={formData.shopName}
-                    onChange={handleInputChange}
-                    placeholder="Where did you buy this product?"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Branch <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="branch"
-                    value={formData.branch}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Select Branch</option>
-                    {isFetchingBranches ? (
-                      <option value="" disabled>
-                        Loading branches...
-                      </option>
-                    ) : (
-                      branches.map((branch) => (
-                        <option key={branch._id} value={branch.name}>
-                          {branch.name} ({branch.code})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  {!isFetchingBranches && branches.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      No active branches found. Please create a branch first.
-                    </p>
-                  )}
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Shop Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="shopName"
+                  value={formData.shopName}
+                  onChange={handleInputChange}
+                  placeholder="Where did you buy this product?"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -1563,6 +1688,8 @@ export const Product = () => {
                     placeholder="0.00"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                     required
+                    min="0"
+                    step="0.01"
                   />
                 </div>
                 <div>
@@ -1576,25 +1703,10 @@ export const Product = () => {
                     onChange={handleInputChange}
                     placeholder="0.00"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Stock <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Unit <span className="text-red-500">*</span>
@@ -1613,21 +1725,28 @@ export const Product = () => {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="out-of-stock">Out of Stock</option>
-                  </select>
-                </div>
+              </div>
+
+              <div>
+                <VariantForm 
+                  variants={formData.variants} 
+                  onChange={handleVariantsChange} 
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
 
               <div>
@@ -1696,7 +1815,7 @@ export const Product = () => {
             </div>
 
             <form onSubmit={handleUpdate} className="mt-6 space-y-4">
-              {/* Image Upload - Same as Add */}
+              {/* Image Upload */}
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="relative">
                   <div className="h-32 w-32 rounded-2xl overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
@@ -1798,7 +1917,7 @@ export const Product = () => {
                     ) : (
                       categories.map((cat) => (
                         <option key={cat._id} value={cat.name}>
-                          {cat.name}
+                          {cat.name} ({cat.productCount} products)
                         </option>
                       ))
                     )}
@@ -1823,7 +1942,7 @@ export const Product = () => {
                     ) : (
                       brands.map((brand) => (
                         <option key={brand._id} value={brand.name}>
-                          {brand.name}
+                          {brand.name} ({brand.productCount} products)
                         </option>
                       ))
                     )}
@@ -1831,46 +1950,19 @@ export const Product = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Shop Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="shopName"
-                    value={formData.shopName}
-                    onChange={handleInputChange}
-                    placeholder="Where did you buy this product?"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Branch <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="branch"
-                    value={formData.branch}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Select Branch</option>
-                    {isFetchingBranches ? (
-                      <option value="" disabled>
-                        Loading branches...
-                      </option>
-                    ) : (
-                      branches.map((branch) => (
-                        <option key={branch._id} value={branch.name}>
-                          {branch.name} ({branch.code})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Shop Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="shopName"
+                  value={formData.shopName}
+                  onChange={handleInputChange}
+                  placeholder="Where did you buy this product?"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -1886,6 +1978,8 @@ export const Product = () => {
                     placeholder="0.00"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                     required
+                    min="0"
+                    step="0.01"
                   />
                 </div>
                 <div>
@@ -1899,25 +1993,10 @@ export const Product = () => {
                     onChange={handleInputChange}
                     placeholder="0.00"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Stock <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Unit <span className="text-red-500">*</span>
@@ -1936,21 +2015,28 @@ export const Product = () => {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="out-of-stock">Out of Stock</option>
-                  </select>
-                </div>
+              </div>
+
+              <div>
+                <VariantForm 
+                  variants={formData.variants} 
+                  onChange={handleVariantsChange} 
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
 
               <div>

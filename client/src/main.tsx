@@ -16,6 +16,8 @@ import { ProtectedRoute } from "./routes/ProtectRoute";
 import { Employees } from "./pages/admin/Employees";
 import Orders from "./pages/Orders";
 import { Toaster } from "react-hot-toast";
+import { Inventory } from "./pages/admin/Inventory";
+import { AuthProvider } from "./context/AuthProvider";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -71,6 +73,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "inventory",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Inventory />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "employees",
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
@@ -106,15 +116,17 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Toaster
-      position="bottom-right"
-      toastOptions={{
-        style: {
-          padding: "20px",
-          maxWidth: "800px",
-        },
-      }}
-    />
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            padding: "20px",
+            maxWidth: "800px",
+          },
+        }}
+      />
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>,
 );

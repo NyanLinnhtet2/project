@@ -10,6 +10,7 @@ import {
   Store,
   User,
   ChevronRight,
+  Tag,
   Bell,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
@@ -34,15 +35,21 @@ const menus = [
     icon: User,
   },
   {
+    title: "Categories and Brands",
+    path: "/admin/categoryandbrands",
+    icon: Tag,
+  },
+  {
     title: "Products",
     path: "/admin/products",
     icon: Package,
   },
   {
-    title: "Categories and Brands",
-    path: "/admin/categoryandbrands",
-    icon: Package
+    title: "Inventory",
+    path: "/admin/inventory",
+    icon: Package,
   },
+
   {
     title: "Orders",
     path: "/admin/orders",

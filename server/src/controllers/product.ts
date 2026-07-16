@@ -1,91 +1,21 @@
 import { Request, Response } from "express";
 import { getCentralProductModel } from "../models/CentralDB/products";
-import { getCentralBranchModel } from "../models/CentralDB/branches";
-import { getBranchConnection } from "../db/db";
-import { getStockModel } from "../models/BranchDB/stock";
 import { uploadSingleImage, deleteImage } from "../utils/cloudinary";
 
-const syncStockToBranch = async (
-  branchName: string,
-  productData: {
-    productId: string;
-    productSku: string;
-    productName: string;
-    quantity: number;
-    unit: string;
-  },
-) => {
-  try {
-    const Branch = getCentralBranchModel();
-    const branch = await Branch.findOne({ name: branchName });
-
-    if (!branch) {
-      console.error(`Branch not found: ${branchName}`);
-      return;
-    }
-
-    const branchDb = getBranchConnection(branch.dbName);
-    const Stock = getStockModel(branchDb);
-
-    const existingStock = await Stock.findOne({
-      productId: productData.productId,
-    });
-
-    if (existingStock) {
-      await Stock.findByIdAndUpdate(existingStock._id, {
-        quantity: productData.quantity,
-        productName: productData.productName,
-        unit: productData.unit,
-        lastUpdated: new Date(),
-      });
-      console.log(`✅ Updated stock in branch DB: ${productData.productSku}`);
-    } else {
-      await Stock.create({
-        productId: productData.productId,
-        productSku: productData.productSku,
-        productName: productData.productName,
-        quantity: productData.quantity,
-        branch: branchName,
-        unit: productData.unit,
-      });
-      console.log(`✅ Created stock in branch DB: ${productData.productSku}`);
-    }
-  } catch (error) {
-    console.error(`Error syncing stock to branch DB:`, error);
-  }
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id: string): boolean => {
+  return /^[0-9a-fA-F]{24}$/.test(id);
 };
 
-// Helper: Delete stock from branch database
-const deleteStockFromBranch = async (branchName: string, productId: string) => {
-  try {
-    const Branch = getCentralBranchModel();
-    const branch = await Branch.findOne({ name: branchName });
-
-    if (!branch) {
-      console.error(`Branch not found: ${branchName}`);
-      return;
-    }
-
-    const branchDb = getBranchConnection(branch.dbName);
-    const Stock = getStockModel(branchDb);
-
-    await Stock.findOneAndDelete({ productId });
-    console.log(`✅ Deleted stock from branch DB: ${productId}`);
-  } catch (error) {
-    console.error(`Error deleting stock from branch DB:`, error);
-  }
-};
-
-// Get all products with stock
+// Get all products
 export const getProducts = async (req: Request, res: Response) => {
   try {
     const Product = getCentralProductModel();
-    const { status, category, search, branch } = req.query;
+    const { status, category, search } = req.query;
 
     const filter: any = {};
     if (status && status !== "All") filter.status = status;
     if (category && category !== "All") filter.category = category;
-    if (branch) filter.branch = branch;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -96,31 +26,9 @@ export const getProducts = async (req: Request, res: Response) => {
 
     const products = await Product.find(filter).sort({ createdAt: -1 });
 
-    const productsWithStock = await Promise.all(
-      products.map(async (product) => {
-        const Branch = getCentralBranchModel();
-        const branch = await Branch.findOne({ name: product.branch });
-
-        let stock = 0;
-        if (branch) {
-          const branchDb = getBranchConnection(branch.dbName);
-          const Stock = getStockModel(branchDb);
-          const stockData = await Stock.findOne({
-            productId: product._id.toString(),
-          });
-          stock = stockData?.quantity || 0;
-        }
-
-        return {
-          ...product.toObject(),
-          stock,
-        };
-      }),
-    );
-
     return res.status(200).json({
       success: true,
-      data: productsWithStock,
+      data: products,
     });
   } catch (error: any) {
     console.error("Get products error:", error);
@@ -131,13 +39,30 @@ export const getProducts = async (req: Request, res: Response) => {
   }
 };
 
-// Get product by ID with stock
+// Get product by ID
 export const getProductById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const Product = getCentralProductModel();
 
+    // Check if id exists and is a string
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: "Product ID is required",
+      });
+    }
+
+    // Validate if the ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID format",
+      });
+    }
+
+    const Product = getCentralProductModel();
     const product = await Product.findById(id);
+    
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -145,25 +70,9 @@ export const getProductById = async (req: Request, res: Response) => {
       });
     }
 
-    // Get stock from branch DB
-    const Branch = getCentralBranchModel();
-    const branch = await Branch.findOne({ name: product.branch });
-    let stock = 0;
-    if (branch) {
-      const branchDb = getBranchConnection(branch.dbName);
-      const Stock = getStockModel(branchDb);
-      const stockData = await Stock.findOne({
-        productId: product._id.toString(),
-      });
-      stock = stockData?.quantity || 0;
-    }
-
     return res.status(200).json({
       success: true,
-      data: {
-        ...product.toObject(),
-        stock,
-      },
+      data: product,
     });
   } catch (error: any) {
     console.error("Get product by ID error:", error);
@@ -184,17 +93,16 @@ export const createProduct = async (req: Request, res: Response) => {
       brand,
       price,
       cost,
-      stock,
       unit,
       status,
       description,
-      branch,
       shopName,
       avatar,
+      variants,
     } = req.body;
 
     // Validate required fields
-    if (!name || !sku || !category || !brand || !price || !branch) {
+    if (!name || !sku || !category || !brand || !price) {
       return res.status(400).json({
         success: false,
         message: "All required fields must be filled",
@@ -202,22 +110,12 @@ export const createProduct = async (req: Request, res: Response) => {
     }
 
     const Product = getCentralProductModel();
-    const Branch = getCentralBranchModel();
 
     const existingProduct = await Product.findOne({ sku });
     if (existingProduct) {
       return res.status(400).json({
         success: false,
         message: "SKU already exists",
-      });
-    }
-
-    // Check if branch exists
-    const branchExists = await Branch.findOne({ name: branch });
-    if (!branchExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch not found",
       });
     }
 
@@ -248,27 +146,14 @@ export const createProduct = async (req: Request, res: Response) => {
       status: status || "active",
       image,
       description: description || "",
-      shopName,
-      branch,
+      shopName: shopName || "",
+      variants: variants || [],
     });
 
-    // Sync stock to branch DB
-    await syncStockToBranch(branch, {
-      productId: newProduct._id.toString(),
-      productSku: sku,
-      productName: name,
-      quantity: Number(stock) || 0,
-      unit: unit || "pcs",
-    });
-
-    const productResponse = newProduct.toObject();
     return res.status(201).json({
       success: true,
       message: "Product created successfully",
-      data: {
-        ...productResponse,
-        stock: Number(stock) || 0,
-      },
+      data: newProduct,
     });
   } catch (error: any) {
     if (error.code === 11000) {
@@ -289,6 +174,23 @@ export const createProduct = async (req: Request, res: Response) => {
 export const updateProduct = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Check if id exists and is a string
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: "Product ID is required",
+      });
+    }
+
+    // Validate if the ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID format",
+      });
+    }
+
     const {
       name,
       sku,
@@ -296,13 +198,12 @@ export const updateProduct = async (req: Request, res: Response) => {
       brand,
       price,
       cost,
-      stock,
       unit,
       status,
       description,
-      branch,
       shopName,
       avatar,
+      variants,
     } = req.body;
 
     const Product = getCentralProductModel();
@@ -316,11 +217,11 @@ export const updateProduct = async (req: Request, res: Response) => {
       });
     }
 
-    // ✅ FIXED: Check if SKU is being changed and already exists
+    // Check if SKU is being changed and already exists
     if (sku && sku !== product.sku) {
       const existingProduct = await Product.findOne({
         sku: sku,
-        _id: { $ne: id } as any, // Type assertion to fix TypeScript error
+        _id: { $ne: id },
       });
       if (existingProduct) {
         return res.status(400).json({
@@ -349,45 +250,34 @@ export const updateProduct = async (req: Request, res: Response) => {
 
     // Prepare update data
     const updateData: any = {
-      name,
-      sku,
-      category,
-      brand,
-      price: Number(price),
-      cost: Number(cost) || 0,
-      unit: unit || "pcs",
-      status: status || "active",
+      name: name || product.name,
+      sku: sku || product.sku,
+      category: category || product.category,
+      brand: brand || product.brand,
+      price: price !== undefined ? Number(price) : product.price,
+      cost: cost !== undefined ? Number(cost) : product.cost,
+      unit: unit || product.unit,
+      status: status || product.status,
       image,
-      description: description || "",
-      shopName,
-      branch,
+      description: description !== undefined ? description : product.description,
+      shopName: shopName !== undefined ? shopName : product.shopName,
+      variants: variants !== undefined ? variants : product.variants,
     };
 
     // Update product in Central DB
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true, runValidators: true },
+      { 
+        new: true, 
+        runValidators: true,
+      },
     );
-
-    // Sync stock to branch DB if stock is provided
-    if (stock !== undefined) {
-      await syncStockToBranch(branch || product.branch, {
-        productId: updatedProduct?._id.toString()!,
-        productSku: sku || product.sku,
-        productName: name || product.name,
-        quantity: Number(stock),
-        unit: unit || product.unit,
-      });
-    }
 
     return res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      data: {
-        ...updatedProduct?.toObject(),
-        stock: Number(stock) || 0,
-      },
+      data: updatedProduct,
     });
   } catch (error: any) {
     if (error.code === 11000) {
@@ -408,6 +298,23 @@ export const updateProduct = async (req: Request, res: Response) => {
 export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Check if id exists and is a string
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: "Product ID is required",
+      });
+    }
+
+    // Validate if the ID is a valid MongoDB ObjectId
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID format",
+      });
+    }
+
     const Product = getCentralProductModel();
 
     const product = await Product.findById(id);
@@ -423,68 +330,15 @@ export const deleteProduct = async (req: Request, res: Response) => {
       await deleteImage(product.image.public_id);
     }
 
-    // Delete stock from branch DB
-    await deleteStockFromBranch(product.branch, product._id.toString());
-
     // Delete product from Central DB
     await Product.findByIdAndDelete(id);
 
     return res.status(200).json({
       success: true,
-      message: "Product deleted successfully from central and branch databases",
+      message: "Product deleted successfully",
     });
   } catch (error: any) {
     console.error("Delete product error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal Server Error",
-    });
-  }
-};
-
-// Update product stock only
-export const updateProductStock = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { quantity } = req.body;
-
-    if (quantity === undefined || quantity < 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid quantity is required",
-      });
-    }
-
-    const Product = getCentralProductModel();
-
-    const product = await Product.findById(id);
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
-    }
-
-    // Update stock in branch DB
-    await syncStockToBranch(product.branch, {
-      productId: product._id.toString(),
-      productSku: product.sku,
-      productName: product.name,
-      quantity: Number(quantity),
-      unit: product.unit,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Product stock updated successfully",
-      data: {
-        productId: product._id,
-        productName: product.name,
-        quantity: Number(quantity),
-      },
-    });
-  } catch (error: any) {
-    console.error("Update product stock error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -497,32 +351,15 @@ export const getProductStats = async (req: Request, res: Response) => {
   try {
     const Product = getCentralProductModel();
 
-    const [total, active, inactive, outOfStock, branches] = await Promise.all([
+    const [total, active, inactive] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ status: "active" }),
       Product.countDocuments({ status: "inactive" }),
-      Product.countDocuments({ status: "out-of-stock" }),
-      Product.distinct("branch"),
     ]);
 
-    // Calculate total value
+    // Calculate total value (sum of all product prices)
     const allProducts = await Product.find();
-    let totalValue = 0;
-
-    for (const product of allProducts) {
-      const Branch = getCentralBranchModel();
-      const branch = await Branch.findOne({ name: product.branch });
-      let stock = 0;
-      if (branch) {
-        const branchDb = getBranchConnection(branch.dbName);
-        const Stock = getStockModel(branchDb);
-        const stockData = await Stock.findOne({
-          productId: product._id.toString(),
-        });
-        stock = stockData?.quantity || 0;
-      }
-      totalValue += product.price * stock;
-    }
+    const totalValue = allProducts.reduce((sum, product) => sum + product.price, 0);
 
     return res.status(200).json({
       success: true,
@@ -530,9 +367,7 @@ export const getProductStats = async (req: Request, res: Response) => {
         total,
         active,
         inactive,
-        outOfStock,
         totalValue,
-        branches,
       },
     });
   } catch (error: any) {

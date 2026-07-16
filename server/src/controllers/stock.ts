@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { getYGNBranchStockModel } from "../models/BranchDB/stock";
 
 export const updateBranchStock = async (req: Request, res: Response) => {
   try {
@@ -38,5 +37,4 @@ export const getBranchStocks = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
 

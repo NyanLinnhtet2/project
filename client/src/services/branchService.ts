@@ -1,24 +1,17 @@
-import axios from "axios";
+import api from "../api/axiosInstance";
 import type {
   CreateBranchData,
   GetBranchesParams,
   UpdateBranchData,
 } from "../types/branch";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-axios.defaults.withCredentials = true;
-
 export const createBranchApi = async (branchData: CreateBranchData) => {
-  const { data } = await axios.post(
-    `${API_URL}/branches/create-branch`,
-    branchData,
-  );
+  const { data } = await api.post(`/branches/create-branch`, branchData);
   return data;
 };
 
 export const getBranchesApi = async () => {
-  const { data } = await axios.get(`${API_URL}/branches`);
+  const { data } = await api.get(`/branches`);
   return data;
 };
 
@@ -26,31 +19,26 @@ export const updateBranchApi = async (
   id: string,
   branchData: UpdateBranchData,
 ) => {
-  const { data } = await axios.put(
-    `${API_URL}/branches/update-branch/${id}`,
-    branchData,
-  );
+  const { data } = await api.put(`/branches/update-branch/${id}`, branchData);
   return data;
 };
 
 export const getBranchesWithParamsApi = async (params: GetBranchesParams) => {
-  const { data } = await axios.get(`${API_URL}/branches`, { params });
+  const { data } = await api.get(`/branches`, { params });
   return data;
 };
 
 export const getBranchByIdApi = async (id: string) => {
-  const { data } = await axios.get(`${API_URL}/branches/${id}`);
+  const { data } = await api.get(`/branches/${id}`);
   return data;
 };
 
 export const deleteBranchApi = async (id: string) => {
-  const { data } = await axios.delete(`${API_URL}/branches/${id}`);
+  const { data } = await api.delete(`/branches/${id}`);
   return data;
 };
 
 export const getBranchesForDropdownApi = async () => {
-  const { data } = await axios.get(`${API_URL}/branches/dropdown`);
+  const { data } = await api.get(`/branches/dropdown`);
   return data;
 };
-
-

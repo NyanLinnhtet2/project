@@ -1,12 +1,7 @@
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-// Cookie support
-axios.defaults.withCredentials = true;
+import api from "../api/axiosInstance";
 
 export const loginUser = async (email: string, password: string) => {
-  const { data } = await axios.post(`${API_URL}/auth/login`, {
+  const { data } = await api.post(`/auth/login`, {
     email,
     password,
   });
@@ -15,7 +10,7 @@ export const loginUser = async (email: string, password: string) => {
 };
 
 export const logoutUser = async () => {
-  const { data } = await axios.post(`${API_URL}/auth/logout`);
+  const { data } = await api.post(`/auth/logout`);
 
   return data;
 };

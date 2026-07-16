@@ -1,6 +1,10 @@
-// src/models/CentralDB/products.ts
 import { Schema, Document } from "mongoose";
 import { centralDBConnection } from "../../db/db";
+
+export interface IProductVariant {
+  size?: string;
+  color?: string;
+}
 
 export interface IProduct extends Document {
   name: string;
@@ -11,16 +15,21 @@ export interface IProduct extends Document {
   price: number;
   cost: number;
   unit: string;
-  status: "active" | "inactive" | "out-of-stock";
+  status: "active" | "inactive";
   image: {
     url: string;
     public_id: string;
   };
   description: string;
-  branch: string;
+  variants: IProductVariant[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const productVariantSchema = new Schema<IProductVariant>({
+  size: { type: String, default: "" },
+  color: { type: String, default: "" },
+});
 
 const productSchema = new Schema<IProduct>(
   {
@@ -28,13 +37,13 @@ const productSchema = new Schema<IProduct>(
     sku: { type: String, required: true, unique: true },
     category: { type: String, required: true },
     brand: { type: String, required: true },
-    shopName: { type: String, default: "" }, // ✅ Add this field
+    shopName: { type: String, default: "" },
     price: { type: Number, required: true, min: 0 },
     cost: { type: Number, default: 0, min: 0 },
     unit: { type: String, required: true, default: "pcs" },
     status: {
       type: String,
-      enum: ["active", "inactive", "out-of-stock"],
+      enum: ["active", "inactive"],
       default: "active",
     },
     image: {
@@ -42,7 +51,7 @@ const productSchema = new Schema<IProduct>(
       public_id: { type: String, default: "" },
     },
     description: { type: String, default: "" },
-    branch: { type: String, required: true },
+    variants: [productVariantSchema],
   },
   { timestamps: true },
 );

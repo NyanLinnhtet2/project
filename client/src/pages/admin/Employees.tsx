@@ -191,11 +191,9 @@ export const Employees = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
 
-  // ✅ Sorting states
   const [sortField, setSortField] = useState<SortField>("joinDate");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
-  // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -263,7 +261,6 @@ export const Employees = () => {
     },
   ];
 
-  // ✅ Updated useEffect with sorting (keeping your style)
   useEffect(() => {
     let filtered = [...employees];
 
@@ -415,7 +412,7 @@ export const Employees = () => {
 
       toast.success("Image uploaded successfully!");
     } catch (error) {
-      toast.error("Failed to process image. Please try again.");
+      toast.error(`${(error as { data: { message: string } }).data.message}`);
       console.error("Image processing error:", error);
     }
   };

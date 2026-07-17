@@ -9,7 +9,8 @@ import employeeRoute from "./routes/employeeRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import productRoute from "./routes/productRoute";
-// import inventoryRoute from "./routes/inventoryRoute";
+import inventoryRoute from "./routes/inventoryRoute";
+import transferRoute from "./routes/transferRoute";
 
 dotenv.config({
   path: "./.env",
@@ -33,7 +34,8 @@ app.use("/api/categories", categoryRoute);
 app.use("/api/brands", brandRoute);
 app.use("/api/employees", employeeRoute);
 app.use("/api/products", productRoute);
-// app.use("/api/inventory", inventoryRoute);
+app.use("/api/inventory", inventoryRoute);
+app.use("/api/transfers", transferRoute);
 
 app.use(
   (

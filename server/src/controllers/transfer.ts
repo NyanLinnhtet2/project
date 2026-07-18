@@ -8,7 +8,98 @@ import { getBranchConnection } from "../db/db";
 import { getBranchStockModel } from "../models/BranchDB/stock";
 import { ITransfer } from "../models/CentralDB/transfers";
 
-// ၁။ Product တစ်ခုချင်းစီအတွက် ဆိုင်ခွဲအားလုံးမှာရှိတဲ့ Stock တွေကို လှမ်းကြည့်ရန် (Read-Only)
+export const getProductsForTransfer = async (req: Request, res: Response) => {
+  try {
+    let { branchName, search } = req.query;
+
+    if (!branchName) {
+      return res.status(400).json({
+        success: false,
+        message: "ကျေးဇူးပြု၍ ဆိုင်ခွဲအမည် (Branch Name) ထည့်သွင်းပေးပါရန်။",
+      });
+    }
+
+    const Branch = getCentralBranchModel();
+    const branch = await Branch.findOne({ name: branchName as string });
+
+    if (!branch) {
+      return res.status(404).json({
+        success: false,
+        message: "တောင်းဆိုထားသော ဆိုင်ခွဲအချက်အလက် ရှာမတွေ့ပါ။",
+      });
+    }
+
+    const dbIdentifier = branch.code;
+    const branchDb = getBranchConnection(
+      `branch_${dbIdentifier.toLowerCase()}`,
+    );
+    const Product = getCentralProductModel();
+
+    const Stock = getBranchStockModel(branchDb);
+
+    console.log("Branch DB Name:", branchDb.name);
+    // သေချာအောင် connection ကို explicit ပေးပါ
+    const availableStocks = await Stock.find({
+      quantity: { $gt: 0 },
+    }).setOptions({ connection: branchDb });
+
+    console.log("Available Stocks Result:", availableStocks);
+
+    // 🌟 အဆင့် (၃) - Data format စစ်ရန် (Product ID ပါ မပါ)
+    if (availableStocks.length > 0) {
+      console.log("Sample Stock Object:", JSON.stringify(availableStocks[0]));
+    }
+
+    const availableProductIds = availableStocks.map((stock) => stock.productId);
+    console.log("Extracted IDs:", availableProductIds);
+
+    if (availableProductIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    const filter: any = {
+      status: "active",
+      _id: { $in: availableProductIds },
+    };
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { sku: { $regex: search, $options: "i" } },
+        { brand: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const products = await Product.find(filter).sort({ name: 1 });
+
+    // (Optional) Product အချက်အလက်နဲ့အတူ လက်ကျန် Stock အရေအတွက်ကိုပါ တစ်ပါတည်း တွဲပို့ပေးချင်တယ်ဆိုရင်
+    const productsWithStock = products.map((product) => {
+      const stockInfo = availableStocks.find(
+        (s) => s.productId.toString() === product._id.toString(),
+      );
+      return {
+        ...product.toObject(),
+        availableQuantity: stockInfo ? stockInfo.quantity : 0,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: productsWithStock, // Stock အရေအတွက်ပါ ပူးတွဲပါသွားမည်
+    });
+  } catch (error: any) {
+    console.error("Get products for transfer error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
+// ၁။ Product တစ်ခုချင်းစီအတွက် ဆိုင်ခွဲအားလုံးမှာရှိတဲ့ Stock တွေကို လှမ်းကြည့်ရန်
 export const getProductStockAcrossBranches = async (
   req: Request,
   res: Response,
@@ -30,58 +121,60 @@ export const getProductStockAcrossBranches = async (
     }
 
     const Branch = getCentralBranchModel();
-    // active ဖြစ်နေတဲ့ ဆိုင်ခွဲအားလုံးကို ဆွဲယူမည်
     const activeBranches = await Branch.find({ status: "active" });
 
-    const stockDetails = await Promise.all(
+    const rawStockDetails = await Promise.all(
       activeBranches.map(async (branch) => {
         try {
-          const branchDb = getBranchConnection(branch.dbName);
+          // 🌟 အရေးကြီး: အရင်က ပြင်ထားတဲ့ branch_code logic အတိုင်းပဲ သုံးပေးပါ
+          // ဥပမာ - branch.code ကို သုံးပြီး connection တည်ဆောက်ခြင်း
+          const branchDb = getBranchConnection(
+            `branch_${branch.code.toLowerCase()}`,
+          );
           const Stock = getBranchStockModel(branchDb);
+
           const stockDoc = await Stock.findOne({
             productId: new mongoose.Types.ObjectId(productId),
           });
 
+          // အကယ်၍ Stock မရှိရင် သို့မဟုတ် quantity က 0 ဆိုရင် null ပြန်ပေးမယ်
+          if (!stockDoc || stockDoc.quantity <= 0) {
+            return null;
+          }
+
           return {
             branchId: branch._id,
             branchName: branch.name,
             branchCode: branch.code,
-            quantity: stockDoc ? stockDoc.quantity : 0,
-            status: stockDoc ? stockDoc.status : "Out of Stock",
+            quantity: stockDoc.quantity,
+            status: stockDoc.status,
           };
         } catch (dbErr) {
-          // တကယ်လို့ ဆိုင်ခွဲတစ်ခုခုရဲ့ Database ဒေါင်းနေရင် Error မတက်ဘဲ 0 ပြပေးရန်
-          return {
-            branchId: branch._id,
-            branchName: branch.name,
-            branchCode: branch.code,
-            quantity: 0,
-            status: "Connection Error",
-          };
+          console.error(`Error connecting to ${branch.name}:`, dbErr);
+          return null; // Connection Error တက်တဲ့ Branch တွေကိုလည်း ဖယ်ထုတ်လိုက်မယ်
         }
       }),
     );
 
-    return res.status(200).json({ success: true, data: stockDetails });
+    // 🌟 Null ဖြစ်နေတဲ့ Branch တွေကို ဖယ်ထုတ်ပြီး Data သန့်သန့်ပဲ ရယူမယ်
+    const stockDetails = rawStockDetails.filter((item) => item !== null);
+
+    return res.status(200).json({
+      success: true,
+      data: stockDetails,
+    });
   } catch (error: any) {
     console.error("Get stock across branches error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ၂။ Transfer Request အသစ်တင်ခြင်း (သယ်ယူမည့်ဆိုင်တွင် Stock ရှိမရှိ စစ်ဆေးမည်)
+// ၂။ Transfer Request အသစ်တင်ခြင်း (Name ဖြင့် ရှာဖွေပြီး အလုပ်လုပ်မည်)
 export const createTransferRequest = async (req: Request, res: Response) => {
   try {
-    const { fromBranchId, toBranchId, productId, quantity, requestedBy } =
-      req.body;
+    const { fromBranch, toBranch, productId, quantity, requestedBy } = req.body;
 
-    if (
-      !fromBranchId ||
-      !toBranchId ||
-      !productId ||
-      !quantity ||
-      !requestedBy
-    ) {
+    if (!fromBranch || !toBranch || !productId || !quantity || !requestedBy) {
       return res
         .status(400)
         .json({ success: false, message: "Required fields are missing" });
@@ -90,20 +183,33 @@ export const createTransferRequest = async (req: Request, res: Response) => {
     const Branch = getCentralBranchModel();
     const Transfer = getCentralTransferModel();
 
-    // ပစ္စည်းထုတ်ပေးမည့် (From Branch) ဆိုင်ကို ရှာဖွေခြင်း
-    const fromBranch = await Branch.findById(fromBranchId);
-    if (!fromBranch)
+    // Branch အမည်ဖြင့် ရှာဖွေခြင်း
+    const sourceBranch = await Branch.findOne({ name: fromBranch });
+    const targetBranch = await Branch.findOne({ name: toBranch });
+
+    if (!sourceBranch)
       return res
         .status(404)
         .json({ success: false, message: "Source branch not found" });
 
-    // From Branch တွင် ပစ္စည်းအမှန်တကယ် လုံလောက်မှုရှိမရှိ စစ်ဆေးခြင်း
-    const fromBranchDb = getBranchConnection(fromBranch.dbName);
+    if (!targetBranch)
+      return res
+        .status(404)
+        .json({ success: false, message: "Target branch not found" });
+
+    // 🌟 အရေးကြီး: Source Branch DB ကို ချိတ်ဆက်ရာတွင် Prefix နှင့် Lowercase Logic သုံးပါ
+    // (မှတ်ချက်: sourceBranch.code သို့မဟုတ် sourceBranch.dbName - သင့် Model မှာသုံးထားတာကို ပြင်ပေးပါ)
+    const fromBranchDb = getBranchConnection(
+      `branch_${sourceBranch.code.toLowerCase()}`,
+    );
+
     const FromStock = getBranchStockModel(fromBranchDb);
+
     const sourceStock = await FromStock.findOne({
       productId: new mongoose.Types.ObjectId(productId),
     });
 
+    // Stock စစ်ဆေးခြင်း
     if (!sourceStock || sourceStock.quantity < quantity) {
       return res.status(400).json({
         success: false,
@@ -111,10 +217,10 @@ export const createTransferRequest = async (req: Request, res: Response) => {
       });
     }
 
-    // Request ဖန်တီးခြင်း
+    // Transfer Request တင်ခြင်း
     const newTransfer = await Transfer.create({
-      fromBranchId,
-      toBranchId,
+      fromBranchId: sourceBranch._id,
+      toBranchId: targetBranch._id,
       productId,
       quantity: Number(quantity),
       requestedBy,
@@ -128,6 +234,7 @@ export const createTransferRequest = async (req: Request, res: Response) => {
       data: newTransfer,
     });
   } catch (error: any) {
+    console.error("Create transfer request error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -136,7 +243,7 @@ export const createTransferRequest = async (req: Request, res: Response) => {
 export const approveTransferRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { approvedBy } = req.body; // အတည်ပြုသူ အမည်
+    const { approvedBy } = req.body;
 
     const Transfer = getCentralTransferModel() as Model<ITransfer>;
     const Branch = getCentralBranchModel();
@@ -147,12 +254,10 @@ export const approveTransferRequest = async (req: Request, res: Response) => {
         .status(404)
         .json({ success: false, message: "Transfer request not found" });
     if (transferDoc.status !== "pending") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "This request has already been processed",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "This request has already been processed",
+      });
     }
 
     const fromBranch = await Branch.findById(transferDoc.fromBranchId);
@@ -170,23 +275,19 @@ export const approveTransferRequest = async (req: Request, res: Response) => {
     const FromStock = getBranchStockModel(fromDb);
     const ToStock = getBranchStockModel(toDb);
 
-    // From Branch ဆိုင်မှ Stock ကို နုတ်ခြင်း
     const sourceStock = await FromStock.findOne({
       productId: transferDoc.productId as any,
     });
     if (!sourceStock || sourceStock.quantity < transferDoc.quantity) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Source branch has insufficient stock now",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Source branch has insufficient stock now",
+      });
     }
 
     sourceStock.quantity -= transferDoc.quantity;
     await sourceStock.save();
 
-    // To Branch ဆိုင်ထဲသို့ Stock ပေါင်းထည့်ခြင်း
     let destStock = await ToStock.findOne({
       productId: transferDoc.productId as any,
     });
@@ -200,7 +301,6 @@ export const approveTransferRequest = async (req: Request, res: Response) => {
       });
     }
 
-    // Status အား Approved သို့ ပြောင်းလဲခြင်း
     transferDoc.status = "approved";
     transferDoc.approvedBy = approvedBy;
     await transferDoc.save();
@@ -222,7 +322,6 @@ export const rejectTransferRequest = async (req: Request, res: Response) => {
     const { approvedBy } = req.body;
 
     const Transfer = getCentralTransferModel() as Model<ITransfer>;
-
     const transferDoc = await Transfer.findById(id);
 
     if (!transferDoc)
@@ -230,12 +329,10 @@ export const rejectTransferRequest = async (req: Request, res: Response) => {
         .status(404)
         .json({ success: false, message: "Transfer request not found" });
     if (transferDoc.status !== "pending") {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "This request has already been processed",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "This request has already been processed",
+      });
     }
 
     transferDoc.status = "rejected";
@@ -254,7 +351,6 @@ export const rejectTransferRequest = async (req: Request, res: Response) => {
 export const getTransfers = async (req: Request, res: Response) => {
   try {
     const Transfer = getCentralTransferModel();
-    // Population သုံးပြီး Branch နှင့် Product အမည်များကို တစ်ပါတည်းဆွဲထုတ်မည်
     const transfers = await Transfer.find()
       .populate("fromBranchId", "name code")
       .populate("toBranchId", "name code")

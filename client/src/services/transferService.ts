@@ -1,5 +1,9 @@
 import api from "../api/axiosInstance";
-import type { TransferRecord, BranchStockInfo } from "../types/transfer";
+import type {
+  TransferRequestPayload,
+  BranchStockInfo,
+  TransferRecord,
+} from "../types/transfer";
 
 export const getProductStockAcrossBranchesApi = async (productId: string) => {
   const response = await api.get<{ success: boolean; data: BranchStockInfo[] }>(
@@ -8,21 +12,31 @@ export const getProductStockAcrossBranchesApi = async (productId: string) => {
   return response.data;
 };
 
-export const createTransferRequestApi = async (payload: {
-  fromBranchId: string;
-  toBranchId: string;
-  productId: string;
-  quantity: number;
-  requestedBy: string;
-}) => {
+export const getProductsForTransferApi = async (
+  branchName: string,
+  searchPhrase: string = "",
+) => {
+  const response = await api.get("/transfers/products-for-transfer", {
+    params: {
+      branchName: branchName,
+      search: searchPhrase,
+    },
+  });
+
+  return response.data;
+};
+export const createTransferRequestApi = async (
+  payload: TransferRequestPayload,
+) => {
   const response = await api.post(`/transfers/request`, payload);
   return response.data;
 };
 
 export const getTransfersApi = async () => {
-  const response = await api.get<{ success: boolean; data: TransferRecord[] }>(
-    `/transfers`,
-  );
+  const response = await api.get<{
+    success: boolean;
+    data: TransferRecord[];
+  }>(`/transfers`);
   return response.data;
 };
 

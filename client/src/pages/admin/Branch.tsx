@@ -37,6 +37,8 @@ import {
 } from "../../services/branchService";
 import { getManagersForDropdownApi } from "../../services/employeeServices";
 import toast from "react-hot-toast";
+import axios from "axios";
+import type { ErrorResponse } from "../../types/ErrorResponse";
 
 // ============================================================
 // Confirm Dialog Component
@@ -636,8 +638,12 @@ export const Branch = () => {
       } else {
         toast.error(response.message || "Failed to delete branch");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setShowDeleteConfirm(false);
       setDeleteTarget(null);

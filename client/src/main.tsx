@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import Layout from "./layout/Layout";
+import { ManagerLayout } from "./layout/ManagerLayout";
 import "./index.css";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
@@ -18,6 +19,10 @@ import Orders from "./pages/Orders";
 import { Toaster } from "react-hot-toast";
 import { Inventory } from "./pages/admin/Inventory";
 import { AuthProvider } from "./context/AuthProvider";
+import { TransferStock } from "./pages/manager/transeferStock";
+import { ManagerDashboard } from "./pages/manager/Dashboard";
+import { ManagerReports } from "./pages/manager/ManagerReport";
+import { ManagerAnalytics } from "./pages/manager/ManagerAnalytics";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -102,6 +107,46 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <CategoryBrand />
+          </ProtectedRoute>
+        ),
+      },
+    ],
+  },
+
+  // Manager Routes
+  {
+    path: "/manager/*",
+    element: <ManagerLayout />,
+    children: [
+      {
+        path: "overviews",
+        element: (
+          // <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerDashboard />
+          // </ProtectedRoute>
+        ),
+      },
+      {
+        path: "transfers",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <TransferStock />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "reports",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerReports />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerAnalytics />
           </ProtectedRoute>
         ),
       },

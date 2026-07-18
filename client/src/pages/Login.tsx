@@ -53,9 +53,9 @@ export default function Login() {
       if (response.user.role === "admin") {
         navigate("/admin/overviews");
       } else if (response.user.role === "manager") {
-        navigate("/");
+        navigate("/manager/dashboard");
       } else if (response.user.role === "cashier") {
-        navigate("/about");
+        navigate("/cashier/dashboard");
       } else {
         navigate("/overviews");
       }

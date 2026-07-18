@@ -40,9 +40,6 @@ import type {
 } from "../../types/employee";
 import { validateImageFile, compressImage } from "../../utils/imageCompressing";
 
-// ============================================================
-// Confirm Dialog Component
-// ============================================================
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -132,9 +129,6 @@ const ConfirmDialog = ({
   );
 };
 
-// ============================================================
-// Types
-// ============================================================
 interface Branch {
   _id: string;
   name: string;
@@ -168,9 +162,6 @@ type SortField =
   | "joinDate";
 type SortOrder = "asc" | "desc";
 
-// ============================================================
-// Main Component
-// ============================================================
 export const Employees = () => {
   // States
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -444,7 +435,6 @@ export const Employees = () => {
     });
   };
 
-  // Create employee
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -503,7 +493,6 @@ export const Employees = () => {
     }
   };
 
-  // Update employee
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -556,7 +545,6 @@ export const Employees = () => {
     }
   };
 
-  // Delete employee - show custom confirmation
   const handleDeleteClick = (id: string, name: string) => {
     setDeleteTarget({ id, name });
     setShowDeleteConfirm(true);
@@ -589,13 +577,11 @@ export const Employees = () => {
     setDeleteTarget(null);
   };
 
-  // View employee
   const handleView = (employee: Employee) => {
     setSelectedEmployee(employee);
     setIsViewModalOpen(true);
   };
 
-  // Edit employee
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
     setFormData({
@@ -614,9 +600,6 @@ export const Employees = () => {
     setIsEditModalOpen(true);
   };
 
-  // ============================================================
-  // Helper Functions
-  // ============================================================
   const getStatusBadge = (status: string) => {
     const statusMap = {
       active: { label: "Active", className: "bg-emerald-100 text-emerald-700" },
@@ -662,9 +645,6 @@ export const Employees = () => {
     }).format(amount);
   };
 
-  // ============================================================
-  // Loading & Error States
-  // ============================================================
   if (isLoading) {
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">

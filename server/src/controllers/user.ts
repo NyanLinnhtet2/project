@@ -257,6 +257,8 @@ export const createEmployee = async (req: Request, res: Response) => {
       });
     }
 
+    console.log(branch);
+    
     // Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);

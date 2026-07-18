@@ -93,7 +93,7 @@ function Navbar() {
         <div className="hidden lg:flex items-center gap-3">
           {userInfo ? (
             <Link
-              to="/admin/overviews"
+              to={`/${userInfo.role}/overviews`}
               className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-300 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
             >
               <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ function Navbar() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               {userInfo ? (
                 <Link
-                  to="/admin/overviews"
+                  to={`/${userInfo.role}/overviews`}
                   className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-300 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
                 >
                   <div className="flex items-center gap-3">
@@ -199,7 +199,6 @@ function Navbar() {
               )}
             </div>
 
-            {/* Mobile Footer */}
             <div className="mt-6 pt-4 border-t border-slate-200/60">
               <p className="text-center text-xs text-slate-400">
                 © 2024 ClothHub. All rights reserved.

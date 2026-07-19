@@ -1,16 +1,16 @@
-import { Schema, Document, Model,Types } from "mongoose";
+import { Schema, Document, Model, Types } from "mongoose";
 import { centralDBConnection } from "../../db/db";
 
 export interface IStockTransaction extends Document {
   productId: Types.ObjectId;
   branchId: Types.ObjectId;
-  transactionType: "INBOUND" | "OUTBOUND" | "ADJUSTMENT";
+  transactionType: "INBOUND" | "OUTBOUND" | "ADJUSTMENT" | "DAMAGE";
   quantity: number;
-  unitCost: number; // Product ဆီကနေ Snapshot ယူမည့် ဝယ်ရင်းဈေး
-  supplierName: string; // Product ဆီကနေ Snapshot ယူမည့် ပွဲရုံအမည်
-  totalAmount: number; // quantity * unitCost
-  performedBy: string; // Admin သို့မဟုတ် လုပ်ဆောင်သူအမည်
-  notes?: string; // မှတ်ချက် (Optional)
+  unitCost: number; 
+  supplierName: string; 
+  totalAmount: number; 
+  performedBy: string; 
+  notes?: string; 
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,8 +21,9 @@ const stockTransactionSchema = new Schema<IStockTransaction>(
     branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
     transactionType: {
       type: String,
-      enum: ["INBOUND", "OUTBOUND", "ADJUSTMENT"],
+      enum: ["INBOUND", "OUTBOUND", "ADJUSTMENT", "DAMAGE"], // ✅ DAMAGE ထည့်ပြီးပြီ
       default: "INBOUND",
+      required: true,
     },
     quantity: { type: Number, required: true },
     unitCost: { type: Number, required: true, default: 0 },

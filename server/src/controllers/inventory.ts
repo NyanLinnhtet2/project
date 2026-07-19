@@ -203,10 +203,19 @@ export const deductStock = async (req: Request, res: Response) => {
       quantity,
       performedBy,
       notes,
-      transactionType = "OUTBOUND",
+      transactionType,
     } = req.body;
 
-    // Validate required fields
+    // 0. Validate transactionType (Deduct အတွက် INBOUND မဖြစ်သင့်ပါ)
+    const allowedDeductTypes = ["OUTBOUND", "DAMAGE", "ADJUSTMENT"];
+    if (!transactionType || !allowedDeductTypes.includes(transactionType)) {
+      return res.status(400).json({
+        success: false,
+        message: `transactionType must be one of: ${allowedDeductTypes.join(", ")}`,
+      });
+    }
+
+    // 1. Validate required fields
     if (!branchId || !productId || quantity === undefined) {
       return res.status(400).json({
         success: false,
@@ -228,7 +237,7 @@ export const deductStock = async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Find Branch
+    // 2. Find Branch
     const Branch = getCentralBranchModel();
     const branch = await Branch.findById(branchId);
 
@@ -239,7 +248,7 @@ export const deductStock = async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Get Product Data
+    // 3. Get Product Data
     const Product = getCentralProductModel();
     const productData = await Product.findById(productId);
 
@@ -254,7 +263,7 @@ export const deductStock = async (req: Request, res: Response) => {
     const currentSupplier = productData.shopName || "Unknown Supplier";
     const totalAmount = currentCost * Number(quantity);
 
-    // 3. Connect to Branch Database
+    // 4. Connect to Branch Database
     const branchDb = getBranchConnection(branch.dbName);
     if (!branchDb) {
       return res.status(500).json({
@@ -265,7 +274,7 @@ export const deductStock = async (req: Request, res: Response) => {
 
     const Stock = getBranchStockModel(branchDb);
 
-    let stock = await Stock.findOne({
+    const stock = await Stock.findOne({
       productId: new mongoose.Types.ObjectId(productId),
     });
 
@@ -276,7 +285,7 @@ export const deductStock = async (req: Request, res: Response) => {
       });
     }
 
-    // 4. Check if enough stock
+    // 5. Check if enough stock
     if (stock.quantity < Number(quantity)) {
       return res.status(400).json({
         success: false,
@@ -284,18 +293,17 @@ export const deductStock = async (req: Request, res: Response) => {
       });
     }
 
-    // 5. Deduct Stock
-    const oldQuantity = stock.quantity;
+    // 6. Deduct Stock
     stock.quantity -= Number(quantity);
     await stock.save();
 
-    // 6. Create Transaction Record
+    // 7. Create Transaction Record
     const StockTransaction = getCentralStockTransactionModel();
     const transaction = await StockTransaction.create({
       productId: new mongoose.Types.ObjectId(productId),
       branchId: new mongoose.Types.ObjectId(branchId),
-      transactionType: transactionType,
-      quantity: Number(quantity),
+      transactionType,
+      quantity: -Number(quantity), // ✅ negative အနေနဲ့ save (stock လျော့ကြောင်း သိအောင်)
       unitCost: currentCost,
       supplierName: currentSupplier,
       totalAmount: totalAmount,

@@ -21,14 +21,12 @@ import {
   Package,
   Store,
   AlertCircle,
-  CheckCircle,
   Loader2,
   PlusCircle,
   RefreshCw,
   X,
   History,
   Truck,
-  ShoppingBag,
   MinusCircle,
 } from "lucide-react";
 
@@ -75,7 +73,9 @@ const LoadingSpinner: React.FC = () => (
       <div className="h-16 w-16 rounded-full border-4 border-slate-200"></div>
       <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
     </div>
-    <p className="mt-4 text-sm text-slate-500 font-medium">Loading inventory data...</p>
+    <p className="mt-4 text-sm text-slate-500 font-medium">
+      Loading inventory data...
+    </p>
   </div>
 );
 
@@ -83,20 +83,36 @@ const LoadingSpinner: React.FC = () => (
 // Status Badge Component
 // ============================================================
 const StatusBadge: React.FC<StatusBadgeProps> = ({ quantity }) => {
-  const getStatus = (qty: number): { label: string; className: string; icon: string } => {
+  const getStatus = (
+    qty: number,
+  ): { label: string; className: string; icon: string } => {
     if (qty === 0) {
-      return { label: "Out of Stock", className: "bg-red-100 text-red-700", icon: "🔴" };
+      return {
+        label: "Out of Stock",
+        className: "bg-red-100 text-red-700",
+        icon: "🔴",
+      };
     } else if (qty < 10) {
-      return { label: "Low Stock", className: "bg-amber-100 text-amber-700", icon: "🟡" };
+      return {
+        label: "Low Stock",
+        className: "bg-amber-100 text-amber-700",
+        icon: "🟡",
+      };
     } else {
-      return { label: "In Stock", className: "bg-blue-100 text-blue-700", icon: "🟢" };
+      return {
+        label: "In Stock",
+        className: "bg-blue-100 text-blue-700",
+        icon: "🟢",
+      };
     }
   };
 
   const status = getStatus(quantity);
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}
+    >
       {status.icon} {status.label}
     </span>
   );
@@ -104,55 +120,44 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ quantity }) => {
 
 // ============================================================
 // Transaction Type Badge Component
+// ✅ FIXED: keys now match backend enum (INBOUND/OUTBOUND/ADJUSTMENT/DAMAGE)
+//    and lookup is case-insensitive via toUpperCase()
 // ============================================================
-const TransactionTypeBadge: React.FC<TransactionTypeBadgeProps> = ({ type }) => {
-  const types: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-    purchase: { 
-      label: "Purchase", 
-      className: "bg-blue-100 text-blue-700", 
-      icon: <ShoppingBag size={12} /> 
+const TransactionTypeBadge: React.FC<TransactionTypeBadgeProps> = ({
+  type,
+}) => {
+  const types: Record<
+    string,
+    { label: string; className: string; icon: React.ReactNode }
+  > = {
+    INBOUND: {
+      label: "Inbound",
+      className: "bg-cyan-100 text-cyan-700",
+      icon: <Package size={12} />,
     },
-    sale: { 
-      label: "Sale", 
-      className: "bg-emerald-100 text-emerald-700", 
-      icon: <CheckCircle size={12} /> 
+    OUTBOUND: {
+      label: "Outbound",
+      className: "bg-red-100 text-red-700",
+      icon: <MinusCircle size={12} />,
     },
-    adjustment: { 
-      label: "Adjustment", 
-      className: "bg-amber-100 text-amber-700", 
-      icon: <AlertCircle size={12} /> 
+    ADJUSTMENT: {
+      label: "Adjustment",
+      className: "bg-amber-100 text-amber-700",
+      icon: <AlertCircle size={12} />,
     },
-    return: { 
-      label: "Return", 
-      className: "bg-purple-100 text-purple-700", 
-      icon: <RefreshCw size={12} /> 
-    },
-    transfer: { 
-      label: "Transfer", 
-      className: "bg-orange-100 text-orange-700", 
-      icon: <Truck size={12} /> 
-    },
-    received: { 
-      label: "Received", 
-      className: "bg-cyan-100 text-cyan-700", 
-      icon: <Package size={12} /> 
-    },
-    outbound: { 
-      label: "Outbound", 
-      className: "bg-red-100 text-red-700", 
-      icon: <MinusCircle size={12} /> 
-    },
-    damage: { 
-      label: "Damage", 
-      className: "bg-rose-100 text-rose-700", 
-      icon: <AlertCircle size={12} /> 
+    DAMAGE: {
+      label: "Damage",
+      className: "bg-rose-100 text-rose-700",
+      icon: <AlertCircle size={12} />,
     },
   };
 
-  const typeInfo = types[type] || types.adjustment;
+  const typeInfo = types[type?.toUpperCase()] || types.ADJUSTMENT;
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${typeInfo.className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${typeInfo.className}`}
+    >
       {typeInfo.icon}
       {typeInfo.label}
     </span>
@@ -162,24 +167,46 @@ const TransactionTypeBadge: React.FC<TransactionTypeBadgeProps> = ({ type }) => 
 // ============================================================
 // Transfer Status Badge Component
 // ============================================================
-const TransferStatusBadge: React.FC<TransferStatusBadgeProps> = ({ status }) => {
-  const getStatus = (s: string): { label: string; className: string; icon: string } => {
+const TransferStatusBadge: React.FC<TransferStatusBadgeProps> = ({
+  status,
+}) => {
+  const getStatus = (
+    s: string,
+  ): { label: string; className: string; icon: string } => {
     switch (s) {
       case "pending":
-        return { label: "Pending", className: "bg-amber-100 text-amber-700", icon: "⏳" };
+        return {
+          label: "Pending",
+          className: "bg-amber-100 text-amber-700",
+          icon: "⏳",
+        };
       case "approved":
-        return { label: "Approved", className: "bg-emerald-100 text-emerald-700", icon: "✅" };
+        return {
+          label: "Approved",
+          className: "bg-emerald-100 text-emerald-700",
+          icon: "✅",
+        };
       case "rejected":
-        return { label: "Rejected", className: "bg-red-100 text-red-700", icon: "❌" };
+        return {
+          label: "Rejected",
+          className: "bg-red-100 text-red-700",
+          icon: "❌",
+        };
       default:
-        return { label: s, className: "bg-slate-100 text-slate-700", icon: "📦" };
+        return {
+          label: s,
+          className: "bg-slate-100 text-slate-700",
+          icon: "📦",
+        };
     }
   };
 
   const statusInfo = getStatus(status);
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}
+    >
       {statusInfo.icon} {statusInfo.label}
     </span>
   );
@@ -188,12 +215,14 @@ const TransferStatusBadge: React.FC<TransferStatusBadgeProps> = ({ status }) => 
 // ============================================================
 // Empty State Component
 // ============================================================
-const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description }) => (
+const EmptyState: React.FC<EmptyStateProps> = ({
+  icon,
+  title,
+  description,
+}) => (
   <div className="text-center py-12">
     <div className="flex justify-center">
-      <div className="rounded-full bg-blue-50 p-4">
-        {icon}
-      </div>
+      <div className="rounded-full bg-blue-50 p-4">{icon}</div>
     </div>
     <h3 className="mt-4 text-xl font-semibold text-slate-600">{title}</h3>
     <p className="mt-2 text-slate-400">{description}</p>
@@ -217,20 +246,20 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
 
   if (!isOpen || !stockItem) return null;
 
-  // ✅ FIXED: Get product name from the populated product field
   const getProductName = (): string => {
     const item = stockItem as StockWithProduct;
     if (item.product) {
       return item.product.name;
     }
-    // Fallback: if product is not populated, try to get from productId
-    if (typeof stockItem.productId === "object" && stockItem.productId !== null) {
+    if (
+      typeof stockItem.productId === "object" &&
+      stockItem.productId !== null
+    ) {
       return (stockItem.productId as Product).name;
     }
     return "Unknown Product";
   };
 
-  // ✅ FIXED: Get product ID for the API
   const getProductId = (): string => {
     const item = stockItem as StockWithProduct;
     if (item.product) {
@@ -239,7 +268,10 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
     if (typeof stockItem.productId === "string") {
       return stockItem.productId;
     }
-    if (typeof stockItem.productId === "object" && stockItem.productId !== null) {
+    if (
+      typeof stockItem.productId === "object" &&
+      stockItem.productId !== null
+    ) {
       return (stockItem.productId as Product)._id;
     }
     return "";
@@ -247,7 +279,7 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
 
   const handleDeduct = async (): Promise<void> => {
     const productId = getProductId();
-    
+
     if (!productId) {
       toast.error("Product ID not found");
       return;
@@ -276,7 +308,10 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
         quantity: deductQty,
         performedBy: "Admin",
         notes: reason,
-        transactionType: transactionType as "OUTBOUND" | "DAMAGE" | "ADJUSTMENT",
+        transactionType: transactionType as
+          | "OUTBOUND"
+          | "DAMAGE"
+          | "ADJUSTMENT",
       };
 
       const response = await deductBranchStockApi(payload);
@@ -310,12 +345,14 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
 
         <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
           <p className="text-sm text-slate-700">
-            Product: <span className="font-semibold text-slate-900">
+            Product:{" "}
+            <span className="font-semibold text-slate-900">
               {getProductName()}
             </span>
           </p>
           <p className="text-sm text-slate-700">
-            Current Stock: <span className="font-semibold text-blue-600">
+            Current Stock:{" "}
+            <span className="font-semibold text-blue-600">
               {stockItem.quantity} units
             </span>
           </p>
@@ -330,9 +367,13 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
             value={transactionType}
             onChange={(e) => setTransactionType(e.target.value)}
           >
-            <option value="OUTBOUND">📤 Outbound (အခြားသို့ ထုတ်ပေးခြင်း)</option>
+            <option value="OUTBOUND">
+              📤 Outbound (အခြားသို့ ထုတ်ပေးခြင်း)
+            </option>
             <option value="DAMAGE">💔 Damage (ပျက်စီး/ဆုံးရှုံးခြင်း)</option>
-            <option value="ADJUSTMENT">📝 Adjustment (စာရင်းမှား၍ ပြန်လျှော့ခြင်း)</option>
+            <option value="ADJUSTMENT">
+              📝 Adjustment (စာရင်းမှား၍ ပြန်လျှော့ခြင်း)
+            </option>
           </select>
         </div>
 
@@ -413,82 +454,30 @@ export const Inventory: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isDeductModalOpen, setIsDeductModalOpen] = useState<boolean>(false);
-  const [selectedStockItem, setSelectedStockItem] = useState<Stock | null>(null);
+  const [selectedStockItem, setSelectedStockItem] = useState<Stock | null>(
+    null,
+  );
   const [allocateData, setAllocateData] = useState({
     productId: "",
     quantity: 0,
   });
 
-  const fetchAllInitialData = async (): Promise<void> => {
-    try {
-      const [bRes, pRes, tRes] = await Promise.all([
-        getBranchesApi(),
-        getProductsApi(),
-        getTransfersApi(),
-      ]);
-      if (bRes.success) {
-        setBranches(bRes.data);
-        if (bRes.data.length > 0) setSelectedBranch(bRes.data[0]._id);
-      }
-      if (pRes.success) setProducts(pRes.data);
-      if (tRes.success) setTransfers(tRes.data);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
-    }
-  };
-
-  useEffect(() => {
-    const t = setTimeout(() => fetchAllInitialData(), 0);
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    if (!selectedBranch) return;
-
-    const fetchBranchData = async (): Promise<void> => {
-      setLoading(true);
-      try {
-        const [invRes, transRes] = await Promise.all([
-          getBranchInventoryApi(selectedBranch),
-          getStockTransactionsApi(selectedBranch),
-        ]);
-
-        if (invRes.success) {
-          // ✅ The API returns stock with populated 'product' field
-          setInventory(invRes.data);
-        }
-
-        if (transRes.success) {
-          console.log("Data from API successfully received:", transRes.data);
-          setTransactions(transRes.data);
-        }
-      } catch (error: unknown) {
-        console.error("Error fetching branch data:", error);
-        const err = error as { response?: { data?: { message?: string } } };
-        const message = err.response?.data?.message || "Failed to load branch data";
-        toast.error(message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBranchData();
-  }, [selectedBranch]);
-
-  // Fetch Functions
+  // ============================================================
+  // Fetch Functions (each one silent — no shared loading toggle
+  // so they're safe to call together inside refreshAll)
+  // ============================================================
   const fetchBranches = async (): Promise<void> => {
     try {
       const res = await getBranchesApi();
       if (res.success) {
         setBranches(res.data);
-        if (res.data.length > 0) setSelectedBranch(res.data[0]._id);
+        if (res.data.length > 0 && !selectedBranch) {
+          setSelectedBranch(res.data[0]._id);
+        }
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -498,22 +487,30 @@ export const Inventory: React.FC = () => {
       if (res.success) setProducts(res.data);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
   const fetchInventory = async (branchId: string): Promise<void> => {
-    setLoading(true);
+    if (!branchId) return;
     try {
       const res = await getBranchInventoryApi(branchId);
       if (res.success) setInventory(res.data);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
-    } finally {
-      setLoading(false);
+      toast.error(err.response?.data?.message ?? "Something went wrong");
+    }
+  };
+
+  // ✅ NEW: transactions now has its own fetch function
+  const fetchTransactions = async (branchId: string): Promise<void> => {
+    if (!branchId) return;
+    try {
+      const res = await getStockTransactionsApi(branchId);
+      if (res.success) setTransactions(res.data);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -523,11 +520,30 @@ export const Inventory: React.FC = () => {
       if (res.success) setTransfers(res.data);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
+  // ✅ NEW: refreshAll — one single function every "Refresh" button
+  // and every success handler calls, so all tabs always stay in sync
+  const refreshAll = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchBranches(),
+        fetchProducts(),
+        fetchTransfers(),
+        fetchInventory(selectedBranch),
+        fetchTransactions(selectedBranch),
+      ]);
+    } catch (error) {
+      toast.error("Failed to refresh data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load (branches, products, transfers)
   useEffect(() => {
     const t = setTimeout(() => {
       fetchBranches();
@@ -537,8 +553,29 @@ export const Inventory: React.FC = () => {
     return () => clearTimeout(t);
   }, []);
 
+  // Whenever selected branch changes, load its inventory + transactions
+  useEffect(() => {
+    if (!selectedBranch) return;
+
+    const fetchBranchData = async (): Promise<void> => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchInventory(selectedBranch),
+          fetchTransactions(selectedBranch),
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranchData();
+  }, [selectedBranch]);
+
   // --- Handlers ---
-  const handleAllocateStock = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleAllocateStock = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     e.preventDefault();
     if (!allocateData.productId || allocateData.quantity <= 0) {
       toast.error("Please select a product and enter a valid quantity.");
@@ -554,12 +591,11 @@ export const Inventory: React.FC = () => {
         toast.success("Stock allocated successfully!");
         setIsAddModalOpen(false);
         setAllocateData({ productId: "", quantity: 0 });
-        fetchInventory(selectedBranch);
+        refreshAll(); // ✅ keep everything in sync
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -567,12 +603,10 @@ export const Inventory: React.FC = () => {
     try {
       await approveTransferApi(id, "Admin");
       toast.success("Transfer Approved");
-      fetchTransfers();
-      fetchInventory(selectedBranch);
+      refreshAll(); // ✅ keep everything in sync
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -580,11 +614,10 @@ export const Inventory: React.FC = () => {
     try {
       await rejectTransferApi(id, "Admin");
       toast.success("Transfer Rejected");
-      fetchTransfers();
+      refreshAll(); // ✅ keep everything in sync
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message;
-      toast.error(message ?? "Something went wrong");
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -594,11 +627,9 @@ export const Inventory: React.FC = () => {
   };
 
   const handleDeductSuccess = (): void => {
-    fetchInventory(selectedBranch);
-    fetchTransfers();
+    refreshAll(); // ✅ keep everything in sync (was fetchInventory + fetchTransfers only)
   };
 
-  // ✅ FIXED: Get product name from the populated product field
   const getProductName = (stock: Stock): string => {
     const item = stock as StockWithProduct;
     if (item.product) {
@@ -610,7 +641,6 @@ export const Inventory: React.FC = () => {
     return "Unknown Product";
   };
 
-  // ✅ FIXED: Get product SKU from the populated product field
   const getProductSku = (stock: Stock): string => {
     const item = stock as StockWithProduct;
     if (item.product) {
@@ -710,11 +740,16 @@ export const Inventory: React.FC = () => {
                     ))}
                   </select>
                 </div>
+                {/* ✅ FIXED: was fetchInventory only, now refreshAll */}
                 <button
-                  onClick={() => fetchInventory(selectedBranch)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md"
+                  onClick={refreshAll}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
                 >
-                  <RefreshCw size={16} className="text-slate-400" />
+                  <RefreshCw
+                    size={16}
+                    className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </button>
               </div>
@@ -754,7 +789,10 @@ export const Inventory: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {inventory.map((item, index) => (
-                            <tr key={item._id || index} className="transition hover:bg-slate-50/50">
+                            <tr
+                              key={item._id || index}
+                              className="transition hover:bg-slate-50/50"
+                            >
                               <td className="px-6 py-4 text-sm text-slate-500">
                                 {index + 1}
                               </td>
@@ -815,11 +853,16 @@ export const Inventory: React.FC = () => {
                     Manage stock transfer requests between branches
                   </p>
                 </div>
+                {/* ✅ FIXED: was fetchTransfers only, now refreshAll */}
                 <button
-                  onClick={fetchTransfers}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md"
+                  onClick={refreshAll}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
                 >
-                  <RefreshCw size={16} className="text-slate-400" />
+                  <RefreshCw
+                    size={16}
+                    className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </button>
               </div>
@@ -855,17 +898,24 @@ export const Inventory: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {transfers.map((t) => (
-                          <tr key={t._id} className="transition hover:bg-slate-50/50">
+                          <tr
+                            key={t._id}
+                            className="transition hover:bg-slate-50/50"
+                          >
                             <td className="px-6 py-4">
                               <div>
                                 <p className="font-medium text-slate-900">
-                                  {typeof t.productId === "object" && t.productId !== null
+                                  {typeof t.productId === "object" &&
+                                  t.productId !== null
                                     ? (t.productId as Product).name
-                                    : products.find((p) => p._id === String(t.productId))
-                                        ?.name || String(t.productId)}
+                                    : products.find(
+                                        (p) => p._id === String(t.productId),
+                                      )?.name || String(t.productId)}
                                 </p>
                                 <p className="text-xs text-slate-400">
-                                  SKU: {typeof t.productId === "object" && t.productId !== null
+                                  SKU:{" "}
+                                  {typeof t.productId === "object" &&
+                                  t.productId !== null
                                     ? (t.productId as Product).sku
                                     : "N/A"}
                                 </p>
@@ -874,17 +924,21 @@ export const Inventory: React.FC = () => {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-red-500">
-                                  {typeof t.fromBranchId === "object" && t.fromBranchId !== null
+                                  {typeof t.fromBranchId === "object" &&
+                                  t.fromBranchId !== null
                                     ? (t.fromBranchId as Branch).name
-                                    : branches.find((b) => b._id === String(t.fromBranchId))
-                                        ?.name || String(t.fromBranchId)}
+                                    : branches.find(
+                                        (b) => b._id === String(t.fromBranchId),
+                                      )?.name || String(t.fromBranchId)}
                                 </span>
                                 <span className="text-slate-300">➔</span>
                                 <span className="font-medium text-blue-500">
-                                  {typeof t.toBranchId === "object" && t.toBranchId !== null
+                                  {typeof t.toBranchId === "object" &&
+                                  t.toBranchId !== null
                                     ? (t.toBranchId as Branch).name
-                                    : branches.find((b) => b._id === String(t.toBranchId))
-                                        ?.name || String(t.toBranchId)}
+                                    : branches.find(
+                                        (b) => b._id === String(t.toBranchId),
+                                      )?.name || String(t.toBranchId)}
                                 </span>
                               </div>
                             </td>
@@ -940,11 +994,17 @@ export const Inventory: React.FC = () => {
                     Complete history of all stock transactions
                   </p>
                 </div>
+                {/* ✅ FIXED: was fetchInventory (bug — never refreshed transactions),
+                    now refreshAll refreshes transactions too */}
                 <button
-                  onClick={() => fetchInventory(selectedBranch)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md"
+                  onClick={refreshAll}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
                 >
-                  <RefreshCw size={16} className="text-slate-400" />
+                  <RefreshCw
+                    size={16}
+                    className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </button>
               </div>
@@ -977,7 +1037,10 @@ export const Inventory: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {transactions.map((t) => (
-                          <tr key={t._id} className="transition hover:bg-slate-50/50">
+                          <tr
+                            key={t._id}
+                            className="transition hover:bg-slate-50/50"
+                          >
                             <td className="px-6 py-4">
                               <p className="font-medium text-slate-900">
                                 {(t.productId as Product)?.name || "N/A"}
@@ -987,10 +1050,15 @@ export const Inventory: React.FC = () => {
                               <TransactionTypeBadge type={t.transactionType} />
                             </td>
                             <td className="px-6 py-4">
-                              <p className={`text-lg font-bold ${
-                                t.quantity > 0 ? "text-emerald-600" : "text-red-600"
-                              }`}>
-                                {t.quantity > 0 ? "+" : ""}{t.quantity}
+                              <p
+                                className={`text-lg font-bold ${
+                                  t.quantity > 0
+                                    ? "text-emerald-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {t.quantity > 0 ? "+" : ""}
+                                {t.quantity}
                               </p>
                             </td>
                             <td className="px-6 py-4">

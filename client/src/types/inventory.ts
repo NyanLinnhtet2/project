@@ -23,3 +23,21 @@ export interface TransferRequestData {
   quantity: number;
   requestedBy: string;
 }
+export interface StockTransaction {
+  _id: string;
+  productId: string | Product;
+  branchId: string;
+  transactionType: "INBOUND" | "OUTBOUND" | "ADJUSTMENT";
+  quantity: number;
+  performedBy: string;
+  createdAt: string;
+}
+
+export interface DeductStockPayload {
+  branchId: string;
+  productId: string;
+  quantity: number;
+  performedBy: string;
+  notes: string;
+  transactionType: "OUTBOUND" | "DAMAGE" | "ADJUSTMENT";
+}

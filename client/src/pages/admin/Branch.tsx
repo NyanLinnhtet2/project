@@ -424,8 +424,12 @@ export const Branch = () => {
       } else {
         console.error("Failed to fetch managers:", response.message);
       }
-    } catch (error) {
-      console.error("Error fetching managers:", error);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsLoadingManagers(false);
     }
@@ -470,9 +474,12 @@ export const Branch = () => {
         setError(response.message || "Failed to fetch branches");
         toast.error(response.message || "Failed to fetch branches");
       }
-    } catch (error) {
-      setError(`${(error as { data: { message: string } }).data.message}`);
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+      setError(`${message}`);
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -576,8 +583,12 @@ export const Branch = () => {
       } else {
         toast.error(response.message || "Failed to create branch");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -613,8 +624,12 @@ export const Branch = () => {
       } else {
         toast.error(response.message || "Failed to update branch");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }

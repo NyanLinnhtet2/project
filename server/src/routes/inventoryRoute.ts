@@ -3,6 +3,8 @@ import {
   allocateStock,
   getBranchInventory,
   requestTransfer,
+  getStockTransactions,
+  deductStock
 } from "../controllers/inventory";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { allowRoles } from "../middleware/roleMiddleware";
@@ -10,6 +12,13 @@ import { allowRoles } from "../middleware/roleMiddleware";
 const router = express.Router();
 
 router.post("/allocate", authMiddleware, allowRoles("admin"), allocateStock);
+router.get(
+  "/transactions",
+  authMiddleware,
+  allowRoles("admin", "manager"),
+  getStockTransactions,
+);
+
 router.get(
   "/branch/:branchId",
   authMiddleware,
@@ -21,6 +30,13 @@ router.post(
   authMiddleware,
   allowRoles("manager", "admin"),
   requestTransfer,
+);
+
+router.post(
+  "/delete",
+  authMiddleware,
+  allowRoles("admin"),
+  deductStock,
 );
 
 export default router;

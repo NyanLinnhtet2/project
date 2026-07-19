@@ -39,7 +39,8 @@ import type {
   UpdateEmployeeData,
 } from "../../types/employee";
 import { validateImageFile, compressImage } from "../../utils/imageCompressing";
-
+import axios from "axios";
+import type { ErrorResponse } from "../../types/ErrorResponse";
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -319,9 +320,12 @@ export const Employees = () => {
       } else {
         console.error("Failed to fetch branches:", response.message);
       }
-    } catch (error) {
-      console.error("Error fetching branches:", error);
-      toast.error("Failed to load branches");
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsFetchingBranches(false);
     }
@@ -339,9 +343,12 @@ export const Employees = () => {
         setError(response.message || "Failed to fetch employees");
         toast.error(response.message || "Failed to fetch employees");
       }
-    } catch (error) {
-      setError(`${(error as { data: { message: string } }).data.message}`);
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+      setError(`${message}`);
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -353,8 +360,12 @@ export const Employees = () => {
       if (response.success) {
         setStats(response.data);
       }
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     }
   };
 
@@ -402,9 +413,12 @@ export const Employees = () => {
       }));
 
       toast.success("Image uploaded successfully!");
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
-      console.error("Image processing error:", error);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     }
   };
 
@@ -486,8 +500,12 @@ export const Employees = () => {
       } else {
         toast.error(response.message || "Failed to create employee");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -538,8 +556,12 @@ export const Employees = () => {
       } else {
         toast.error(response.message || "Failed to update employee");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -563,8 +585,12 @@ export const Employees = () => {
       } else {
         toast.error(response.message || "Failed to delete employee");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setShowDeleteConfirm(false);
       setDeleteTarget(null);

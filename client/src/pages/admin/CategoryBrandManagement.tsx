@@ -31,6 +31,8 @@ import {
 import toast from "react-hot-toast";
 import type { Category } from "../../types/category";
 import type { Brand } from "../../types/brand";
+import axios from "axios";
+import type { ErrorResponse } from "../../types/ErrorResponse";
 
 // ============================================================
 // Confirm Dialog Component
@@ -199,8 +201,12 @@ export const CategoryBrand = () => {
         setCategories(response.data);
         setFilteredCategories(response.data);
       }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     }
   };
 
@@ -216,8 +222,12 @@ export const CategoryBrand = () => {
         setBrands(response.data);
         setFilteredBrands(response.data);
       }
-    } catch (error) {
-      console.error("Error fetching brands:", error);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     }
   };
 
@@ -229,8 +239,12 @@ export const CategoryBrand = () => {
       ]);
       if (catStats.success) setCategoryStats(catStats.data);
       if (brandStats.success) setBrandStats(brandStats.data);
-    } catch (error) {
-      console.error("Error fetching stats:", error);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     }
   };
 
@@ -239,9 +253,12 @@ export const CategoryBrand = () => {
     setError(null);
     try {
       await Promise.all([fetchCategories(), fetchBrands(), fetchStats()]);
-    } catch (error) {
-      setError(`${(error as { data: { message: string } }).data.message}`);
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+      setError(`${message}`);
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -382,8 +399,12 @@ export const CategoryBrand = () => {
           handleCloseModal();
         }
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -419,8 +440,12 @@ export const CategoryBrand = () => {
           response.message || `Failed to delete ${deleteTarget.type}`,
         );
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setShowDeleteConfirm(false);
       setDeleteTarget(null);

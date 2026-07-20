@@ -23,6 +23,7 @@ import { TransferStock } from "./pages/manager/transeferStock";
 import { ManagerDashboard } from "./pages/manager/Dashboard";
 import { ManagerReports } from "./pages/manager/ManagerReport";
 import { ManagerAnalytics } from "./pages/manager/ManagerAnalytics";
+import { ManagerInventory } from "./pages/manager/ManagerInventory";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -122,8 +123,16 @@ const router = createBrowserRouter([
         path: "overviews",
         element: (
           // <ProtectedRoute allowedRoles={["manager"]}>
-            <ManagerDashboard />
+          <ManagerDashboard />
           // </ProtectedRoute>
+        ),
+      },
+      {
+        path: "my-inventory",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerInventory />
+          </ProtectedRoute>
         ),
       },
       {
@@ -150,6 +159,9 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      // ❌ REMOVED: StockEditRequestsTab is admin-only (approve/reject).
+      // It already lives inside the "Stock Requests" tab of the admin
+      // Inventory.tsx page — it should never be routed under /manager/*.
     ],
   },
 

@@ -14,8 +14,8 @@ import { allowRoles } from "../middleware/roleMiddleware";
 
 const router = express.Router();
 
-router.get("/", authMiddleware, allowRoles("admin"), getBranches);
-router.get("/stats", authMiddleware, allowRoles("admin"), getBranchStats);
+router.get("/", authMiddleware, allowRoles("admin","manager"), getBranches);
+router.get("/stats", authMiddleware, allowRoles("admin","manager"), getBranchStats);
 router.get(
   "/dropdown",
   authMiddleware,

@@ -4,7 +4,11 @@ import {
   getBranchInventory,
   requestTransfer,
   getStockTransactions,
-  deductStock
+  deductStock,
+  requestStockEdit,
+  getStockEditRequests,
+  approveStockEditRequest,
+  rejectStockEditRequest,
 } from "../controllers/inventory";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { allowRoles } from "../middleware/roleMiddleware";
@@ -17,6 +21,37 @@ router.get(
   authMiddleware,
   allowRoles("admin", "manager"),
   getStockTransactions,
+);
+// Manager က Edit Request တင်ခြင်း
+router.post(
+  "/stock-edit-request",
+  authMiddleware,
+  allowRoles("manager", "admin"),
+  requestStockEdit,
+);
+
+// Admin/Manager က Requests list ကြည့်ခြင်း
+router.get(
+  "/stock-edit-requests",
+  authMiddleware,
+  allowRoles("admin", "manager"),
+  getStockEditRequests,
+);
+
+// Admin ချည်း — Approve
+router.post(
+  "/stock-edit-request/:id/approve",
+  authMiddleware,
+  allowRoles("admin"),
+  approveStockEditRequest,
+);
+
+// Admin ချည်း — Reject
+router.post(
+  "/stock-edit-request/:id/reject",
+  authMiddleware,
+  allowRoles("admin"),
+  rejectStockEditRequest,
 );
 
 router.get(
@@ -32,11 +67,6 @@ router.post(
   requestTransfer,
 );
 
-router.post(
-  "/delete",
-  authMiddleware,
-  allowRoles("admin"),
-  deductStock,
-);
+router.post("/delete", authMiddleware, allowRoles("admin"), deductStock);
 
 export default router;

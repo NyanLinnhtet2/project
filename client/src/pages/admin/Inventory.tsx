@@ -25,10 +25,15 @@ import {
   PlusCircle,
   RefreshCw,
   X,
-  History,
+  History as HistoryIcon,
   Truck,
   MinusCircle,
+  ClipboardList,
 } from "lucide-react";
+import StockEditRequestsTab from "./StockEditRequestsTab";
+import { useAuth } from "../../context/useAuth";
+import axios from "axios";
+import type { ErrorResponse } from "../../types/ErrorResponse";
 
 // ============================================================
 // Types
@@ -56,6 +61,7 @@ interface DeductStockModalProps {
   onClose: () => void;
   branchId: string;
   stockItem: Stock | null;
+  performedBy: string;
   onSuccess: () => void;
 }
 
@@ -237,6 +243,7 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
   onClose,
   branchId,
   stockItem,
+  performedBy,
   onSuccess,
 }) => {
   const [deductQty, setDeductQty] = useState<number>(1);
@@ -306,7 +313,7 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
         branchId: branchId,
         productId: productId,
         quantity: deductQty,
-        performedBy: "Admin",
+        performedBy: performedBy || "Admin",
         notes: reason,
         transactionType: transactionType as
           | "OUTBOUND"
@@ -441,9 +448,12 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
 // Main Inventory Component
 // ============================================================
 export const Inventory: React.FC = () => {
+  // Admin-only page. Manager UI lives in ManagerInventory.tsx instead.
+  const { userInfo } = useAuth();
+
   // Inventory States
   const [activeTab, setActiveTab] = useState<
-    "stock" | "transfer" | "transactions"
+    "stock" | "transfer" | "transactions" | "stock-requests"
   >("stock");
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>("");
@@ -461,6 +471,14 @@ export const Inventory: React.FC = () => {
     productId: "",
     quantity: 0,
   });
+
+  // Admin-only page — all tabs are always visible
+  const visibleTabs = [
+    "stock",
+    "transfer",
+    "transactions",
+    "stock-requests",
+  ] as const;
 
   // ============================================================
   // Fetch Functions (each one silent — no shared loading toggle
@@ -536,8 +554,12 @@ export const Inventory: React.FC = () => {
         fetchInventory(selectedBranch),
         fetchTransactions(selectedBranch),
       ]);
-    } catch (error) {
-      toast.error("Failed to refresh data");
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<ErrorResponse>(error)
+        ? error.response?.data.message
+        : undefined;
+
+      toast.error(message ?? "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -601,7 +623,7 @@ export const Inventory: React.FC = () => {
 
   const handleApprove = async (id: string): Promise<void> => {
     try {
-      await approveTransferApi(id, "Admin");
+      await approveTransferApi(id, userInfo?.name || "Admin");
       toast.success("Transfer Approved");
       refreshAll(); // ✅ keep everything in sync
     } catch (error: unknown) {
@@ -612,7 +634,7 @@ export const Inventory: React.FC = () => {
 
   const handleReject = async (id: string): Promise<void> => {
     try {
-      await rejectTransferApi(id, "Admin");
+      await rejectTransferApi(id, userInfo?.name || "Admin");
       toast.success("Transfer Rejected");
       refreshAll(); // ✅ keep everything in sync
     } catch (error: unknown) {
@@ -688,7 +710,7 @@ export const Inventory: React.FC = () => {
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-2 shadow-sm border border-slate-200/50">
-          {(["stock", "transfer", "transactions"] as const).map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -701,8 +723,11 @@ export const Inventory: React.FC = () => {
               <div className="flex items-center justify-center gap-2">
                 {tab === "stock" && <Package size={18} />}
                 {tab === "transfer" && <Truck size={18} />}
-                {tab === "transactions" && <History size={18} />}
-                <span className="capitalize">{tab}</span>
+                {tab === "transactions" && <HistoryIcon size={18} />}
+                {tab === "stock-requests" && <ClipboardList size={18} />}
+                <span className="capitalize">
+                  {tab === "stock-requests" ? "Stock Requests" : tab}
+                </span>
                 {tab === "stock" && (
                   <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">
                     {inventory.length}
@@ -1012,7 +1037,7 @@ export const Inventory: React.FC = () => {
               <div className="overflow-hidden rounded-2xl border border-slate-200/50">
                 {transactions.length === 0 ? (
                   <EmptyState
-                    icon={<History className="h-12 w-12 text-blue-500" />}
+                    icon={<HistoryIcon className="h-12 w-12 text-blue-500" />}
                     title="No transactions found"
                     description="No stock transactions have been recorded yet."
                   />
@@ -1077,6 +1102,14 @@ export const Inventory: React.FC = () => {
                 )}
               </div>
             </div>
+          )}
+
+          {/* ✅ NEW: Stock Requests Tab (admin only — reviews manager edit requests) */}
+          {activeTab === "stock-requests" && (
+            <StockEditRequestsTab
+              reviewedBy={userInfo?.name || "Admin"}
+              onActionSuccess={refreshAll}
+            />
           )}
         </div>
       </div>
@@ -1161,7 +1194,7 @@ export const Inventory: React.FC = () => {
         </div>
       )}
 
-      {/* Deduct Stock Modal */}
+      {/* Deduct Stock Modal (Admin only) */}
       <DeductStockModal
         isOpen={isDeductModalOpen}
         onClose={() => {
@@ -1170,6 +1203,7 @@ export const Inventory: React.FC = () => {
         }}
         branchId={selectedBranch}
         stockItem={selectedStockItem}
+        performedBy={userInfo?.name || "Admin"}
         onSuccess={handleDeductSuccess}
       />
     </div>

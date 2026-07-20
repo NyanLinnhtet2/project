@@ -17,6 +17,7 @@ import {
   HelpCircle,
   ChevronRight,
   Sparkles,
+  
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 
@@ -38,7 +39,7 @@ const menus = [
   },
   {
     title: "Inventory",
-    path: "/manager/inventory",
+    path: "/manager/my-inventory",
     icon: ClipboardList,
   },
   {
@@ -60,6 +61,11 @@ const menus = [
     title: "Analytics",
     path: "/manager/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Stock Request",
+    path: "/manager/stock-request",
+    icon: ClipboardList,
   },
 ];
 
@@ -143,11 +149,13 @@ export const ManagerSidebar = () => {
             >
               {({ isActive }) => (
                 <>
-                  <span className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
-                    isActive 
-                      ? "bg-white/20" 
-                      : "bg-slate-800/50 group-hover:bg-slate-700/50"
-                  }`}>
+                  <span
+                    className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
+                      isActive
+                        ? "bg-white/20"
+                        : "bg-slate-800/50 group-hover:bg-slate-700/50"
+                    }`}
+                  >
                     <Icon
                       className={`h-5 w-5 transition-all duration-300 ${
                         isActive

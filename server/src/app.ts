@@ -11,6 +11,7 @@ import cookieParser from "cookie-parser";
 import productRoute from "./routes/productRoute";
 import inventoryRoute from "./routes/inventoryRoute";
 import transferRoute from "./routes/transferRoute";
+import saleRoute from "./routes/saleRoute";
 
 dotenv.config({
   path: "./.env",
@@ -36,6 +37,7 @@ app.use("/api/employees", employeeRoute);
 app.use("/api/products", productRoute);
 app.use("/api/inventory", inventoryRoute);
 app.use("/api/transfers", transferRoute);
+app.use("/api/sales", saleRoute);
 
 app.use(
   (

@@ -40,7 +40,6 @@ function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-sm">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
           <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200 transition-all group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-blue-300">
             <ShoppingBag size={24} />

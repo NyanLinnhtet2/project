@@ -12,11 +12,11 @@ import {
   ChevronRight,
   Tag,
   Bell,
+  HeadphonesIcon,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
-import { useEffect, useState } from "react";
-import type { User as UserInfo } from "../../types/user";
 import { toast } from "react-hot-toast";
+import { useAuth } from "../../context/useAuth";
 
 const menus = [
   {
@@ -30,7 +30,7 @@ const menus = [
     icon: GitBranch,
   },
   {
-    title: "Employees",
+    title: "Manage Staff",
     path: "/admin/employees",
     icon: User,
   },
@@ -49,23 +49,27 @@ const menus = [
     path: "/admin/inventory",
     icon: Package,
   },
-
   {
-    title: "Orders",
-    path: "/admin/orders",
+    title: "Staff Requests",
+    path: "/admin/staff-requests",
+    icon: HeadphonesIcon,
+  },
+  {
+    title: "Sales Overview",
+    path: "/admin/sales",
     icon: ShoppingCart,
   },
 ];
 
 export const Sidebar = () => {
   const navigate = useNavigate();
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const { userInfo,logout } = useAuth();
 
   const logutHandler = async () => {
     try {
       const response = await logoutUser();
       console.log(response);
-      localStorage.removeItem("userInfo");
+      logout();
       toast.success(`${response.message}`);
       navigate("/login");
     } catch (error) {
@@ -73,18 +77,8 @@ export const Sidebar = () => {
     }
   };
 
-  useEffect(() => {
-    const raw = localStorage.getItem("userInfo");
-    const t = setTimeout(() => {
-      setUserInfo(raw ? JSON.parse(raw) : null);
-    }, 0);
-
-    return () => clearInterval(t);
-  }, []);
-
   return (
     <aside className="flex h-screen w-72 flex-col bg-linear-to-b from-white to-slate-50/80 shadow-xl shadow-slate-200/50 overflow-hidden">
-      {/* Logo Section - Fixed height */}
       <div className="shrink-0 border-b border-slate-200/60 px-7 py-5">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-linear-to-br from-blue-600 to-blue-700 p-2 shadow-lg shadow-blue-200">
@@ -99,7 +93,6 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      {/* Quick Stats - Fixed height */}
       <div className="shrink-0 mx-5 mt-4 rounded-xl bg-linear-to-r from-blue-50 to-indigo-50 p-3.5">
         <div className="flex items-center justify-between">
           <div>
@@ -118,7 +111,6 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      {/* Navigation - Takes remaining space with overflow */}
       <nav className="flex-1 overflow-y-auto space-y-1 px-4 py-3 min-h-0">
         <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Main Menu
@@ -161,14 +153,22 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      {/* Bottom Section - Fixed height */}
       <div className="shrink-0 border-t border-slate-200/60 p-4">
-        {/* User Profile */}
         <div className="group relative mb-2.5 rounded-2xl bg-white p-2.5 shadow-sm transition-all hover:shadow-md">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-200">
-                <span className="text-base font-bold">A</span>
+                {userInfo?.image ? (
+                  <img
+                    src={userInfo.image.url}
+                    alt="User avatar"
+                    className="h-11 w-11 rounded-xl object-cover"
+                  />
+                ) : (
+                  <span className="text-base font-bold">
+                    {userInfo?.name.substring(0, 2)}
+                  </span>
+                )}
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500"></div>
             </div>

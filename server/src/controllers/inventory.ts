@@ -185,7 +185,7 @@ export const getBranchInventory = async (req: Request, res: Response) => {
     const inventory = await Promise.all(
       stocks.map(async (stock) => {
         const product = await Product.findById(stock.productId).select(
-          "name sku category image",
+          "name sku category image price status",
         );
         return { ...stock, product };
       }),

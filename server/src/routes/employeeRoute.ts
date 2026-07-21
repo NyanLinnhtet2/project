@@ -10,12 +10,17 @@ import {
   updateEmployeeStatus,
   getManagersForDropdown,
 } from "../controllers/user";
+import {
+  requestEmployeeStatusChange,
+  getEmployeeStatusChangeRequests,
+  approveEmployeeStatusChangeRequest,
+  rejectEmployeeStatusChangeRequest,
+} from "../controllers/employeeStatusRequest";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { allowRoles } from "../middleware/roleMiddleware";
 
 const router = express.Router();
 
-// Public routes (Admin & Manager can view)
 router.get("/", authMiddleware, allowRoles("admin", "manager"), getEmployees);
 router.get(
   "/stats",
@@ -29,6 +34,31 @@ router.get(
   authMiddleware,
   allowRoles("admin"),
   getManagersForDropdown,
+);
+
+router.post(
+  "/status-request",
+  authMiddleware,
+  allowRoles("manager", "admin"),
+  requestEmployeeStatusChange,
+);
+router.get(
+  "/status-requests",
+  authMiddleware,
+  allowRoles("admin", "manager"),
+  getEmployeeStatusChangeRequests,
+);
+router.post(
+  "/status-request/:id/approve",
+  authMiddleware,
+  allowRoles("admin"),
+  approveEmployeeStatusChangeRequest,
+);
+router.post(
+  "/status-request/:id/reject",
+  authMiddleware,
+  allowRoles("admin"),
+  rejectEmployeeStatusChangeRequest,
 );
 
 router.get(

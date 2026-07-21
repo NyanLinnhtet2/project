@@ -15,15 +15,25 @@ import { Product } from "./pages/admin/Product";
 import { CategoryBrand } from "./pages/admin/CategoryBrandManagement";
 import { ProtectedRoute } from "./routes/ProtectRoute";
 import { Employees } from "./pages/admin/Employees";
-import Orders from "./pages/Orders";
 import { Toaster } from "react-hot-toast";
 import { Inventory } from "./pages/admin/Inventory";
 import { AuthProvider } from "./context/AuthProvider";
 import { TransferStock } from "./pages/manager/transeferStock";
+
+//Manager
 import { ManagerDashboard } from "./pages/manager/Dashboard";
 import { ManagerReports } from "./pages/manager/ManagerReport";
 import { ManagerAnalytics } from "./pages/manager/ManagerAnalytics";
 import { ManagerInventory } from "./pages/manager/ManagerInventory";
+import { EmployeeStatusRequests } from "./pages/admin/EmployeeStatusRequests";
+import { ManagerEmployees } from "./pages/manager/ManagerEmployees";
+
+//Cashier
+import { CashierLayout } from "./layout/CashierLayout";
+import { NewSale } from "./pages/cashier/NewSale";
+import { MySales } from "./pages/cashier/MySales";
+import { ManagerSales } from "./pages/manager/ManagerSales";
+import { SalesOverview } from "./pages/admin/SalesOverview";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -95,10 +105,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "orders",
+        path: "sales",
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
-            <Orders />
+            <SalesOverview />
           </ProtectedRoute>
         ),
       },
@@ -108,6 +118,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <CategoryBrand />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "staff-requests",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <EmployeeStatusRequests />
           </ProtectedRoute>
         ),
       },
@@ -159,9 +177,46 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      // ❌ REMOVED: StockEditRequestsTab is admin-only (approve/reject).
-      // It already lives inside the "Stock Requests" tab of the admin
-      // Inventory.tsx page — it should never be routed under /manager/*.
+      {
+        path: "employees",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerEmployees />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "sales",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerSales />
+          </ProtectedRoute>
+        ),
+      },
+    ],
+  },
+
+  // Cashier Routes
+  {
+    path: "/cashier/*",
+    element: <CashierLayout />,
+    children: [
+      {
+        path: "new-sale",
+        element: (
+          <ProtectedRoute allowedRoles={["cashier"]}>
+            <NewSale />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "my-sales",
+        element: (
+          <ProtectedRoute allowedRoles={["cashier"]}>
+            <MySales />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 

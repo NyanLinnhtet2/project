@@ -1,4 +1,3 @@
-// src/types/employee.ts
 export interface Employee {
   _id: string;
   name: string;
@@ -55,4 +54,26 @@ export interface EmployeeStats {
     manager: number;
     cashier: number;
   };
+}
+export interface EmployeeStatusRequest {
+  _id: string;
+  employeeId: string;
+  employeeName: string;
+  branch: string;
+  currentStatus: "active" | "inactive" | "suspended";
+  requestedStatus: "active" | "inactive" | "suspended";
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  requestedBy: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  adminNote?: string;
+  createdAt: string;
+}
+
+export interface EmployeeStatusRequestPayload {
+  employeeId: string;
+  requestedStatus: "active" | "inactive" | "suspended";
+  reason: string;
+  requestedBy: string;
 }

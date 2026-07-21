@@ -1,7 +1,7 @@
-// src/pages/Login.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authServices";
+import { useAuth } from "../context/useAuth";
 import {
   Mail,
   Lock,
@@ -25,6 +25,7 @@ import toast from "react-hot-toast";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,18 +47,18 @@ export default function Login() {
 
     try {
       const response = await loginUser(email, password);
-      localStorage.setItem("userInfo", JSON.stringify(response.user));
+      login(response.user);
 
       toast.success(`${response.message}`);
 
       if (response.user.role === "admin") {
         navigate("/admin/overviews");
       } else if (response.user.role === "manager") {
-        navigate("/manager/dashboard");
+        navigate("/manager/overviews");
       } else if (response.user.role === "cashier") {
-        navigate("/cashier/dashboard");
+        navigate("/cashier/new-sale");
       } else {
-        navigate("/overviews");
+        navigate("/login");
       }
     } catch (err) {
       console.error("Login failed:", err);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { X, Loader2, PenSquare } from "lucide-react";
 import { requestStockEditApi } from "../../services/inventoryService";
@@ -19,20 +19,14 @@ interface EditStockRequestModalProps {
   onSuccess: () => void;
 }
 
-// ============================================================
-// Request Stock Edit Modal
-// A Manager fills this in to ask an Admin to change a product's
-// quantity. It POSTs to /inventory/stock-edit-request and creates
-// a PENDING StockEditRequest — it does NOT change stock directly.
-// ============================================================
-const EditStockRequestModal: React.FC<EditStockRequestModalProps> = ({
+const EditStockRequestModal = ({
   isOpen,
   onClose,
   branchId,
   stockItem,
   performedBy,
   onSuccess,
-}) => {
+}: EditStockRequestModalProps) => {
   const [requestedQuantity, setRequestedQuantity] = useState<number>(0);
   const [reason, setReason] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);

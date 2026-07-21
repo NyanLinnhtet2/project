@@ -57,7 +57,7 @@ router.post(
 router.get(
   "/branch/:branchId",
   authMiddleware,
-  allowRoles("admin", "manager"),
+  allowRoles("admin", "manager", "cashier"),
   getBranchInventory,
 );
 router.post(

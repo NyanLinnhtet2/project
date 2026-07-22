@@ -7,9 +7,30 @@ import { getCentralSaleSummaryModel } from "../models/CentralDB/saleSummary";
 import { getBranchConnection } from "../db/db";
 import { getSaleModel } from "../models/BranchDB/sale";
 import { getBranchStockModel } from "../models/BranchDB/stock";
+import { ISaleItem, ISale } from "../models/BranchDB/sale";
 
 const isValidObjectId = (id: string): boolean => {
   return mongoose.Types.ObjectId.isValid(id);
+};
+
+const ALLOWED_PAYMENT_METHODS: ISale["paymentMethod"][] = [
+  "cash",
+  "kbz_pay",
+  "wave_pay",
+  "card",
+  "other",
+];
+
+// req.body.paymentMethod arrives as a plain string — narrow it to the
+// schema's literal union (or fall back to "cash") instead of casting blindly.
+const resolvePaymentMethod = (value: unknown): ISale["paymentMethod"] => {
+  if (
+    typeof value === "string" &&
+    ALLOWED_PAYMENT_METHODS.includes(value as ISale["paymentMethod"])
+  ) {
+    return value as ISale["paymentMethod"];
+  }
+  return "cash";
 };
 
 // Same dual-purpose resolver used in inventory.ts — accepts either a real
@@ -23,17 +44,19 @@ const resolveBranch = async (branchIdOrName: string) => {
   return await Branch.findOne({ name: branchIdOrName });
 };
 
-type PaymentMethod = "cash" | "kbz_pay" | "wave_pay" | "card" | "other";
-
 // ============================================================
 // POST /api/sales  — Cashier (or Manager) records a sale
 // ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { items, paymentMethod } = req.body as {
-      items: { productId: string; quantity: number }[];
-      paymentMethod?: PaymentMethod;
-    };
+    const { items, paymentMethod, discountType, discountValue, taxRate } =
+      req.body as {
+        items: { productId: string; quantity: number }[];
+        paymentMethod?: string;
+        discountType?: string;
+        discountValue?: number;
+        taxRate?: number;
+      };
 
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -59,6 +82,30 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
           message: "Each item quantity must be greater than 0",
         });
       }
+    }
+
+    const resolvedDiscountType: "amount" | "percent" =
+      discountType === "percent" ? "percent" : "amount";
+    const resolvedDiscountValue = Number(discountValue) || 0;
+    const resolvedTaxRate = Number(taxRate) || 0;
+
+    if (resolvedDiscountValue < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Discount value cannot be negative",
+      });
+    }
+    if (resolvedDiscountType === "percent" && resolvedDiscountValue > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Discount percent cannot exceed 100",
+      });
+    }
+    if (resolvedTaxRate < 0 || resolvedTaxRate > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Tax rate must be between 0 and 100",
+      });
     }
 
     // req.user.branch stores the branch NAME (see authMiddleware)
@@ -106,10 +153,23 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    const totalAmount = saleItems.reduce(
+    const subtotal = saleItems.reduce(
       (sum, i) => sum + i.price * i.quantity,
       0,
     );
+
+    // Discount is resolved to a Ks amount and clamped so it can never exceed
+    // the subtotal (e.g. a stray 999999 flat-amount discount, or float drift
+    // on a percent discount) — total can never go negative.
+    let discountAmount =
+      resolvedDiscountType === "percent"
+        ? Math.round((subtotal * resolvedDiscountValue) / 100)
+        : Math.round(resolvedDiscountValue);
+    discountAmount = Math.min(Math.max(discountAmount, 0), subtotal);
+
+    const taxableAmount = subtotal - discountAmount;
+    const taxAmount = Math.round((taxableAmount * resolvedTaxRate) / 100);
+    const totalAmount = taxableAmount + taxAmount;
 
     // 2) Deduct stock for every item (up-front check above makes this safe)
     for (const item of items) {
@@ -127,8 +187,14 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       cashierId: req.user.id,
       cashierName: req.user.name,
       items: saleItems,
+      subtotal,
+      discountType: resolvedDiscountType,
+      discountValue: resolvedDiscountValue,
+      discountAmount,
+      taxRate: resolvedTaxRate,
+      taxAmount,
       totalAmount,
-      paymentMethod: paymentMethod || "cash",
+      paymentMethod: resolvePaymentMethod(paymentMethod),
       status: "completed",
     });
 
@@ -143,6 +209,9 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       cashierId: req.user.id,
       cashierName: req.user.name,
       itemCount: saleItems.length,
+      subtotal,
+      discountAmount,
+      taxAmount,
       totalAmount,
       paymentMethod: sale.paymentMethod,
       status: "completed",
@@ -173,9 +242,7 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(req.user.branch);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -204,10 +271,7 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/sales/branch — Manager: every sale in their own branch
 // (Admin can also call this with ?branchId= to inspect one branch)
 // ============================================================
-export const getBranchSales = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getBranchSales = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -220,9 +284,7 @@ export const getBranchSales = async (
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -254,10 +316,7 @@ export const getBranchSales = async (
 // GET /api/sales/overview — Admin: all branches, filterable by branchId
 // Reads from CentralDB SaleSummary (no need to touch every branch DB)
 // ============================================================
-export const getSalesOverview = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getSalesOverview = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { branchId, startDate, endDate } = req.query;
 
@@ -282,10 +341,7 @@ export const getSalesOverview = async (
       .reduce((sum, s) => sum + s.totalAmount, 0);
 
     // Per-branch breakdown — handy for an admin dashboard chart
-    const byBranch: Record<
-      string,
-      { branchName: string; total: number; count: number }
-    > = {};
+    const byBranch: Record<string, { branchName: string; total: number; count: number }> = {};
     for (const s of summaries) {
       if (s.status !== "completed") continue;
       const key = s.branchId.toString();
@@ -327,9 +383,7 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -338,14 +392,10 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Sale not found" });
+      return res.status(404).json({ success: false, message: "Sale not found" });
     }
     if (sale.status === "voided") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Sale is already voided" });
+      return res.status(400).json({ success: false, message: "Sale is already voided" });
     }
 
     // restock every item from the voided sale

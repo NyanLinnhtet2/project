@@ -4,11 +4,14 @@ import { centralDBConnection } from "../../db/db";
 export interface ISaleSummary extends Document {
   branchId: Types.ObjectId;
   branchName: string;
-  saleId: Types.ObjectId;
+  saleId: Types.ObjectId; // reference back to the Sale document inside that branch's DB
   saleNumber: string;
   cashierId: string;
   cashierName: string;
   itemCount: number;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
   totalAmount: number;
   paymentMethod: string;
   status: "completed" | "voided";
@@ -24,6 +27,9 @@ const saleSummarySchema = new Schema<ISaleSummary>(
     cashierId: { type: String, required: true },
     cashierName: { type: String, required: true },
     itemCount: { type: Number, required: true },
+    subtotal: { type: Number, required: true },
+    discountAmount: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     paymentMethod: { type: String, default: "cash" },
     status: {

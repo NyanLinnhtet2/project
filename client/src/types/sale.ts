@@ -2,6 +2,7 @@ import type { Product } from "./product";
 
 export type PaymentMethod = "cash" | "kbz_pay" | "wave_pay" | "card" | "other";
 export type SaleStatus = "completed" | "voided";
+export type DiscountType = "amount" | "percent";
 
 export interface SaleItem {
   productId: string;
@@ -16,6 +17,12 @@ export interface Sale {
   cashierId: string;
   cashierName: string;
   items: SaleItem[];
+  subtotal: number;
+  discountType: DiscountType;
+  discountValue: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
   totalAmount: number;
   paymentMethod: PaymentMethod;
   status: SaleStatus;
@@ -34,6 +41,9 @@ export interface CreateSaleItemPayload {
 export interface CreateSalePayload {
   items: CreateSaleItemPayload[];
   paymentMethod?: PaymentMethod;
+  discountType?: DiscountType;
+  discountValue?: number; // 10 for 10% or a flat Ks amount, depending on discountType
+  taxRate?: number; // percent
 }
 
 export interface SaleSummary {
@@ -45,6 +55,9 @@ export interface SaleSummary {
   cashierId: string;
   cashierName: string;
   itemCount: number;
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
   totalAmount: number;
   paymentMethod: PaymentMethod;
   status: SaleStatus;

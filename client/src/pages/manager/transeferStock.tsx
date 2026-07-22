@@ -14,8 +14,6 @@ import type { ErrorResponse } from "../../types/ErrorResponse";
 export const TransferStock = () => {
   const { userInfo } = useAuth();
 
-  // 🌟 ID သို့မဟုတ် Code အစား Branch Name ကိုသာ အသုံးပြုပါမည်
-  // User Type တွင် branch (ဆိုင်ခွဲအမည်) ပါဝင်ရန် လိုအပ်ပါသည်
   const currentBranchName = userInfo?.branch || "";
   const username = userInfo?.name || "Manager";
 
@@ -25,13 +23,11 @@ export const TransferStock = () => {
   const [stocks, setStocks] = useState<BranchStockInfo[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // 🌟 တောင်းဆိုမည့် Source ကိုလည်း Branch Name ဖြင့်သာ မှတ်သားပါမည်
   const [selectedSourceBranchName, setSelectedSourceBranchName] =
     useState<string>("");
   const [quantity, setQuantity] = useState<number>(0);
   const [maxAvailable, setMaxAvailable] = useState<number>(0);
 
-  // 🌟 Product များ ဆွဲယူခြင်း (မိမိ ဆိုင်ခွဲအမည်ကို ပေးပို့ပါမည်)
   const fetchProducts = async () => {
     try {
       const res = await getProductsForTransferApi(currentBranchName);
@@ -54,15 +50,15 @@ export const TransferStock = () => {
     }, 0);
 
     return () => clearTimeout(t);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBranchName]);
 
-  // 🌟 ဆိုင်ခွဲများမှ Stock အရေအတွက် ဆွဲယူခြင်း
   const fetchStocks = async (productId: string) => {
     setLoading(true);
     try {
       const res = await getProductStockAcrossBranchesApi(productId);
       if (res.success) {
-        // 🌟 Branch Name ဖြင့် တိုက်စစ်ပြီး မိမိဆိုင်ခွဲအမည် မဟုတ်သည်များကိုသာ ပြသပါမည်
         const otherBranches = res.data.filter(
           (b) => b.branchName !== currentBranchName,
         );
@@ -83,16 +79,16 @@ export const TransferStock = () => {
     }, 0);
 
     return () => clearTimeout(t);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProductId]);
 
-  // 🌟 ဆိုင်ခွဲပြောင်းလဲချိန်တွင် အများဆုံးတောင်းနိုင်သည့် အရေအတွက် သတ်မှတ်ခြင်း
   const handleBranchChange = (branchName: string) => {
     setSelectedSourceBranchName(branchName);
     const selected = stocks.find((s) => s.branchName === branchName);
     setMaxAvailable(selected ? selected.quantity : 0);
   };
 
-  // 🌟 Product ရွေးချယ်မှု ပြောင်းလဲခြင်း
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const targetId = e.target.value;
     setSelectedProductId(targetId);
@@ -119,7 +115,6 @@ export const TransferStock = () => {
     }
 
     try {
-      // 🌟 Backend သို့ ID အစား Branch Name များကိုသာ ပေးပို့ပါမည်
       const res = await createTransferRequestApi({
         fromBranch: selectedSourceBranchName,
         toBranch: currentBranchName,
@@ -147,7 +142,6 @@ export const TransferStock = () => {
 
       <div className="bg-white rounded-lg p-6 shadow-md max-w-2xl">
         <form onSubmit={handleSubmit}>
-          {/* Product ရွေးချယ်ရန် Dropdown */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Select Product to Request

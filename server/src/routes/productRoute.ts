@@ -12,9 +12,6 @@ import { allowRoles } from "../middleware/roleMiddleware";
 
 const router = express.Router();
 
-// IMPORTANT: Specific routes must come BEFORE dynamic routes
-
-// Get product stats - specific route
 router.get(
   "/stats",
   authMiddleware,

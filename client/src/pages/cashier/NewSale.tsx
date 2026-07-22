@@ -13,7 +13,7 @@ import { getBranchInventoryApi } from "../../services/inventoryService";
 import { createSaleApi } from "../../services/saleService";
 import type { Stock } from "../../types/inventory";
 import type { Product } from "../../types/product";
-import type { CartLine, PaymentMethod } from "../../types/sale";
+import type { CartLine, DiscountType, PaymentMethod } from "../../types/sale";
 import { useAuth } from "../../context/useAuth";
 
 interface StockWithProduct extends Stock {
@@ -55,6 +55,9 @@ export const NewSale: React.FC = () => {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [discountType, setDiscountType] = useState<DiscountType>("amount");
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [taxRate, setTaxRate] = useState<number>(0);
   const [checkingOut, setCheckingOut] = useState(false);
 
   const fetchInventory = async () => {
@@ -141,7 +144,20 @@ export const NewSale: React.FC = () => {
     setCart((prev) => prev.filter((c) => c.product._id !== productId));
   };
 
-  const total = cart.reduce((sum, c) => sum + c.product.price * c.quantity, 0);
+  const subtotal = cart.reduce(
+    (sum, c) => sum + c.product.price * c.quantity,
+    0,
+  );
+
+  const rawDiscount =
+    discountType === "percent"
+      ? (subtotal * discountValue) / 100
+      : discountValue;
+  const discountAmount = Math.min(Math.max(rawDiscount || 0, 0), subtotal);
+
+  const taxableAmount = subtotal - discountAmount;
+  const taxAmount = (taxableAmount * (taxRate || 0)) / 100;
+  const total = taxableAmount + taxAmount;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -156,11 +172,17 @@ export const NewSale: React.FC = () => {
           quantity: c.quantity,
         })),
         paymentMethod,
+        discountType,
+        discountValue,
+        taxRate,
       });
       if (res.success) {
         toast.success(`Sale ${res.data.saleNumber} recorded`);
         setCart([]);
         setPaymentMethod("cash");
+        setDiscountType("amount");
+        setDiscountValue(0);
+        setTaxRate(0);
         fetchInventory(); // stock just changed
       }
     } catch (error: unknown) {
@@ -210,11 +232,18 @@ export const NewSale: React.FC = () => {
                 const product = getProduct(stock);
                 if (!product) return null;
                 const inCart = cartQuantity(product._id);
+                const remaining = stock.quantity - inCart;
+                const isMaxed = remaining <= 0;
                 return (
                   <button
                     key={stock._id}
                     onClick={() => addToCart(stock)}
-                    className="relative rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50 active:scale-95"
+                    disabled={isMaxed}
+                    className={`relative rounded-xl border p-3 text-left transition active:scale-95 ${
+                      isMaxed
+                        ? "cursor-not-allowed border-slate-100 bg-slate-100 opacity-60"
+                        : "border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50"
+                    }`}
                   >
                     {inCart > 0 && (
                       <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white shadow z-10">
@@ -243,8 +272,16 @@ export const NewSale: React.FC = () => {
                       <span className="text-sm font-bold text-emerald-600">
                         {(product.price ?? 0).toLocaleString()} Ks
                       </span>
-                      <span className="text-xs text-slate-400">
-                        {stock.quantity} left
+                      <span
+                        className={`text-xs font-medium transition-colors ${
+                          remaining <= 0
+                            ? "text-red-500"
+                            : remaining <= 3
+                              ? "text-orange-500"
+                              : "text-slate-400"
+                        }`}
+                      >
+                        {remaining} left
                       </span>
                     </div>
                   </button>
@@ -333,11 +370,87 @@ export const NewSale: React.FC = () => {
             ))}
           </select>
 
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-500">Total</span>
-            <span className="text-2xl font-bold text-slate-800">
-              {total.toLocaleString()} Ks
-            </span>
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Discount
+              </label>
+              <div className="flex overflow-hidden rounded-xl border border-slate-200">
+                <input
+                  type="number"
+                  min={0}
+                  value={discountValue || ""}
+                  onChange={(e) =>
+                    setDiscountValue(Math.max(0, Number(e.target.value)))
+                  }
+                  placeholder="0"
+                  className="w-full min-w-0 px-3 py-2.5 text-sm focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDiscountType((t) =>
+                      t === "amount" ? "percent" : "amount",
+                    )
+                  }
+                  className="shrink-0 bg-slate-100 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-200"
+                  title="Toggle between flat amount and percent"
+                >
+                  {discountType === "percent" ? "%" : "Ks"}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Tax (%)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={taxRate || ""}
+                onChange={(e) =>
+                  setTaxRate(Math.min(100, Math.max(0, Number(e.target.value))))
+                }
+                placeholder="0"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="mb-4 space-y-1.5 rounded-xl bg-slate-50 p-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Subtotal</span>
+              <span className="font-medium text-slate-700">
+                {subtotal.toLocaleString()} Ks
+              </span>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">
+                  Discount
+                  {discountType === "percent" ? ` (${discountValue}%)` : ""}
+                </span>
+                <span className="font-medium text-red-500">
+                  -{discountAmount.toLocaleString()} Ks
+                </span>
+              </div>
+            )}
+            {taxAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Tax ({taxRate}%)</span>
+                <span className="font-medium text-slate-700">
+                  +{taxAmount.toLocaleString()} Ks
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+              <span className="text-sm font-medium text-slate-500">Total</span>
+              <span className="text-2xl font-bold text-slate-800">
+                {total.toLocaleString()} Ks
+              </span>
+            </div>
           </div>
 
           <button

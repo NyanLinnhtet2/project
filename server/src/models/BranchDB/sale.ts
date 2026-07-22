@@ -12,7 +12,13 @@ export interface ISale extends Document {
   cashierId: string; // CentralDB User _id (kept as string like other Branch models reference IDs across DBs)
   cashierName: string;
   items: ISaleItem[];
-  totalAmount: number;
+  subtotal: number; // sum of items before discount/tax
+  discountType: "amount" | "percent";
+  discountValue: number; // raw input (e.g. 10 for 10%, or 500 for a flat 500 Ks off)
+  discountAmount: number; // resolved Ks amount, always <= subtotal
+  taxRate: number; // percent, applied after discount
+  taxAmount: number; // resolved Ks amount
+  totalAmount: number; // subtotal - discountAmount + taxAmount
   paymentMethod: "cash" | "kbz_pay" | "wave_pay" | "card" | "other";
   status: "completed" | "voided";
   voidedReason?: string;
@@ -36,6 +42,16 @@ const saleSchema = new Schema<ISale>(
     cashierId: { type: String, required: true },
     cashierName: { type: String, required: true },
     items: { type: [saleItemSchema], required: true },
+    subtotal: { type: Number, required: true, min: 0 },
+    discountType: {
+      type: String,
+      enum: ["amount", "percent"],
+      default: "amount",
+    },
+    discountValue: { type: Number, default: 0, min: 0 },
+    discountAmount: { type: Number, default: 0, min: 0 },
+    taxRate: { type: Number, default: 0, min: 0 },
+    taxAmount: { type: Number, default: 0, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
     paymentMethod: {
       type: String,

@@ -6,10 +6,15 @@ import {
   Store,
   RefreshCw,
   DollarSign,
+  Eye,
+  X,
 } from "lucide-react";
-import { getSalesOverviewApi } from "../../services/saleService";
+import {
+  getSalesOverviewApi,
+  getSaleDetailApi,
+} from "../../services/saleService";
 import { getBranchesForDropdownApi } from "../../services/branchService";
-import type { BranchSalesBreakdown, SaleSummary } from "../../types/sale";
+import type { BranchSalesBreakdown, Sale, SaleSummary } from "../../types/sale";
 
 interface BranchOption {
   _id: string;
@@ -57,6 +62,165 @@ const StatusBadge: React.FC<{ status: SaleSummary["status"] }> = ({
   );
 };
 
+// ============================================================
+// Sale Detail Modal — what products were actually sold, plus
+// the discount/tax breakdown for that specific sale
+// ============================================================
+interface SaleDetailModalProps {
+  saleId: string;
+  branchId: string;
+  onClose: () => void;
+}
+
+const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
+  saleId,
+  branchId,
+  onClose,
+}) => {
+  const [sale, setSale] = useState<Sale | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const res = await getSaleDetailApi(saleId, branchId);
+        if (!cancelled && res.success) setSale(res.data);
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } } };
+        toast.error(
+          err.response?.data?.message ?? "Failed to load sale detail",
+        );
+        onClose();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchDetail();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saleId, branchId]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">
+              {sale?.saleNumber || "Sale Detail"}
+            </h2>
+            {sale && (
+              <p className="text-xs text-slate-400">
+                {new Date(sale.createdAt).toLocaleString()} · {sale.cashierName}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {loading ? (
+          <LoadingSpinner label="Loading sale..." />
+        ) : !sale ? (
+          <p className="py-12 text-center text-sm text-slate-400">
+            Sale not found
+          </p>
+        ) : (
+          <div className="px-6 py-4">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  <th className="py-2">Product</th>
+                  <th className="py-2 text-center">Qty</th>
+                  <th className="py-2 text-right">Price</th>
+                  <th className="py-2 text-right">Line Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sale.items.map((item, idx) => (
+                  <tr key={idx} className="border-b border-slate-50">
+                    <td className="py-2.5 text-slate-700">{item.name}</td>
+                    <td className="py-2.5 text-center text-slate-500">
+                      {item.quantity}
+                    </td>
+                    <td className="py-2.5 text-right text-slate-500">
+                      {item.price.toLocaleString()} Ks
+                    </td>
+                    <td className="py-2.5 text-right font-medium text-slate-700">
+                      {(item.price * item.quantity).toLocaleString()} Ks
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="mt-4 space-y-1.5 rounded-xl bg-slate-50 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500">Subtotal</span>
+                <span className="font-medium text-slate-700">
+                  {sale.subtotal.toLocaleString()} Ks
+                </span>
+              </div>
+              {sale.discountAmount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">
+                    Discount
+                    {sale.discountType === "percent"
+                      ? ` (${sale.discountValue}%)`
+                      : ""}
+                  </span>
+                  <span className="font-medium text-red-500">
+                    -{sale.discountAmount.toLocaleString()} Ks
+                  </span>
+                </div>
+              )}
+              {sale.taxAmount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500">Tax ({sale.taxRate}%)</span>
+                  <span className="font-medium text-slate-700">
+                    +{sale.taxAmount.toLocaleString()} Ks
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+                <span className="text-sm font-medium text-slate-500">
+                  Total
+                </span>
+                <span className="text-xl font-bold text-slate-800">
+                  {sale.totalAmount.toLocaleString()} Ks
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+              <span>Payment: {sale.paymentMethod.replace("_", " ")}</span>
+              <StatusBadge status={sale.status} />
+            </div>
+            {sale.approvedByName && (
+              <p className="mt-2 text-xs text-amber-600">
+                ⚠ Discount approved by manager: {sale.approvedByName}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const SalesOverview: React.FC = () => {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [branchId, setBranchId] = useState("");
@@ -68,12 +232,18 @@ export const SalesOverview: React.FC = () => {
   const [byBranch, setByBranch] = useState<BranchSalesBreakdown[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [selectedSale, setSelectedSale] = useState<{
+    id: string;
+    branchId: string;
+  } | null>(null);
+
   const fetchBranches = async () => {
     try {
       const res = await getBranchesForDropdownApi();
       if (res.success) setBranches(res.data);
-    } catch {
-      // dropdown is a nice-to-have; sales overview still works without it
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Failed to fetch Branches");
     }
   };
 
@@ -148,7 +318,7 @@ export const SalesOverview: React.FC = () => {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50">
           <div className="flex items-center gap-2">
-            <Store size={18} className="text-slate-400" />
+            <Store size={18} className="text-blue-600" />
             <label className="font-medium text-slate-700">Branch:</label>
           </div>
           <select
@@ -206,7 +376,9 @@ export const SalesOverview: React.FC = () => {
                 className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50 transition hover:shadow-md"
               >
                 <div className="flex items-center gap-2 text-slate-400">
-                  <Store size={16} />
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Store size={16} className="text-blue-600" />
+                  </div>
                   <span className="text-sm font-medium text-slate-600">
                     {b.branchName}
                   </span>
@@ -257,6 +429,12 @@ export const SalesOverview: React.FC = () => {
                         Items
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Subtotal
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Discount
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Total
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -265,6 +443,7 @@ export const SalesOverview: React.FC = () => {
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Time
                       </th>
+                      <th className="px-6 py-4"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -285,6 +464,18 @@ export const SalesOverview: React.FC = () => {
                         <td className="px-6 py-4 text-sm text-slate-600">
                           {s.itemCount}
                         </td>
+                        <td className="px-6 py-4 text-sm text-slate-500">
+                          {s.subtotal.toLocaleString()} Ks
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {s.discountAmount > 0 ? (
+                            <span className="font-medium text-red-500">
+                              -{s.discountAmount.toLocaleString()} Ks
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 font-semibold text-slate-900">
                           {s.totalAmount.toLocaleString()} Ks
                         </td>
@@ -293,6 +484,20 @@ export const SalesOverview: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-500">
                           {new Date(s.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() =>
+                              setSelectedSale({
+                                id: s.saleId,
+                                branchId: s.branchId,
+                              })
+                            }
+                            className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                          >
+                            <Eye size={12} />
+                            View
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -303,6 +508,14 @@ export const SalesOverview: React.FC = () => {
           )}
         </div>
       </div>
+
+      {selectedSale && (
+        <SaleDetailModal
+          saleId={selectedSale.id}
+          branchId={selectedSale.branchId}
+          onClose={() => setSelectedSale(null)}
+        />
+      )}
     </div>
   );
 };

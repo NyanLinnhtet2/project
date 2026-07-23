@@ -289,7 +289,9 @@ const ViewProductModal = ({
                       <span className="flex items-center gap-1.5">
                         <span
                           className="inline-block h-3 w-3 rounded-full border border-slate-300"
-                          style={{ backgroundColor: variant.color.toLowerCase() }}
+                          style={{
+                            backgroundColor: variant.color.toLowerCase(),
+                          }}
                         />
                         {variant.color}
                       </span>
@@ -358,7 +360,11 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
     onChange(newVariants);
   };
 
-  const updateVariant = (index: number, field: keyof ProductVariant, value: string) => {
+  const updateVariant = (
+    index: number,
+    field: keyof ProductVariant,
+    value: string,
+  ) => {
     const newVariants = [...variants];
     newVariants[index] = { ...newVariants[index], [field]: value };
     onChange(newVariants);
@@ -366,7 +372,20 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
 
   // Common sizes and colors for suggestions
   const commonSizes = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
-  const commonColors = ["Black", "White", "Red", "Blue", "Green", "Yellow", "Pink", "Purple", "Orange", "Gray", "Brown", "Navy"];
+  const commonColors = [
+    "Black",
+    "White",
+    "Red",
+    "Blue",
+    "Green",
+    "Yellow",
+    "Pink",
+    "Purple",
+    "Orange",
+    "Gray",
+    "Brown",
+    "Navy",
+  ];
 
   return (
     <div className="space-y-3">
@@ -385,11 +404,16 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
       </div>
 
       {variants.length === 0 ? (
-        <p className="text-sm text-slate-400">No variants added yet. Click "Add Variant" to create one.</p>
+        <p className="text-sm text-slate-400">
+          No variants added yet. Click "Add Variant" to create one.
+        </p>
       ) : (
         <div className="space-y-3">
           {variants.map((variant, index) => (
-            <div key={index} className="relative rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <div
+              key={index}
+              className="relative rounded-xl border border-slate-200 bg-slate-50/50 p-4"
+            >
               <button
                 type="button"
                 onClick={() => removeVariant(index)}
@@ -397,15 +421,19 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
               >
                 <MinusCircle size={18} />
               </button>
-              
+
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">Size</label>
+                  <label className="block text-xs font-medium text-slate-600">
+                    Size
+                  </label>
                   <div className="mt-1 flex gap-2">
                     <input
                       type="text"
                       value={variant.size || ""}
-                      onChange={(e) => updateVariant(index, "size", e.target.value)}
+                      onChange={(e) =>
+                        updateVariant(index, "size", e.target.value)
+                      }
                       placeholder="e.g., M, L, XL"
                       className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
                       list={`sizes-${index}`}
@@ -418,12 +446,16 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">Color</label>
+                  <label className="block text-xs font-medium text-slate-600">
+                    Color
+                  </label>
                   <div className="mt-1 flex gap-2">
                     <input
                       type="text"
                       value={variant.color || ""}
-                      onChange={(e) => updateVariant(index, "color", e.target.value)}
+                      onChange={(e) =>
+                        updateVariant(index, "color", e.target.value)
+                      }
                       placeholder="e.g., Red, Blue"
                       className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-500"
                       list={`colors-${index}`}
@@ -437,7 +469,9 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
                       <div className="flex items-center">
                         <span
                           className="inline-block h-8 w-8 rounded-lg border border-slate-200"
-                          style={{ backgroundColor: variant.color.toLowerCase() }}
+                          style={{
+                            backgroundColor: variant.color.toLowerCase(),
+                          }}
                         />
                       </div>
                     )}
@@ -621,6 +655,8 @@ export const Product = () => {
     }, 0);
 
     return () => clearTimeout(t);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1295,7 +1331,7 @@ export const Product = () => {
                           key={idx}
                           className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600"
                         >
-                          {variant.size && variant.color 
+                          {variant.size && variant.color
                             ? `${variant.size}/${variant.color}`
                             : variant.size || variant.color}
                         </span>
@@ -1310,7 +1346,7 @@ export const Product = () => {
 
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 truncate max-w-[120px]">
+                      <span className="text-xs text-slate-500 truncate max-w-120px">
                         {product.shopName || "No shop"}
                       </span>
                     </div>
@@ -1438,7 +1474,7 @@ export const Product = () => {
                                 key={idx}
                                 className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                               >
-                                {variant.size && variant.color 
+                                {variant.size && variant.color
                                   ? `${variant.size}/${variant.color}`
                                   : variant.size || variant.color}
                               </span>
@@ -1728,9 +1764,9 @@ export const Product = () => {
               </div>
 
               <div>
-                <VariantForm 
-                  variants={formData.variants} 
-                  onChange={handleVariantsChange} 
+                <VariantForm
+                  variants={formData.variants}
+                  onChange={handleVariantsChange}
                 />
               </div>
 
@@ -2018,9 +2054,9 @@ export const Product = () => {
               </div>
 
               <div>
-                <VariantForm 
-                  variants={formData.variants} 
-                  onChange={handleVariantsChange} 
+                <VariantForm
+                  variants={formData.variants}
+                  onChange={handleVariantsChange}
                 />
               </div>
 

@@ -31,7 +31,19 @@ export const getSalesOverviewApi = async (params?: GetSalesOverviewParams) => {
 };
 
 // Manager/Admin: void a sale and restock its items
-export const voidSaleApi = async (id: string, reason?: string, branchId?: string) => {
+export const voidSaleApi = async (
+  id: string,
+  reason?: string,
+  branchId?: string,
+) => {
   const response = await api.post(`/sales/${id}/void`, { reason, branchId });
+  return response.data;
+};
+
+// Sale detail by ID
+export const getSaleDetailApi = async (id: string, branchId?: string) => {
+  const response = await api.get(`/sales/${id}`, {
+    params: branchId ? { branchId } : {},
+  });
   return response.data;
 };

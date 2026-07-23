@@ -13,6 +13,7 @@ import {
   Tag,
   Bell,
   HeadphonesIcon,
+  Sparkles,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { toast } from "react-hot-toast";
@@ -30,7 +31,7 @@ const menus = [
     icon: GitBranch,
   },
   {
-    title: "Manage Staff",
+    title: "Employees",
     path: "/admin/employees",
     icon: User,
   },
@@ -59,11 +60,12 @@ const menus = [
     path: "/admin/sales",
     icon: ShoppingCart,
   },
+  { title: "Discount Events", path: "/admin/discount-events", icon: Sparkles },
 ];
 
 export const Sidebar = () => {
   const navigate = useNavigate();
-  const { userInfo,logout } = useAuth();
+  const { userInfo, logout } = useAuth();
 
   const logutHandler = async () => {
     try {

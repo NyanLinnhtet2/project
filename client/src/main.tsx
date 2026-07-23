@@ -34,6 +34,7 @@ import { NewSale } from "./pages/cashier/NewSale";
 import { MySales } from "./pages/cashier/MySales";
 import { ManagerSales } from "./pages/manager/ManagerSales";
 import { SalesOverview } from "./pages/admin/SalesOverview";
+import { DiscountEvents } from "./pages/admin/DiscountEvent";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -126,6 +127,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <EmployeeStatusRequests />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "discount-events",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <DiscountEvents />
           </ProtectedRoute>
         ),
       },

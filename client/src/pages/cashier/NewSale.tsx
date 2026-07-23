@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getBranchInventoryApi } from "../../services/inventoryService";
 import { createSaleApi } from "../../services/saleService";
+import { getEffectiveDiscountCapApi } from "../../services/discountEventService";
 import type { Stock } from "../../types/inventory";
 import type { Product } from "../../types/product";
 import type { CartLine, DiscountType, PaymentMethod } from "../../types/sale";
@@ -59,6 +60,12 @@ export const NewSale: React.FC = () => {
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [taxRate, setTaxRate] = useState<number>(0);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [discountCapPercent, setDiscountCapPercent] = useState<
+    number | undefined
+  >(undefined);
+  const [discountCapEventName, setDiscountCapEventName] = useState<
+    string | undefined
+  >(undefined);
 
   const fetchInventory = async () => {
     if (!branchId) return;
@@ -74,8 +81,27 @@ export const NewSale: React.FC = () => {
     }
   };
 
+  const fetchDiscountCap = async () => {
+    try {
+      const res = await getEffectiveDiscountCapApi();
+      if (res.success) {
+        setDiscountCapPercent(res.data.capPercent);
+        setDiscountCapEventName(
+          res.data.source === "event" ? res.data.eventName : undefined,
+        );
+      }
+    } catch {
+      // non-fatal — checkout still works, backend re-validates regardless;
+      // the UI just won't show a cap hint until this succeeds
+    }
+  };
+
   useEffect(() => {
-    const t = setTimeout(() => fetchInventory(), 0);
+    const t = setTimeout(() => {
+      fetchInventory();
+      fetchDiscountCap();
+    }, 0);
+
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
@@ -159,9 +185,26 @@ export const NewSale: React.FC = () => {
   const taxAmount = (taxableAmount * (taxRate || 0)) / 100;
   const total = taxableAmount + taxAmount;
 
-  const handleCheckout = async () => {
+  const effectiveDiscountPercent =
+    subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
+  const discountOverCap =
+    discountCapPercent !== undefined &&
+    effectiveDiscountPercent > discountCapPercent + 0.01;
+
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [managerEmail, setManagerEmail] = useState("");
+  const [managerPassword, setManagerPassword] = useState("");
+
+  const handleCheckout = async (managerOverride?: {
+    email: string;
+    password: string;
+  }) => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
+      return;
+    }
+    if (discountOverCap && !managerOverride) {
+      setShowApprovalModal(true);
       return;
     }
     setCheckingOut(true);
@@ -175,6 +218,7 @@ export const NewSale: React.FC = () => {
         discountType,
         discountValue,
         taxRate,
+        ...(managerOverride ? { managerOverride } : {}),
       });
       if (res.success) {
         toast.success(`Sale ${res.data.saleNumber} recorded`);
@@ -183,11 +227,17 @@ export const NewSale: React.FC = () => {
         setDiscountType("amount");
         setDiscountValue(0);
         setTaxRate(0);
+        setShowApprovalModal(false);
+        setManagerEmail("");
+        setManagerPassword("");
         fetchInventory(); // stock just changed
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message ?? "Checkout failed");
+      // wrong manager password — keep the modal open so they can retry,
+      // but clear the password field
+      if (managerOverride) setManagerPassword("");
     } finally {
       setCheckingOut(false);
     }
@@ -343,10 +393,7 @@ export const NewSale: React.FC = () => {
                     </button>
                   </div>
                   <span className="text-sm font-bold text-slate-700">
-                    {(
-                      (line.product.price ?? 0) * line.quantity
-                    ).toLocaleString()}{" "}
-                    Ks
+                    {((line.product.price ?? 0) * line.quantity).toLocaleString()} Ks
                   </span>
                 </div>
               </div>
@@ -374,8 +421,18 @@ export const NewSale: React.FC = () => {
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Discount
+                {discountCapPercent !== undefined && (
+                  <span className="ml-1 normal-case text-slate-400">
+                    (max {discountCapPercent}%
+                    {discountCapEventName ? ` — ${discountCapEventName}` : ""})
+                  </span>
+                )}
               </label>
-              <div className="flex overflow-hidden rounded-xl border border-slate-200">
+              <div
+                className={`flex overflow-hidden rounded-xl border ${
+                  discountOverCap ? "border-red-400" : "border-slate-200"
+                }`}
+              >
                 <input
                   type="number"
                   min={0}
@@ -386,19 +443,42 @@ export const NewSale: React.FC = () => {
                   placeholder="0"
                   className="w-full min-w-0 px-3 py-2.5 text-sm focus:outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDiscountType((t) =>
-                      t === "amount" ? "percent" : "amount",
-                    )
-                  }
-                  className="shrink-0 bg-slate-100 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-200"
-                  title="Toggle between flat amount and percent"
-                >
-                  {discountType === "percent" ? "%" : "Ks"}
-                </button>
+                <div className="flex shrink-0 border-l border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("amount")}
+                    className={`px-3 text-sm font-semibold transition-colors ${
+                      discountType === "amount"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    Ks
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("percent")}
+                    className={`px-3 text-sm font-semibold transition-colors ${
+                      discountType === "percent"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    %
+                  </button>
+                </div>
               </div>
+              {discountOverCap ? (
+                <p className="mt-1 text-xs font-medium text-red-500">
+                  Exceeds your {discountCapPercent}% limit
+                </p>
+              ) : discountValue > 0 ? (
+                <p className="mt-1 text-xs text-slate-400">
+                  {discountType === "percent"
+                    ? `${discountValue}% = ${discountAmount.toLocaleString()} Ks off`
+                    : `${discountValue.toLocaleString()} Ks flat off`}
+                </p>
+              ) : null}
             </div>
 
             <div>
@@ -411,7 +491,9 @@ export const NewSale: React.FC = () => {
                 max={100}
                 value={taxRate || ""}
                 onChange={(e) =>
-                  setTaxRate(Math.min(100, Math.max(0, Number(e.target.value))))
+                  setTaxRate(
+                    Math.min(100, Math.max(0, Number(e.target.value))),
+                  )
                 }
                 placeholder="0"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -446,7 +528,9 @@ export const NewSale: React.FC = () => {
               </div>
             )}
             <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
-              <span className="text-sm font-medium text-slate-500">Total</span>
+              <span className="text-sm font-medium text-slate-500">
+                Total
+              </span>
               <span className="text-2xl font-bold text-slate-800">
                 {total.toLocaleString()} Ks
               </span>
@@ -454,18 +538,89 @@ export const NewSale: React.FC = () => {
           </div>
 
           <button
-            onClick={handleCheckout}
+            onClick={() => handleCheckout()}
             disabled={cart.length === 0 || checkingOut}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-emerald-600 py-3.5 font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-semibold text-white shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
+              discountOverCap
+                ? "bg-linear-to-r from-amber-500 to-amber-600 shadow-amber-500/30 hover:from-amber-600 hover:to-amber-700"
+                : "bg-linear-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/30 hover:from-emerald-600 hover:to-emerald-700"
+            }`}
           >
             {checkingOut ? (
               <Loader2 className="h-5 w-5 animate-spin" />
+            ) : discountOverCap ? (
+              "Get Manager Approval"
             ) : (
               "Complete Sale"
             )}
           </button>
         </div>
       </div>
+
+      {showApprovalModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={() => !checkingOut && setShowApprovalModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-slate-800">
+              Manager Approval Needed
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              This discount is above your {discountCapPercent}% limit. Ask a
+              manager to enter their login to approve it.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <input
+                type="email"
+                value={managerEmail}
+                onChange={(e) => setManagerEmail(e.target.value)}
+                placeholder="Manager email"
+                autoComplete="off"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <input
+                type="password"
+                value={managerPassword}
+                onChange={(e) => setManagerPassword(e.target.value)}
+                placeholder="Manager password"
+                autoComplete="off"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                disabled={checkingOut}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  handleCheckout({
+                    email: managerEmail,
+                    password: managerPassword,
+                  })
+                }
+                disabled={!managerEmail || !managerPassword || checkingOut}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-emerald-600 py-2.5 text-sm font-semibold text-white hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50"
+              >
+                {checkingOut ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Approve & Complete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

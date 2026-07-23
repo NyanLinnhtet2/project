@@ -92,7 +92,7 @@ function Navbar() {
         <div className="hidden lg:flex items-center gap-3">
           {userInfo ? (
             <Link
-              to={`/${userInfo.role}/overviews`}
+              to={`/${userInfo.role}/${userInfo.role === "cashier" ? "new-sale" : "overviews"}`}
               className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-300 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
             >
               <div className="flex items-center gap-3">
@@ -169,7 +169,7 @@ function Navbar() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               {userInfo ? (
                 <Link
-                  to={`/${userInfo.role}/overviews`}
+                  to={`/${userInfo.role}/${userInfo.role === "cashier" ? "new-sale" : "overviews"}`}
                   className="group inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-300 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 transition-all hover:shadow-lg hover:shadow-blue-300 hover:scale-105 active:scale-95"
                 >
                   <div className="flex items-center gap-3">

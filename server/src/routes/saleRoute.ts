@@ -4,6 +4,7 @@ import {
   getMySales,
   getBranchSales,
   getSalesOverview,
+  getSaleDetail,
   voidSale,
 } from "../controllers/sale";
 import { authMiddleware } from "../middleware/authMiddleware";
@@ -36,6 +37,14 @@ router.get(
   authMiddleware,
   allowRoles("admin"),
   getSalesOverview,
+);
+
+// Manager/Admin/Cashier: full detail of one sale (line items). Admin passes ?branchId=
+router.get(
+  "/:id",
+  authMiddleware,
+  allowRoles("manager", "admin", "cashier"),
+  getSaleDetail,
 );
 
 // Manager/Admin: void a sale and restock its items

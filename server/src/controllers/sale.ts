@@ -1,16 +1,43 @@
 import { Response } from "express";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
 import { getCentralProductModel } from "../models/CentralDB/products";
 import { getCentralSaleSummaryModel } from "../models/CentralDB/saleSummary";
+import { getCentralUserModel } from "../models/CentralDB/user";
 import { getBranchConnection } from "../db/db";
 import { getSaleModel } from "../models/BranchDB/sale";
 import { getBranchStockModel } from "../models/BranchDB/stock";
 import { ISaleItem, ISale } from "../models/BranchDB/sale";
+import { getEffectiveDiscountCap } from "../utils/discountCap";
 
 const isValidObjectId = (id: string): boolean => {
   return mongoose.Types.ObjectId.isValid(id);
+};
+
+// Verifies a manager (or admin) can authorize an over-cap discount for this
+// branch. Returns the approver's identity on success, or null on any
+// failure (wrong password, wrong role, wrong branch, account not found) —
+// callers should treat every failure the same way (generic error) to avoid
+// leaking which part failed.
+const verifyManagerOverride = async (
+  email: string,
+  password: string,
+  branchName: string,
+): Promise<{ id: string; name: string } | null> => {
+  const CentralUser = getCentralUserModel();
+  const approver = await CentralUser.findOne({ email });
+  if (!approver || !approver.password) return null;
+  if (approver.status !== "active") return null;
+  if (approver.role !== "manager" && approver.role !== "admin") return null;
+  // A manager can only approve for their own branch; admin can approve anywhere
+  if (approver.role === "manager" && approver.branch !== branchName) return null;
+
+  const isMatch = await bcrypt.compare(password, approver.password);
+  if (!isMatch) return null;
+
+  return { id: approver._id.toString(), name: approver.name };
 };
 
 const ALLOWED_PAYMENT_METHODS: ISale["paymentMethod"][] = [
@@ -49,14 +76,21 @@ const resolveBranch = async (branchIdOrName: string) => {
 // ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { items, paymentMethod, discountType, discountValue, taxRate } =
-      req.body as {
-        items: { productId: string; quantity: number }[];
-        paymentMethod?: string;
-        discountType?: string;
-        discountValue?: number;
-        taxRate?: number;
-      };
+    const {
+      items,
+      paymentMethod,
+      discountType,
+      discountValue,
+      taxRate,
+      managerOverride,
+    } = req.body as {
+      items: { productId: string; quantity: number }[];
+      paymentMethod?: string;
+      discountType?: string;
+      discountValue?: number;
+      taxRate?: number;
+      managerOverride?: { email: string; password: string };
+    };
 
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -167,6 +201,45 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
         : Math.round(resolvedDiscountValue);
     discountAmount = Math.min(Math.max(discountAmount, 0), subtotal);
 
+    let approval: { id: string; name: string } | null = null;
+
+    if (subtotal > 0) {
+      const { capPercent, source, eventName } = await getEffectiveDiscountCap(
+        req.user.role,
+        branch._id,
+      );
+      const effectiveDiscountPercent = (discountAmount / subtotal) * 100;
+
+      if (effectiveDiscountPercent > capPercent + 0.01) {
+        // Over cap — a manager (or admin) can authorize this specific sale
+        if (managerOverride?.email && managerOverride?.password) {
+          approval = await verifyManagerOverride(
+            managerOverride.email,
+            managerOverride.password,
+            branch.name,
+          );
+          if (!approval) {
+            return res.status(401).json({
+              success: false,
+              message: "Invalid manager credentials",
+            });
+          }
+          // approved — fall through, cap does not apply to this sale
+        } else {
+          // small epsilon to absorb rounding, not to widen the real cap
+          const limitLabel =
+            source === "event"
+              ? `${capPercent}% (${eventName})`
+              : `${capPercent}%`;
+          return res.status(400).json({
+            success: false,
+            message: `Discount exceeds your limit of ${limitLabel} for this sale`,
+            requiresManagerApproval: true,
+          });
+        }
+      }
+    }
+
     const taxableAmount = subtotal - discountAmount;
     const taxAmount = Math.round((taxableAmount * resolvedTaxRate) / 100);
     const totalAmount = taxableAmount + taxAmount;
@@ -196,6 +269,9 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       totalAmount,
       paymentMethod: resolvePaymentMethod(paymentMethod),
       status: "completed",
+      ...(approval
+        ? { approvedBy: approval.id, approvedByName: approval.name }
+        : {}),
     });
 
     // 4) Dual-write a lightweight summary to CentralDB so Admin can filter
@@ -228,6 +304,57 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       success: false,
       message: error.message || "Internal Server Error",
     });
+  }
+};
+
+// ============================================================
+// GET /api/sales/:id — full sale with line items (for a
+// receipt view / "what did this sale contain" drill-down).
+// Admin: pass ?branchId= (SaleSummary rows carry it already).
+// Manager/Cashier: scoped to their own branch automatically.
+// ============================================================
+export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const id = req.params.id;
+    if (!id || typeof id !== "string" || !isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid Sale ID" });
+    }
+
+    const branchIdOrName =
+      req.user.role === "admin" && req.query.branchId
+        ? (req.query.branchId as string)
+        : req.user.branch;
+
+    const branch = await resolveBranch(branchIdOrName);
+    if (!branch) {
+      return res.status(404).json({ success: false, message: "Branch not found" });
+    }
+
+    const branchDb = getBranchConnection(branch.dbName);
+    const Sale = getSaleModel(branchDb);
+
+    const sale = await Sale.findById(id);
+    if (!sale) {
+      return res.status(404).json({ success: false, message: "Sale not found" });
+    }
+
+    // Cashiers may only drill into their own sales
+    if (req.user.role === "cashier" && sale.cashierId !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: sale,
+      branchName: branch.name,
+    });
+  } catch (error: any) {
+    console.error("❌ Get Sale Detail Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

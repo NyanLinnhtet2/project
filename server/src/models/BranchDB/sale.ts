@@ -22,6 +22,8 @@ export interface ISale extends Document {
   paymentMethod: "cash" | "kbz_pay" | "wave_pay" | "card" | "other";
   status: "completed" | "voided";
   voidedReason?: string;
+  approvedBy?: string; // CentralDB User _id of the manager/admin who authorized an over-cap discount
+  approvedByName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +66,8 @@ const saleSchema = new Schema<ISale>(
       default: "completed",
     },
     voidedReason: { type: String, default: "" },
+    approvedBy: { type: String },
+    approvedByName: { type: String },
   },
   { timestamps: true },
 );

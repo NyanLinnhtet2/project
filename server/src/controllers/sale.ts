@@ -1,43 +1,21 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
-import { getCentralProductModel } from "../models/CentralDB/products";
 import { getCentralSaleSummaryModel } from "../models/CentralDB/saleSummary";
-import { getCentralUserModel } from "../models/CentralDB/user";
 import { getBranchConnection } from "../db/db";
 import { getSaleModel } from "../models/BranchDB/sale";
 import { getBranchStockModel } from "../models/BranchDB/stock";
 import { ISaleItem, ISale } from "../models/BranchDB/sale";
 import { getEffectiveDiscountCap } from "../utils/discountCap";
+import {
+  priceAndValidateItems,
+  deductStockForItems,
+  computeDiscountAndTax,
+} from "../utils/salePricing";
 
 const isValidObjectId = (id: string): boolean => {
   return mongoose.Types.ObjectId.isValid(id);
-};
-
-// Verifies a manager (or admin) can authorize an over-cap discount for this
-// branch. Returns the approver's identity on success, or null on any
-// failure (wrong password, wrong role, wrong branch, account not found) —
-// callers should treat every failure the same way (generic error) to avoid
-// leaking which part failed.
-const verifyManagerOverride = async (
-  email: string,
-  password: string,
-  branchName: string,
-): Promise<{ id: string; name: string } | null> => {
-  const CentralUser = getCentralUserModel();
-  const approver = await CentralUser.findOne({ email });
-  if (!approver || !approver.password) return null;
-  if (approver.status !== "active") return null;
-  if (approver.role !== "manager" && approver.role !== "admin") return null;
-  // A manager can only approve for their own branch; admin can approve anywhere
-  if (approver.role === "manager" && approver.branch !== branchName) return null;
-
-  const isMatch = await bcrypt.compare(password, approver.password);
-  if (!isMatch) return null;
-
-  return { id: approver._id.toString(), name: approver.name };
 };
 
 const ALLOWED_PAYMENT_METHODS: ISale["paymentMethod"][] = [
@@ -76,21 +54,14 @@ const resolveBranch = async (branchIdOrName: string) => {
 // ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const {
-      items,
-      paymentMethod,
-      discountType,
-      discountValue,
-      taxRate,
-      managerOverride,
-    } = req.body as {
-      items: { productId: string; quantity: number }[];
-      paymentMethod?: string;
-      discountType?: string;
-      discountValue?: number;
-      taxRate?: number;
-      managerOverride?: { email: string; password: string };
-    };
+    const { items, paymentMethod, discountType, discountValue, taxRate } =
+      req.body as {
+        items: { productId: string; quantity: number }[];
+        paymentMethod?: string;
+        discountType?: string;
+        discountValue?: number;
+        taxRate?: number;
+      };
 
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -153,55 +124,23 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const branchDb = getBranchConnection(branch.dbName);
     const Sale = getSaleModel(branchDb);
-    const Stock = getBranchStockModel(branchDb);
-    const Product = getCentralProductModel();
 
-    // 1) Price snapshot from CentralDB + stock availability check for every item
-    //    (checked up-front so we don't deduct half the cart before failing)
-    const saleItems = [];
-    for (const item of items) {
-      const productData = await Product.findById(item.productId);
-      if (!productData) {
-        return res.status(404).json({
-          success: false,
-          message: `Product not found: ${item.productId}`,
-        });
-      }
-
-      const stock = await Stock.findOne({
-        productId: new mongoose.Types.ObjectId(item.productId),
-      });
-
-      if (!stock || stock.quantity < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Not enough stock for "${productData.name}". Available: ${stock?.quantity ?? 0}`,
-        });
-      }
-
-      saleItems.push({
-        productId: new mongoose.Types.ObjectId(item.productId),
-        name: productData.name,
-        quantity: item.quantity,
-        price: productData.price,
-      });
+    // 1) Price snapshot from CentralDB + stock availability check for every
+    //    item (checked up-front so we don't deduct half the cart before failing)
+    const priced = await priceAndValidateItems(items, branchDb);
+    if (!priced.ok) {
+      return res
+        .status(priced.status)
+        .json({ success: false, message: priced.message });
     }
-
-    const subtotal = saleItems.reduce(
-      (sum, i) => sum + i.price * i.quantity,
-      0,
+    const saleItems = priced.items;
+    const { discountAmount, taxAmount, totalAmount } = computeDiscountAndTax(
+      priced.subtotal,
+      resolvedDiscountType,
+      resolvedDiscountValue,
+      resolvedTaxRate,
     );
-
-    // Discount is resolved to a Ks amount and clamped so it can never exceed
-    // the subtotal (e.g. a stray 999999 flat-amount discount, or float drift
-    // on a percent discount) — total can never go negative.
-    let discountAmount =
-      resolvedDiscountType === "percent"
-        ? Math.round((subtotal * resolvedDiscountValue) / 100)
-        : Math.round(resolvedDiscountValue);
-    discountAmount = Math.min(Math.max(discountAmount, 0), subtotal);
-
-    let approval: { id: string; name: string } | null = null;
+    const subtotal = priced.subtotal;
 
     if (subtotal > 0) {
       const { capPercent, source, eventName } = await getEffectiveDiscountCap(
@@ -211,46 +150,24 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       const effectiveDiscountPercent = (discountAmount / subtotal) * 100;
 
       if (effectiveDiscountPercent > capPercent + 0.01) {
-        // Over cap — a manager (or admin) can authorize this specific sale
-        if (managerOverride?.email && managerOverride?.password) {
-          approval = await verifyManagerOverride(
-            managerOverride.email,
-            managerOverride.password,
-            branch.name,
-          );
-          if (!approval) {
-            return res.status(401).json({
-              success: false,
-              message: "Invalid manager credentials",
-            });
-          }
-          // approved — fall through, cap does not apply to this sale
-        } else {
-          // small epsilon to absorb rounding, not to widen the real cap
-          const limitLabel =
-            source === "event"
-              ? `${capPercent}% (${eventName})`
-              : `${capPercent}%`;
-          return res.status(400).json({
-            success: false,
-            message: `Discount exceeds your limit of ${limitLabel} for this sale`,
-            requiresManagerApproval: true,
-          });
-        }
+        // Over cap — this can't go through as a direct sale. The frontend
+        // should submit a POST /api/discount-approval-requests instead,
+        // which routes it to a manager or admin for approval (see
+        // controllers/discountApprovalRequest.ts).
+        const limitLabel =
+          source === "event"
+            ? `${capPercent}% (${eventName})`
+            : `${capPercent}%`;
+        return res.status(400).json({
+          success: false,
+          message: `Discount exceeds your limit of ${limitLabel} for this sale`,
+          requiresApproval: true,
+        });
       }
     }
 
-    const taxableAmount = subtotal - discountAmount;
-    const taxAmount = Math.round((taxableAmount * resolvedTaxRate) / 100);
-    const totalAmount = taxableAmount + taxAmount;
-
     // 2) Deduct stock for every item (up-front check above makes this safe)
-    for (const item of items) {
-      await Stock.updateOne(
-        { productId: new mongoose.Types.ObjectId(item.productId) },
-        { $inc: { quantity: -item.quantity } },
-      );
-    }
+    await deductStockForItems(saleItems, branchDb);
 
     // 3) Write the Sale — BranchDB is the source of truth
     const saleNumber = `SALE-${branch.code}-${Date.now()}`;
@@ -269,9 +186,6 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       totalAmount,
       paymentMethod: resolvePaymentMethod(paymentMethod),
       status: "completed",
-      ...(approval
-        ? { approvedBy: approval.id, approvedByName: approval.name }
-        : {}),
     });
 
     // 4) Dual-write a lightweight summary to CentralDB so Admin can filter
@@ -313,7 +227,10 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
 // Admin: pass ?branchId= (SaleSummary rows carry it already).
 // Manager/Cashier: scoped to their own branch automatically.
 // ============================================================
-export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) => {
+export const getSaleDetail = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -321,7 +238,9 @@ export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) =>
 
     const id = req.params.id;
     if (!id || typeof id !== "string" || !isValidObjectId(id)) {
-      return res.status(400).json({ success: false, message: "Invalid Sale ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Sale ID" });
     }
 
     const branchIdOrName =
@@ -331,7 +250,9 @@ export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) =>
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -339,7 +260,9 @@ export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) =>
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
     }
 
     // Cashiers may only drill into their own sales
@@ -369,7 +292,9 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(req.user.branch);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -398,7 +323,10 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/sales/branch — Manager: every sale in their own branch
 // (Admin can also call this with ?branchId= to inspect one branch)
 // ============================================================
-export const getBranchSales = async (req: AuthenticatedRequest, res: Response) => {
+export const getBranchSales = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -411,7 +339,9 @@ export const getBranchSales = async (req: AuthenticatedRequest, res: Response) =
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -443,7 +373,10 @@ export const getBranchSales = async (req: AuthenticatedRequest, res: Response) =
 // GET /api/sales/overview — Admin: all branches, filterable by branchId
 // Reads from CentralDB SaleSummary (no need to touch every branch DB)
 // ============================================================
-export const getSalesOverview = async (req: AuthenticatedRequest, res: Response) => {
+export const getSalesOverview = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
     const { branchId, startDate, endDate } = req.query;
 
@@ -468,7 +401,10 @@ export const getSalesOverview = async (req: AuthenticatedRequest, res: Response)
       .reduce((sum, s) => sum + s.totalAmount, 0);
 
     // Per-branch breakdown — handy for an admin dashboard chart
-    const byBranch: Record<string, { branchName: string; total: number; count: number }> = {};
+    const byBranch: Record<
+      string,
+      { branchName: string; total: number; count: number }
+    > = {};
     for (const s of summaries) {
       if (s.status !== "completed") continue;
       const key = s.branchId.toString();
@@ -510,7 +446,9 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -519,10 +457,14 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
     }
     if (sale.status === "voided") {
-      return res.status(400).json({ success: false, message: "Sale is already voided" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Sale is already voided" });
     }
 
     // restock every item from the voided sale

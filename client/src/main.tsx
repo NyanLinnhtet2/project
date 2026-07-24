@@ -35,6 +35,8 @@ import { MySales } from "./pages/cashier/MySales";
 import { ManagerSales } from "./pages/manager/ManagerSales";
 import { SalesOverview } from "./pages/admin/SalesOverview";
 import { DiscountEvents } from "./pages/admin/DiscountEvent";
+import { ManagerApprovals } from "./pages/manager/ManagerApproval";
+import { AdminApprovals } from "./pages/admin/AdminApproval";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -138,6 +140,14 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: "approvals",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminApprovals />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 
@@ -149,9 +159,9 @@ const router = createBrowserRouter([
       {
         path: "overviews",
         element: (
-          // <ProtectedRoute allowedRoles={["manager"]}>
-          <ManagerDashboard />
-          // </ProtectedRoute>
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerDashboard />
+          </ProtectedRoute>
         ),
       },
       {
@@ -199,6 +209,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["manager"]}>
             <ManagerSales />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "approvals",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerApprovals />
           </ProtectedRoute>
         ),
       },

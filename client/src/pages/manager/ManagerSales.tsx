@@ -61,6 +61,8 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
               <th className="py-2">Product</th>
+              <th className="py-2 text-center">Category</th>
+              <th className="py-2 text-center">Brand</th>
               <th className="py-2 text-center">Qty</th>
               <th className="py-2 text-right">Price</th>
               <th className="py-2 text-right">Line Total</th>
@@ -70,6 +72,12 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
             {sale.items.map((item, idx) => (
               <tr key={idx} className="border-b border-slate-50">
                 <td className="py-2.5 text-slate-700">{item.name}</td>
+                <td className="py-2.5 text-center text-slate-500">
+                  {item.category || item.brand ? item.category : "No Category"}
+                </td>
+                <td className="py-2.5 text-center text-slate-500">
+                  {item.category || item.brand ? item.brand : "No Brand"}
+                </td>
                 <td className="py-2.5 text-center text-slate-500">
                   {item.quantity}
                 </td>
@@ -160,10 +168,7 @@ export const ManagerSales: React.FC = () => {
   };
 
   React.useEffect(() => {
-    const t = setTimeout(() => {
-      fetchSales();
-    }, 0);
-
+    const t = setTimeout(() => fetchSales(), 0);
     return () => clearTimeout(t);
   }, []);
 

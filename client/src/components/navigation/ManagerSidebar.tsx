@@ -14,6 +14,7 @@ import {
   HelpCircle,
   ChevronRight,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { useAuth } from "../../context/useAuth";
@@ -54,6 +55,11 @@ const menus = [
     title: "Analytics",
     path: "/manager/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "Discount Approvals",
+    path: "/manager/approvals",
+    icon: Clock,
   },
 ];
 

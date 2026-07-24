@@ -7,6 +7,8 @@ export type DiscountType = "amount" | "percent";
 export interface SaleItem {
   productId: string;
   name: string;
+  category?: string;
+  brand?: string;
   quantity: number;
   price: number;
 }

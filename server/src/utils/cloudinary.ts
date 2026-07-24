@@ -1,4 +1,3 @@
-// src/services/cloudinaryService.ts
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
 
@@ -26,7 +25,6 @@ export const validateImageSize = (base64String: string) => {
 
 export const uploadSingleImage = async (image: string, folder_name: string) => {
   try {
-
     validateImageSize(image);
 
     const response = await cloudinary.uploader.upload(image, {
@@ -59,7 +57,6 @@ export const updateImage = async (
   oldPublicId?: string,
 ) => {
   try {
-
     validateImageSize(image);
 
     if (oldPublicId) {

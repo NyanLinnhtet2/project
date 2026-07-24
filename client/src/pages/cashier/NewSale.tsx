@@ -8,13 +8,21 @@ import {
   ShoppingCart,
   Loader2,
   PackageX,
+  Clock,
+  X,
 } from "lucide-react";
 import { getBranchInventoryApi } from "../../services/inventoryService";
 import { createSaleApi } from "../../services/saleService";
 import { getEffectiveDiscountCapApi } from "../../services/discountEventService";
+import {
+  createDiscountApprovalRequestApi,
+  getMyLatestApprovalRequestApi,
+  cancelApprovalRequestApi,
+} from "../../services/discountApprovalService";
 import type { Stock } from "../../types/inventory";
 import type { Product } from "../../types/product";
 import type { CartLine, DiscountType, PaymentMethod } from "../../types/sale";
+import type { DiscountApprovalRequest } from "../../types/discountApprovalRequest";
 import { useAuth } from "../../context/useAuth";
 
 interface StockWithProduct extends Stock {
@@ -191,35 +199,46 @@ export const NewSale: React.FC = () => {
     discountCapPercent !== undefined &&
     effectiveDiscountPercent > discountCapPercent + 0.01;
 
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [managerEmail, setManagerEmail] = useState("");
-  const [managerPassword, setManagerPassword] = useState("");
+  const [pendingRequest, setPendingRequest] =
+    useState<DiscountApprovalRequest | null>(null);
 
-  const handleCheckout = async (managerOverride?: {
-    email: string;
-    password: string;
-  }) => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
       return;
     }
-    if (discountOverCap && !managerOverride) {
-      setShowApprovalModal(true);
+
+    const payload = {
+      items: cart.map((c) => ({
+        productId: c.product._id,
+        quantity: c.quantity,
+      })),
+      paymentMethod,
+      discountType,
+      discountValue,
+      taxRate,
+    };
+
+    if (discountOverCap) {
+      setCheckingOut(true);
+      try {
+        const res = await createDiscountApprovalRequestApi(payload);
+        if (res.success) {
+          setPendingRequest(res.data);
+          toast.success("Approval request sent");
+        }
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } } };
+        toast.error(err.response?.data?.message ?? "Failed to send request");
+      } finally {
+        setCheckingOut(false);
+      }
       return;
     }
+
     setCheckingOut(true);
     try {
-      const res = await createSaleApi({
-        items: cart.map((c) => ({
-          productId: c.product._id,
-          quantity: c.quantity,
-        })),
-        paymentMethod,
-        discountType,
-        discountValue,
-        taxRate,
-        ...(managerOverride ? { managerOverride } : {}),
-      });
+      const res = await createSaleApi(payload);
       if (res.success) {
         toast.success(`Sale ${res.data.saleNumber} recorded`);
         setCart([]);
@@ -227,21 +246,73 @@ export const NewSale: React.FC = () => {
         setDiscountType("amount");
         setDiscountValue(0);
         setTaxRate(0);
-        setShowApprovalModal(false);
-        setManagerEmail("");
-        setManagerPassword("");
         fetchInventory(); // stock just changed
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message ?? "Checkout failed");
-      // wrong manager password — keep the modal open so they can retry,
-      // but clear the password field
-      if (managerOverride) setManagerPassword("");
     } finally {
       setCheckingOut(false);
     }
   };
+
+  const handleCancelRequest = async () => {
+    if (!pendingRequest) return;
+    try {
+      await cancelApprovalRequestApi(pendingRequest._id);
+      toast("Request cancelled");
+    } catch {
+      // best-effort — it may have already resolved server-side, which the
+      // next poll tick or the current state will reflect either way
+    } finally {
+      setPendingRequest(null);
+      fetchInventory();
+    }
+  };
+
+  // Poll while a request is pending — no websockets needed for this volume
+  useEffect(() => {
+    if (!pendingRequest || pendingRequest.status !== "pending") return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getMyLatestApprovalRequestApi();
+        if (res.success && res.data && res.data._id === pendingRequest._id) {
+          setPendingRequest(res.data);
+        }
+      } catch {
+        // transient poll failure — try again next tick
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [pendingRequest]);
+
+  // React once the request leaves "pending"
+  useEffect(() => {
+    if (!pendingRequest || pendingRequest.status === "pending") return;
+    const t = setTimeout(() => {
+      if (pendingRequest.status === "approved") {
+        toast.success("Approved — sale recorded");
+        setCart([]);
+        setPaymentMethod("cash");
+        setDiscountType("amount");
+        setDiscountValue(0);
+        setTaxRate(0);
+      } else if (pendingRequest.status === "rejected") {
+        toast.error(
+          pendingRequest.reviewNote
+            ? `Rejected: ${pendingRequest.reviewNote}`
+            : "Request rejected",
+        );
+      } else if (pendingRequest.status === "expired") {
+        toast.error("Request expired — please try again");
+      }
+      fetchInventory();
+      setPendingRequest(null);
+    }, 0);
+
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRequest?.status]);
 
   return (
     <div className="flex h-full gap-6">
@@ -393,7 +464,10 @@ export const NewSale: React.FC = () => {
                     </button>
                   </div>
                   <span className="text-sm font-bold text-slate-700">
-                    {((line.product.price ?? 0) * line.quantity).toLocaleString()} Ks
+                    {(
+                      (line.product.price ?? 0) * line.quantity
+                    ).toLocaleString()}{" "}
+                    Ks
                   </span>
                 </div>
               </div>
@@ -491,9 +565,7 @@ export const NewSale: React.FC = () => {
                 max={100}
                 value={taxRate || ""}
                 onChange={(e) =>
-                  setTaxRate(
-                    Math.min(100, Math.max(0, Number(e.target.value))),
-                  )
+                  setTaxRate(Math.min(100, Math.max(0, Number(e.target.value))))
                 }
                 placeholder="0"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -528,9 +600,7 @@ export const NewSale: React.FC = () => {
               </div>
             )}
             <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
-              <span className="text-sm font-medium text-slate-500">
-                Total
-              </span>
+              <span className="text-sm font-medium text-slate-500">Total</span>
               <span className="text-2xl font-bold text-slate-800">
                 {total.toLocaleString()} Ks
               </span>
@@ -539,7 +609,7 @@ export const NewSale: React.FC = () => {
 
           <button
             onClick={() => handleCheckout()}
-            disabled={cart.length === 0 || checkingOut}
+            disabled={cart.length === 0 || checkingOut || !!pendingRequest}
             className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-semibold text-white shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
               discountOverCap
                 ? "bg-linear-to-r from-amber-500 to-amber-600 shadow-amber-500/30 hover:from-amber-600 hover:to-amber-700"
@@ -549,7 +619,7 @@ export const NewSale: React.FC = () => {
             {checkingOut ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : discountOverCap ? (
-              "Get Manager Approval"
+              "Request Approval"
             ) : (
               "Complete Sale"
             )}
@@ -557,67 +627,36 @@ export const NewSale: React.FC = () => {
         </div>
       </div>
 
-      {showApprovalModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-          onClick={() => !checkingOut && setShowApprovalModal(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-bold text-slate-800">
-              Manager Approval Needed
+      {pendingRequest && pendingRequest.status === "pending" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+              <Clock className="h-7 w-7 animate-pulse text-amber-600" />
+            </div>
+            <h2 className="mt-4 text-lg font-bold text-slate-800">
+              Waiting for{" "}
+              {pendingRequest.requiredApproverLevel === "admin"
+                ? "Admin"
+                : "Manager"}{" "}
+              Approval
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              This discount is above your {discountCapPercent}% limit. Ask a
-              manager to enter their login to approve it.
+              Your discount request has been sent. This screen will update
+              automatically once it's reviewed — items are held for you in the
+              meantime.
+            </p>
+            <p className="mt-3 text-xs text-slate-400">
+              Request #{pendingRequest._id.slice(-6).toUpperCase()} ·{" "}
+              {pendingRequest.totalAmount.toLocaleString()} Ks
             </p>
 
-            <div className="mt-4 space-y-3">
-              <input
-                type="email"
-                value={managerEmail}
-                onChange={(e) => setManagerEmail(e.target.value)}
-                placeholder="Manager email"
-                autoComplete="off"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <input
-                type="password"
-                value={managerPassword}
-                onChange={(e) => setManagerPassword(e.target.value)}
-                placeholder="Manager password"
-                autoComplete="off"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={() => setShowApprovalModal(false)}
-                disabled={checkingOut}
-                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  handleCheckout({
-                    email: managerEmail,
-                    password: managerPassword,
-                  })
-                }
-                disabled={!managerEmail || !managerPassword || checkingOut}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-emerald-600 py-2.5 text-sm font-semibold text-white hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50"
-              >
-                {checkingOut ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Approve & Complete"
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleCancelRequest}
+              className="mt-5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50"
+            >
+              <X size={14} />
+              Cancel Request
+            </button>
           </div>
         </div>
       )}

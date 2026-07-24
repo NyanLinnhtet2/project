@@ -3,6 +3,8 @@ import { Schema, Document, Connection, Model, Types } from "mongoose";
 export interface ISaleItem {
   productId: Types.ObjectId;
   name: string;
+  category: string; // sale-time snapshot, same reasoning as price
+  brand: string;
   quantity: number;
   price: number; // sale-time snapshot of Product.price (avoid retroactive changes if price updates later)
 }
@@ -32,6 +34,8 @@ const saleItemSchema = new Schema<ISaleItem>(
   {
     productId: { type: Schema.Types.ObjectId, required: true },
     name: { type: String, required: true },
+    category: { type: String, default: "" },
+    brand: { type: String, default: "" },
     quantity: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true, min: 0 },
   },

@@ -14,6 +14,7 @@ import {
   Bell,
   HeadphonesIcon,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { toast } from "react-hot-toast";
@@ -60,7 +61,16 @@ const menus = [
     path: "/admin/sales",
     icon: ShoppingCart,
   },
-  { title: "Discount Events", path: "/admin/discount-events", icon: Sparkles },
+  {
+    title: "Discount Events",
+    path: "/admin/discount-events",
+    icon: Sparkles,
+  },
+  {
+    title: "Discount Approvals",
+    path: "/admin/approvals",
+    icon: Clock,
+  },
 ];
 
 export const Sidebar = () => {

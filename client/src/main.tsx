@@ -37,6 +37,8 @@ import { SalesOverview } from "./pages/admin/SalesOverview";
 import { DiscountEvents } from "./pages/admin/DiscountEvent";
 import { ManagerApprovals } from "./pages/manager/ManagerApproval";
 import { AdminApprovals } from "./pages/admin/AdminApproval";
+import { AdminReturns } from "./pages/admin/AdminReturn";
+import { ManagerReturns } from "./pages/manager/ManagerReturn";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -148,6 +150,14 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: "returns",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminReturns />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 
@@ -217,6 +227,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["manager"]}>
             <ManagerApprovals />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "returns",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerReturns />
           </ProtectedRoute>
         ),
       },

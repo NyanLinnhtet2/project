@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
-  Receipt,
-  TrendingUp,
+  RotateCcw,
+  TrendingDown,
   Store,
   RefreshCw,
-  DollarSign,
   Eye,
   X,
+  Repeat,
 } from "lucide-react";
 import {
-  getSalesOverviewApi,
-  getSaleDetailApi,
-} from "../../services/saleService";
+  getReturnsOverviewApi,
+  getReturnDetailApi,
+} from "../../services/returnService";
 import { getBranchesForDropdownApi } from "../../services/branchService";
-import type { BranchSalesBreakdown, Sale, SaleSummary } from "../../types/sale";
+import type {
+  ReturnBranchBreakdown,
+  ReturnRecord,
+  ReturnSummary,
+} from "../../types/return";
 
 interface BranchOption {
   _id: string;
@@ -22,62 +26,45 @@ interface BranchOption {
 }
 
 const LoadingSpinner: React.FC<{ label?: string }> = ({
-  label = "Loading sales data...",
+  label = "Loading returns...",
 }) => (
   <div className="flex flex-col items-center justify-center py-16">
     <div className="relative">
       <div className="h-16 w-16 rounded-full border-4 border-slate-200"></div>
-      <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+      <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-amber-500 border-t-transparent animate-spin"></div>
     </div>
     <p className="mt-4 text-sm text-slate-500 font-medium">{label}</p>
   </div>
 );
 
-const StatusBadge: React.FC<{ status: SaleSummary["status"] }> = ({
-  status,
-}) => {
-  const getStatus = (s: string) => {
-    if (s === "completed") {
-      return {
-        label: "Completed",
-        className: "bg-emerald-100 text-emerald-700",
-        icon: "✅",
-      };
-    }
-    return {
-      label: "Voided",
-      className: "bg-red-100 text-red-700",
-      icon: "❌",
-    };
-  };
-
-  const statusInfo = getStatus(status);
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}
-    >
-      {statusInfo.icon} {statusInfo.label}
-    </span>
-  );
-};
+const TypeBadge: React.FC<{ type: ReturnSummary["type"] }> = ({ type }) => (
+  <span
+    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+      type === "exchange"
+        ? "bg-blue-100 text-blue-700"
+        : "bg-amber-100 text-amber-700"
+    }`}
+  >
+    {type === "exchange" ? <Repeat size={11} /> : <RotateCcw size={11} />}
+    {type === "exchange" ? "Exchange" : "Return"}
+  </span>
+);
 
 // ============================================================
-// Sale Detail Modal — what products were actually sold, plus
-// the discount/tax breakdown for that specific sale
+// Return Detail Modal — fetches full line items from the branch DB
 // ============================================================
-interface SaleDetailModalProps {
-  saleId: string;
+interface ReturnDetailModalProps {
+  returnId: string;
   branchId: string;
   onClose: () => void;
 }
 
-const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
-  saleId,
+const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({
+  returnId,
   branchId,
   onClose,
 }) => {
-  const [sale, setSale] = useState<Sale | null>(null);
+  const [returnDoc, setReturnDoc] = useState<ReturnRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -85,12 +72,12 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
     const fetchDetail = async () => {
       setLoading(true);
       try {
-        const res = await getSaleDetailApi(saleId, branchId);
-        if (!cancelled && res.success) setSale(res.data);
+        const res = await getReturnDetailApi(returnId, branchId);
+        if (!cancelled && res.success) setReturnDoc(res.data);
       } catch (error: unknown) {
         const err = error as { response?: { data?: { message?: string } } };
         toast.error(
-          err.response?.data?.message ?? "Failed to load sale detail",
+          err.response?.data?.message ?? "Failed to load return detail",
         );
         onClose();
       } finally {
@@ -102,7 +89,7 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saleId, branchId]);
+  }, [returnId, branchId]);
 
   return (
     <div
@@ -116,11 +103,12 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
         <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-slate-800">
-              {sale?.saleNumber || "Sale Detail"}
+              {returnDoc?.returnNumber || "Return Detail"}
             </h2>
-            {sale && (
+            {returnDoc && (
               <p className="text-xs text-slate-400">
-                {new Date(sale.createdAt).toLocaleString()} · {sale.cashierName}
+                {new Date(returnDoc.createdAt).toLocaleString()} · for{" "}
+                {returnDoc.originalSaleNumber}
               </p>
             )}
           </div>
@@ -133,97 +121,68 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
         </div>
 
         {loading ? (
-          <LoadingSpinner label="Loading sale..." />
-        ) : !sale ? (
+          <LoadingSpinner label="Loading return..." />
+        ) : !returnDoc ? (
           <p className="py-12 text-center text-sm text-slate-400">
-            Sale not found
+            Return not found
           </p>
         ) : (
           <div className="px-6 py-4">
+            <div className="mb-3">
+              <TypeBadge type={returnDoc.type} />
+            </div>
+
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                   <th className="py-2">Product</th>
-                  <th className="py-2 text-center">Category</th>
-                  <th className="py-2 text-center">Brand</th>
                   <th className="py-2 text-center">Qty</th>
-                  <th className="py-2 text-right">Price</th>
-                  <th className="py-2 text-right">Line Total</th>
+                  <th className="py-2 text-right">Refund</th>
                 </tr>
               </thead>
               <tbody>
-                {sale.items.map((item, idx) => (
+                {returnDoc.items.map((item, idx) => (
                   <tr key={idx} className="border-b border-slate-50">
-                    <td className="py-2.5 text-slate-700">{item.name}</td>
-                    <td className="py-2.5 text-center text-slate-500">
-                      {item.category || item.brand
-                        ? item.category
-                        : "No Category"}
-                    </td>
-                    <td className="py-2.5 text-center text-slate-500">
-                      {item.category || item.brand ? item.brand : "No Brand"}
+                    <td className="py-2.5 text-slate-700">
+                      {item.name}
+                      {(item.category || item.brand) && (
+                        <div className="text-xs text-slate-400">
+                          {[item.category, item.brand]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5 text-center text-slate-500">
                       {item.quantity}
                     </td>
-                    <td className="py-2.5 text-right text-slate-500">
-                      {item.price.toLocaleString()} Ks
-                    </td>
-                    <td className="py-2.5 text-right font-medium text-slate-700">
-                      {(item.price * item.quantity).toLocaleString()} Ks
+                    <td className="py-2.5 text-right font-medium text-amber-600">
+                      -{item.refundAmount.toLocaleString()} Ks
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            <div className="mt-4 space-y-1.5 rounded-xl bg-slate-50 p-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500">Subtotal</span>
-                <span className="font-medium text-slate-700">
-                  {sale.subtotal.toLocaleString()} Ks
-                </span>
-              </div>
-              {sale.discountAmount > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">
-                    Discount
-                    {sale.discountType === "percent"
-                      ? ` (${sale.discountValue}%)`
-                      : ""}
-                  </span>
-                  <span className="font-medium text-red-500">
-                    -{sale.discountAmount.toLocaleString()} Ks
-                  </span>
-                </div>
-              )}
-              {sale.taxAmount > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Tax ({sale.taxRate}%)</span>
-                  <span className="font-medium text-slate-700">
-                    +{sale.taxAmount.toLocaleString()} Ks
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
-                <span className="text-sm font-medium text-slate-500">
-                  Total
-                </span>
-                <span className="text-xl font-bold text-slate-800">
-                  {sale.totalAmount.toLocaleString()} Ks
-                </span>
-              </div>
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-3">
+              <span className="text-sm font-medium text-slate-500">
+                Total Refund
+              </span>
+              <span className="text-xl font-bold text-amber-600">
+                -{returnDoc.refundAmount.toLocaleString()} Ks
+              </span>
             </div>
 
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-              <span>Payment: {sale.paymentMethod.replace("_", " ")}</span>
-              <StatusBadge status={sale.status} />
-            </div>
-            {sale.approvedByName && (
-              <p className="mt-2 text-xs text-amber-600">
-                ⚠ Discount approved by manager: {sale.approvedByName}
+            {returnDoc.reason && (
+              <p className="mt-3 text-sm text-slate-500">
+                <span className="font-medium text-slate-600">Reason: </span>
+                {returnDoc.reason}
               </p>
             )}
+            <p className="mt-2 text-xs text-slate-400">
+              Processed by {returnDoc.processedByName} · Original cashier:{" "}
+              {returnDoc.cashierName}
+            </p>
           </div>
         )}
       </div>
@@ -231,18 +190,18 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
   );
 };
 
-export const SalesOverview: React.FC = () => {
+export const AdminReturns: React.FC = () => {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [branchId, setBranchId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const [summaries, setSummaries] = useState<SaleSummary[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [byBranch, setByBranch] = useState<BranchSalesBreakdown[]>([]);
+  const [summaries, setSummaries] = useState<ReturnSummary[]>([]);
+  const [totalRefunded, setTotalRefunded] = useState(0);
+  const [byBranch, setByBranch] = useState<ReturnBranchBreakdown[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [selectedSale, setSelectedSale] = useState<{
+  const [selectedReturn, setSelectedReturn] = useState<{
     id: string;
     branchId: string;
   } | null>(null);
@@ -252,27 +211,27 @@ export const SalesOverview: React.FC = () => {
       const res = await getBranchesForDropdownApi();
       if (res.success) setBranches(res.data);
     } catch {
-      // dropdown is a nice-to-have; sales overview still works without it
+      // dropdown is a nice-to-have; overview still works without it
     }
   };
 
   const fetchOverview = async () => {
     setLoading(true);
     try {
-      const res = await getSalesOverviewApi({
+      const res = await getReturnsOverviewApi({
         branchId: branchId || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       });
       if (res.success) {
         setSummaries(res.data);
-        setTotalRevenue(res.totalRevenue || 0);
+        setTotalRefunded(res.totalRefunded || 0);
         setByBranch(res.byBranch || []);
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(
-        err.response?.data?.message ?? "Failed to load sales overview",
+        err.response?.data?.message ?? "Failed to load returns overview",
       );
     } finally {
       setLoading(false);
@@ -287,39 +246,40 @@ export const SalesOverview: React.FC = () => {
   useEffect(() => {
     const t = setTimeout(() => fetchOverview(), 0);
     return () => clearTimeout(t);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId, startDate, endDate]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-amber-50/30 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
-                <TrendingUp size={24} className="text-white" />
+              <div className="rounded-2xl bg-linear-to-br from-amber-500 to-amber-600 p-2.5 shadow-lg shadow-amber-200">
+                <RotateCcw size={24} className="text-white" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">
-                  Sales Overview
+                  Returns & Exchanges
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  Track and manage sales across all branches
+                  Across all branches
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
+          <div className="rounded-2xl bg-linear-to-r from-amber-500 to-amber-600 px-6 py-3.5 shadow-lg shadow-amber-200">
             <div className="flex items-center gap-2">
-              <DollarSign size={18} className="text-white/90" />
+              <TrendingDown size={18} className="text-white/90" />
               <span className="text-xs font-medium text-white/90">
-                Total Revenue
+                Total Refunded
               </span>
             </div>
             <p className="text-2xl font-bold text-white">
-              {totalRevenue.toLocaleString()} Ks
+              {totalRefunded.toLocaleString()} Ks
             </p>
           </div>
         </div>
@@ -333,7 +293,7 @@ export const SalesOverview: React.FC = () => {
           <select
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
-            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md sm:flex-none"
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md sm:flex-none"
           >
             <option value="">All Branches</option>
             {branches.map((b) => (
@@ -349,7 +309,7 @@ export const SalesOverview: React.FC = () => {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
             />
           </div>
 
@@ -359,7 +319,7 @@ export const SalesOverview: React.FC = () => {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
             />
           </div>
 
@@ -390,31 +350,31 @@ export const SalesOverview: React.FC = () => {
                     {b.branchName}
                   </span>
                 </div>
-                <p className="mt-2 text-2xl font-bold text-slate-900">
-                  {b.total.toLocaleString()} Ks
+                <p className="mt-2 text-2xl font-bold text-amber-600">
+                  -{b.total.toLocaleString()} Ks
                 </p>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  {b.count} sale{b.count !== 1 ? "s" : ""}
+                  {b.count} return{b.count !== 1 ? "s" : ""}
                 </p>
               </div>
             ))}
           </div>
         )}
 
-        {/* Sales Table */}
+        {/* Returns Table */}
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
           {loading ? (
             <LoadingSpinner />
           ) : summaries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="rounded-full bg-blue-50 p-4">
-                <Receipt className="h-12 w-12 text-blue-500" />
+              <div className="rounded-full bg-amber-50 p-4">
+                <RotateCcw className="h-12 w-12 text-amber-500" />
               </div>
               <h3 className="mt-4 text-xl font-semibold text-slate-600">
-                No sales found
+                No returns found
               </h3>
               <p className="mt-2 text-slate-400">
-                No sales records found for the selected filters.
+                No return records found for the selected filters.
               </p>
             </div>
           ) : (
@@ -424,28 +384,25 @@ export const SalesOverview: React.FC = () => {
                   <thead className="bg-slate-50 border-b border-slate-200/50">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Sale #
+                        Return #
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Branch
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Cashier
+                        Original Sale
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Type
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Items
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Subtotal
+                        Refund
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Discount
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Total
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Status
+                        Processed By
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Time
@@ -454,50 +411,41 @@ export const SalesOverview: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {summaries.map((s) => (
+                    {summaries.map((r) => (
                       <tr
-                        key={s._id}
+                        key={r._id}
                         className="transition hover:bg-slate-50/50"
                       >
                         <td className="px-6 py-4 font-medium text-slate-900">
-                          {s.saleNumber}
+                          {r.returnNumber}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600">
-                          {s.branchName}
+                          {r.branchName}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600">
-                          {s.cashierName}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
-                          {s.itemCount}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
-                          {s.subtotal.toLocaleString()} Ks
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          {s.discountAmount > 0 ? (
-                            <span className="font-medium text-red-500">
-                              -{s.discountAmount.toLocaleString()} Ks
-                            </span>
-                          ) : (
-                            <span className="font-medium text-red-500">0 Ks</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 font-semibold text-slate-900">
-                          {s.totalAmount.toLocaleString()} Ks
+                          {r.originalSaleNumber}
                         </td>
                         <td className="px-6 py-4">
-                          <StatusBadge status={s.status} />
+                          <TypeBadge type={r.type} />
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {r.itemCount}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-amber-600">
+                          -{r.refundAmount.toLocaleString()} Ks
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {r.processedByName}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-500">
-                          {new Date(s.createdAt).toLocaleString()}
+                          {new Date(r.createdAt).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() =>
-                              setSelectedSale({
-                                id: s.saleId,
-                                branchId: s.branchId,
+                              setSelectedReturn({
+                                id: r.returnId,
+                                branchId: r.branchId,
                               })
                             }
                             className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
@@ -516,11 +464,11 @@ export const SalesOverview: React.FC = () => {
         </div>
       </div>
 
-      {selectedSale && (
-        <SaleDetailModal
-          saleId={selectedSale.id}
-          branchId={selectedSale.branchId}
-          onClose={() => setSelectedSale(null)}
+      {selectedReturn && (
+        <ReturnDetailModal
+          returnId={selectedReturn.id}
+          branchId={selectedReturn.branchId}
+          onClose={() => setSelectedReturn(null)}
         />
       )}
     </div>

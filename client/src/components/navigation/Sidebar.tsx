@@ -15,6 +15,7 @@ import {
   HeadphonesIcon,
   Sparkles,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { toast } from "react-hot-toast";
@@ -70,6 +71,11 @@ const menus = [
     title: "Discount Approvals",
     path: "/admin/approvals",
     icon: Clock,
+  },
+  {
+    title: "Returns",
+    path: "/admin/returns",
+    icon: RotateCcw,
   },
 ];
 

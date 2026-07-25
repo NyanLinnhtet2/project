@@ -201,6 +201,7 @@ export const NewSale: React.FC = () => {
 
   const [pendingRequest, setPendingRequest] =
     useState<DiscountApprovalRequest | null>(null);
+  const [exchangeCode, setExchangeCode] = useState("");
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -238,7 +239,10 @@ export const NewSale: React.FC = () => {
 
     setCheckingOut(true);
     try {
-      const res = await createSaleApi(payload);
+      const res = await createSaleApi({
+        ...payload,
+        ...(exchangeCode.trim() ? { linkedReturnId: exchangeCode.trim() } : {}),
+      });
       if (res.success) {
         toast.success(`Sale ${res.data.saleNumber} recorded`);
         setCart([]);
@@ -246,6 +250,7 @@ export const NewSale: React.FC = () => {
         setDiscountType("amount");
         setDiscountValue(0);
         setTaxRate(0);
+        setExchangeCode("");
         fetchInventory(); // stock just changed
       }
     } catch (error: unknown) {
@@ -306,7 +311,7 @@ export const NewSale: React.FC = () => {
       } else if (pendingRequest.status === "expired") {
         toast.error("Request expired — please try again");
       }
-      fetchInventory();
+      fetchInventory(); // stock was reserved/released either way
       setPendingRequest(null);
     }, 0);
 
@@ -476,6 +481,28 @@ export const NewSale: React.FC = () => {
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-4">
+          <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Exchange Code{" "}
+            <span className="normal-case text-slate-400">(optional)</span>
+          </label>
+          <input
+            type="text"
+            value={exchangeCode}
+            onChange={(e) => setExchangeCode(e.target.value)}
+            placeholder="e.g. RET-BR1-172939..."
+            className={`mb-4 w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+              exchangeCode.trim()
+                ? "border-emerald-400 bg-emerald-50"
+                : "border-slate-200"
+            }`}
+          />
+          {exchangeCode.trim() && (
+            <p className="-mt-3 mb-4 text-xs text-emerald-600">
+              🔄 This sale will be linked as an exchange for{" "}
+              {exchangeCode.trim()}
+            </p>
+          )}
+
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Payment Method
           </label>

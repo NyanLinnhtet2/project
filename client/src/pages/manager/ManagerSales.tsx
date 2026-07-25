@@ -1,8 +1,21 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { Loader2, Receipt, TrendingUp, Ban, Eye, X } from "lucide-react";
+import {
+  Loader2,
+  Receipt,
+  TrendingUp,
+  Ban,
+  Eye,
+  X,
+  RotateCcw,
+  Copy,
+  CheckCircle2,
+} from "lucide-react";
 import { getBranchSalesApi, voidSaleApi } from "../../services/saleService";
 import type { Sale } from "../../types/sale";
+import { createReturnApi } from "../../services/returnService";
+
+import type { ReturnRecord, ReturnType } from "../../types/return";
 
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading...",
@@ -142,6 +155,248 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
   </div>
 );
 
+interface ReturnModalProps {
+  sale: Sale;
+  onClose: () => void;
+  onDone: (result: ReturnRecord) => void;
+}
+
+const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [reason, setReason] = useState("");
+  const [type, setType] = useState<ReturnType>("return");
+  const [submitting, setSubmitting] = useState(false);
+
+  const setQty = (productId: string, qty: number, max: number) => {
+    setQuantities((q) => ({
+      ...q,
+      [productId]: Math.min(Math.max(qty, 0), max),
+    }));
+  };
+
+  const selectedItems = sale.items
+    .map((item) => ({ item, qty: quantities[item.productId] || 0 }))
+    .filter((x) => x.qty > 0);
+
+  const estimatedRefund = (() => {
+    const discountFraction =
+      sale.subtotal > 0 ? sale.discountAmount / sale.subtotal : 0;
+    const taxMultiplier = 1 + sale.taxRate / 100;
+    return selectedItems.reduce((sum, { item, qty }) => {
+      const perUnit = item.price * (1 - discountFraction) * taxMultiplier;
+      return sum + Math.round(perUnit * qty);
+    }, 0);
+  })();
+
+  const handleSubmit = async () => {
+    if (selectedItems.length === 0) {
+      toast.error("Pick at least one item to return");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await createReturnApi({
+        originalSaleId: sale._id,
+        items: selectedItems.map(({ item, qty }) => ({
+          productId: item.productId,
+          quantity: qty,
+        })),
+        reason,
+        type,
+      });
+      if (res.success) {
+        toast.success(
+          type === "exchange" ? "Return recorded" : "Return completed",
+        );
+        onDone(res.data);
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Failed to process return");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={() => !submitting && onClose()}
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">
+              Return / Exchange
+            </h2>
+            <p className="text-xs text-slate-400">{sale.saleNumber}</p>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Items to return
+          </p>
+          <div className="space-y-2">
+            {sale.items.map((item) => (
+              <div
+                key={item.productId}
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-700">
+                    {item.name}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Sold {item.quantity} × {item.price.toLocaleString()} Ks
+                  </p>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={item.quantity}
+                  value={quantities[item.productId] || 0}
+                  onChange={(e) =>
+                    setQty(
+                      item.productId,
+                      Number(e.target.value),
+                      item.quantity,
+                    )
+                  }
+                  className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Type
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setType("return")}
+              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium ${
+                type === "return"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              Return (refund)
+            </button>
+            <button
+              type="button"
+              onClick={() => setType("exchange")}
+              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium ${
+                type === "exchange"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              Exchange
+            </button>
+          </div>
+
+          <p className="mt-4 mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Reason
+          </p>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. wrong size, defective item..."
+            rows={2}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-3">
+            <span className="text-sm font-medium text-slate-500">
+              Estimated refund
+            </span>
+            <span className="text-lg font-bold text-slate-800">
+              {estimatedRefund.toLocaleString()} Ks
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            Prorated by this sale's discount and tax — the server confirms the
+            exact amount.
+          </p>
+
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || selectedItems.length === 0}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50"
+          >
+            {submitting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : type === "exchange" ? (
+              "Record Return & Get Exchange Code"
+            ) : (
+              "Complete Return"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Shown right after an exchange-type return is created — gives the manager
+// a code to hand the cashier so the replacement sale links back to it.
+const ExchangeCodeModal: React.FC<{
+  returnRecord: ReturnRecord;
+  onClose: () => void;
+}> = ({ returnRecord, onClose }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(returnRecord.returnNumber);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+        </div>
+        <h2 className="mt-4 text-lg font-bold text-slate-800">
+          Return Recorded
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Give this code to the cashier — they'll enter it when ringing up the
+          replacement items.
+        </p>
+
+        <button
+          onClick={handleCopy}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 py-4 font-mono text-xl font-bold tracking-wider text-emerald-700 hover:bg-emerald-100"
+        >
+          {returnRecord.returnNumber}
+          {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+        </button>
+
+        <button
+          onClick={onClose}
+          className="mt-5 w-full rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const ManagerSales: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -149,6 +404,8 @@ export const ManagerSales: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [returnSale, setReturnSale] = useState<Sale | null>(null);
+  const [exchangeCode, setExchangeCode] = useState<ReturnRecord | null>(null);
 
   const fetchSales = async () => {
     setLoading(true);
@@ -275,6 +532,15 @@ export const ManagerSales: React.FC = () => {
                       </button>
                       {sale.status === "completed" && (
                         <button
+                          onClick={() => setReturnSale(sale)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50"
+                        >
+                          <RotateCcw size={12} />
+                          Return
+                        </button>
+                      )}
+                      {sale.status === "completed" && (
+                        <button
                           onClick={() => handleVoid(sale)}
                           disabled={voidingId === sale._id}
                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
@@ -300,6 +566,27 @@ export const ManagerSales: React.FC = () => {
         <SaleDetailModal
           sale={selectedSale}
           onClose={() => setSelectedSale(null)}
+        />
+      )}
+
+      {returnSale && (
+        <ReturnModal
+          sale={returnSale}
+          onClose={() => setReturnSale(null)}
+          onDone={(result) => {
+            setReturnSale(null);
+            fetchSales();
+            if (result.type === "exchange") {
+              setExchangeCode(result);
+            }
+          }}
+        />
+      )}
+
+      {exchangeCode && (
+        <ExchangeCodeModal
+          returnRecord={exchangeCode}
+          onClose={() => setExchangeCode(null)}
         />
       )}
     </div>

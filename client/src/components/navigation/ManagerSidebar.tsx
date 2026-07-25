@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Sparkles,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { useAuth } from "../../context/useAuth";
@@ -60,6 +61,11 @@ const menus = [
     title: "Discount Approvals",
     path: "/manager/approvals",
     icon: Clock,
+  },
+  {
+    title: "Returns",
+    path: "/manager/returns",
+    icon: RotateCcw,
   },
 ];
 

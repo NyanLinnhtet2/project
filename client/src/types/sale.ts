@@ -30,6 +30,7 @@ export interface Sale {
   status: SaleStatus;
   voidedReason?: string;
   approvedByName?: string; // set when a discount over the normal cap was manager-approved
+  linkedReturnId?: string; // set when this sale is the replacement half of an exchange
   createdAt: string;
   updatedAt: string;
 }
@@ -41,18 +42,13 @@ export interface CreateSaleItemPayload {
   quantity: number;
 }
 
-export interface ManagerOverridePayload {
-  email: string;
-  password: string;
-}
-
 export interface CreateSalePayload {
   items: CreateSaleItemPayload[];
   paymentMethod?: PaymentMethod;
   discountType?: DiscountType;
   discountValue?: number; // 10 for 10% or a flat Ks amount, depending on discountType
   taxRate?: number; // percent
-  managerOverride?: ManagerOverridePayload; // only when the discount exceeds the caller's cap
+  linkedReturnId?: string; // Return _id or returnNumber — marks this sale as the replacement half of an exchange
 }
 
 export interface SaleSummary {

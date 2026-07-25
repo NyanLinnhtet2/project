@@ -29,11 +29,11 @@ const seedAdmin = async () => {
 
     // Create admin with full User interface fields
     const admin = await User.create({
-      name: "System Admin",
+      name: "Admin",
       email: "admin@clothhub.com",
       password: hashedPassword,
       phone: "09-123456789",
-      position: "System Administrator",
+      position: "Administrator",
       role: "admin",
       branch: "System",
       joinDate: new Date(),

@@ -5,6 +5,7 @@ import { getCentralBranchModel } from "../models/CentralDB/branches";
 import { getCentralSaleSummaryModel } from "../models/CentralDB/saleSummary";
 import { getBranchConnection } from "../db/db";
 import { getSaleModel } from "../models/BranchDB/sale";
+import { getReturnModel } from "../models/BranchDB/return";
 import { getBranchStockModel } from "../models/BranchDB/stock";
 import { ISaleItem, ISale } from "../models/BranchDB/sale";
 import { getEffectiveDiscountCap } from "../utils/discountCap";
@@ -54,13 +55,14 @@ const resolveBranch = async (branchIdOrName: string) => {
 // ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { items, paymentMethod, discountType, discountValue, taxRate } =
+    const { items, paymentMethod, discountType, discountValue, taxRate, linkedReturnId } =
       req.body as {
         items: { productId: string; quantity: number }[];
         paymentMethod?: string;
         discountType?: string;
         discountValue?: number;
         taxRate?: number;
+        linkedReturnId?: string;
       };
 
     if (!req.user) {
@@ -125,13 +127,34 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
     const branchDb = getBranchConnection(branch.dbName);
     const Sale = getSaleModel(branchDb);
 
+    let linkedReturn = null;
+    if (linkedReturnId) {
+      const Return = getReturnModel(branchDb);
+      linkedReturn = isValidObjectId(linkedReturnId)
+        ? await Return.findById(linkedReturnId)
+        : await Return.findOne({ returnNumber: linkedReturnId });
+      if (!linkedReturn) {
+        return res.status(404).json({ success: false, message: "Linked return not found" });
+      }
+      if (linkedReturn.type !== "exchange") {
+        return res.status(400).json({
+          success: false,
+          message: "That return isn't marked as an exchange",
+        });
+      }
+      if (linkedReturn.exchangeSaleId) {
+        return res.status(400).json({
+          success: false,
+          message: "This return has already been linked to a sale",
+        });
+      }
+    }
+
     // 1) Price snapshot from CentralDB + stock availability check for every
     //    item (checked up-front so we don't deduct half the cart before failing)
     const priced = await priceAndValidateItems(items, branchDb);
     if (!priced.ok) {
-      return res
-        .status(priced.status)
-        .json({ success: false, message: priced.message });
+      return res.status(priced.status).json({ success: false, message: priced.message });
     }
     const saleItems = priced.items;
     const { discountAmount, taxAmount, totalAmount } = computeDiscountAndTax(
@@ -186,7 +209,13 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       totalAmount,
       paymentMethod: resolvePaymentMethod(paymentMethod),
       status: "completed",
+      ...(linkedReturn ? { linkedReturnId: linkedReturn._id } : {}),
     });
+
+    if (linkedReturn) {
+      linkedReturn.exchangeSaleId = sale._id as mongoose.Types.ObjectId;
+      await linkedReturn.save();
+    }
 
     // 4) Dual-write a lightweight summary to CentralDB so Admin can filter
     //    by branch in real time without querying every branch DB.
@@ -227,10 +256,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
 // Admin: pass ?branchId= (SaleSummary rows carry it already).
 // Manager/Cashier: scoped to their own branch automatically.
 // ============================================================
-export const getSaleDetail = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -238,9 +264,7 @@ export const getSaleDetail = async (
 
     const id = req.params.id;
     if (!id || typeof id !== "string" || !isValidObjectId(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid Sale ID" });
+      return res.status(400).json({ success: false, message: "Invalid Sale ID" });
     }
 
     const branchIdOrName =
@@ -250,9 +274,7 @@ export const getSaleDetail = async (
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -260,9 +282,7 @@ export const getSaleDetail = async (
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Sale not found" });
+      return res.status(404).json({ success: false, message: "Sale not found" });
     }
 
     // Cashiers may only drill into their own sales
@@ -292,9 +312,7 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(req.user.branch);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -323,10 +341,7 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/sales/branch — Manager: every sale in their own branch
 // (Admin can also call this with ?branchId= to inspect one branch)
 // ============================================================
-export const getBranchSales = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getBranchSales = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -339,9 +354,7 @@ export const getBranchSales = async (
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -373,10 +386,7 @@ export const getBranchSales = async (
 // GET /api/sales/overview — Admin: all branches, filterable by branchId
 // Reads from CentralDB SaleSummary (no need to touch every branch DB)
 // ============================================================
-export const getSalesOverview = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getSalesOverview = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { branchId, startDate, endDate } = req.query;
 
@@ -401,10 +411,7 @@ export const getSalesOverview = async (
       .reduce((sum, s) => sum + s.totalAmount, 0);
 
     // Per-branch breakdown — handy for an admin dashboard chart
-    const byBranch: Record<
-      string,
-      { branchName: string; total: number; count: number }
-    > = {};
+    const byBranch: Record<string, { branchName: string; total: number; count: number }> = {};
     for (const s of summaries) {
       if (s.status !== "completed") continue;
       const key = s.branchId.toString();
@@ -446,9 +453,7 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -457,14 +462,10 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Sale not found" });
+      return res.status(404).json({ success: false, message: "Sale not found" });
     }
     if (sale.status === "voided") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Sale is already voided" });
+      return res.status(400).json({ success: false, message: "Sale is already voided" });
     }
 
     // restock every item from the voided sale

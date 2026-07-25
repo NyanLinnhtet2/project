@@ -27,6 +27,7 @@ export interface ISale extends Document {
   approvedBy?: string; // CentralDB User _id of the manager/admin who authorized an over-cap discount
   approvedByName?: string;
   linkedReturnId?: Types.ObjectId; // set when this sale is the replacement half of an exchange
+  linkedReturnNumber?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,10 +75,12 @@ const saleSchema = new Schema<ISale>(
     approvedBy: { type: String },
     approvedByName: { type: String },
     linkedReturnId: { type: Schema.Types.ObjectId },
+    linkedReturnNumber: { type: String },
   },
   { timestamps: true },
 );
 
+// index for the two most common queries: cashier's own list, and "today's sales" for manager
 saleSchema.index({ cashierId: 1, createdAt: -1 });
 saleSchema.index({ createdAt: -1 });
 

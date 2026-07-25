@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Loader2,
@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Copy,
   CheckCircle2,
+  Search,
 } from "lucide-react";
 import { getBranchSalesApi, voidSaleApi } from "../../services/saleService";
 import type { Sale } from "../../types/sale";
@@ -26,17 +27,34 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   </div>
 );
 
-const StatusBadge: React.FC<{ status: Sale["status"] }> = ({ status }) => (
-  <span
-    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
-      status === "completed"
-        ? "bg-emerald-100 text-emerald-700"
-        : "bg-red-100 text-red-700"
-    }`}
-  >
-    {status === "completed" ? "Completed" : "Voided"}
-  </span>
-);
+const StatusBadge: React.FC<{ sale: Sale }> = ({ sale }) => {
+  if (sale.status === "voided") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
+        Voided
+      </span>
+    );
+  }
+  if (sale.returnType === "exchange") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+        Exchange
+      </span>
+    );
+  }
+  if (sale.returnType === "return") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+        Return
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+      Completed
+    </span>
+  );
+};
 
 // The list endpoint already returns the full Sale (items, subtotal,
 // discount, tax) — no need to fetch again just to show the detail modal.
@@ -74,8 +92,6 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
               <th className="py-2">Product</th>
-              <th className="py-2 text-center">Category</th>
-              <th className="py-2 text-center">Brand</th>
               <th className="py-2 text-center">Qty</th>
               <th className="py-2 text-right">Price</th>
               <th className="py-2 text-right">Line Total</th>
@@ -84,12 +100,13 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
           <tbody>
             {sale.items.map((item, idx) => (
               <tr key={idx} className="border-b border-slate-50">
-                <td className="py-2.5 text-slate-700">{item.name}</td>
-                <td className="py-2.5 text-center text-slate-500">
-                  {item.category || item.brand ? item.category : "No Category"}
-                </td>
-                <td className="py-2.5 text-center text-slate-500">
-                  {item.category || item.brand ? item.brand : "No Brand"}
+                <td className="py-2.5 text-slate-700">
+                  {item.name}
+                  {(item.category || item.brand) && (
+                    <div className="text-xs text-slate-400">
+                      {[item.category, item.brand].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
                 </td>
                 <td className="py-2.5 text-center text-slate-500">
                   {item.quantity}
@@ -143,11 +160,16 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
 
         <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
           <span>Payment: {sale.paymentMethod.replace("_", " ")}</span>
-          <StatusBadge status={sale.status} />
+          <StatusBadge sale={sale} />
         </div>
         {sale.approvedByName && (
           <p className="mt-2 text-xs text-amber-600">
             ⚠ Discount approved by manager: {sale.approvedByName}
+          </p>
+        )}
+        {sale.linkedReturnNumber && (
+          <p className="mt-2 text-xs text-blue-600">
+            🔄 Exchange for {sale.linkedReturnNumber}
           </p>
         )}
       </div>
@@ -406,6 +428,7 @@ export const ManagerSales: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [returnSale, setReturnSale] = useState<Sale | null>(null);
   const [exchangeCode, setExchangeCode] = useState<ReturnRecord | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchSales = async () => {
     setLoading(true);
@@ -428,6 +451,16 @@ export const ManagerSales: React.FC = () => {
     const t = setTimeout(() => fetchSales(), 0);
     return () => clearTimeout(t);
   }, []);
+
+  const filteredSales = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return sales;
+    return sales.filter((sale) =>
+      [sale.saleNumber, sale.cashierName]
+        .filter(Boolean)
+        .some((field) => field.toLowerCase().includes(q)),
+    );
+  }, [sales, searchQuery]);
 
   const handleVoid = async (sale: Sale) => {
     if (
@@ -452,7 +485,7 @@ export const ManagerSales: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Branch Sales</h1>
           <p className="text-sm text-slate-500">{branchName}</p>
@@ -470,6 +503,20 @@ export const ManagerSales: React.FC = () => {
         </div>
       </div>
 
+      <div className="mb-4 relative w-full sm:w-80">
+        <Search
+          size={16}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search sale # or cashier..."
+          className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:shadow-md"
+        />
+      </div>
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         {loading ? (
           <LoadingSpinner />
@@ -477,6 +524,13 @@ export const ManagerSales: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Receipt className="h-10 w-10 text-slate-300" />
             <p className="mt-3 font-medium text-slate-500">No sales yet</p>
+          </div>
+        ) : filteredSales.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Search className="h-10 w-10 text-slate-300" />
+            <p className="mt-3 font-medium text-slate-500">
+              No sales match "{searchQuery}"
+            </p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -493,7 +547,7 @@ export const ManagerSales: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {sales.map((sale) => (
+              {filteredSales.map((sale) => (
                 <tr key={sale._id} className="border-b border-slate-50">
                   <td className="py-3 font-medium text-slate-700">
                     {sale.saleNumber}
@@ -516,7 +570,7 @@ export const ManagerSales: React.FC = () => {
                     {sale.totalAmount.toLocaleString()} Ks
                   </td>
                   <td className="py-3">
-                    <StatusBadge status={sale.status} />
+                    <StatusBadge sale={sale} />
                   </td>
                   <td className="py-3 text-slate-400">
                     {new Date(sale.createdAt).toLocaleTimeString()}
@@ -530,7 +584,7 @@ export const ManagerSales: React.FC = () => {
                         <Eye size={12} />
                         View
                       </button>
-                      {sale.status === "completed" && (
+                      {sale.canReturn && (
                         <button
                           onClick={() => setReturnSale(sale)}
                           className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50"

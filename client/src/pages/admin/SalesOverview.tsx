@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Receipt,
@@ -8,6 +8,7 @@ import {
   DollarSign,
   Eye,
   X,
+  Search,
 } from "lucide-react";
 import {
   getSalesOverviewApi,
@@ -120,7 +121,8 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
             </h2>
             {sale && (
               <p className="text-xs text-slate-400">
-                {new Date(sale.createdAt).toLocaleString()} · {sale.cashierName}
+                {new Date(sale.createdAt).toLocaleString()} ·{" "}
+                {sale.cashierName}
               </p>
             )}
           </div>
@@ -144,8 +146,6 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                   <th className="py-2">Product</th>
-                  <th className="py-2 text-center">Category</th>
-                  <th className="py-2 text-center">Brand</th>
                   <th className="py-2 text-center">Qty</th>
                   <th className="py-2 text-right">Price</th>
                   <th className="py-2 text-right">Line Total</th>
@@ -154,14 +154,15 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
               <tbody>
                 {sale.items.map((item, idx) => (
                   <tr key={idx} className="border-b border-slate-50">
-                    <td className="py-2.5 text-slate-700">{item.name}</td>
-                    <td className="py-2.5 text-center text-slate-500">
-                      {item.category || item.brand
-                        ? item.category
-                        : "No Category"}
-                    </td>
-                    <td className="py-2.5 text-center text-slate-500">
-                      {item.category || item.brand ? item.brand : "No Brand"}
+                    <td className="py-2.5 text-slate-700">
+                      {item.name}
+                      {(item.category || item.brand) && (
+                        <div className="text-xs text-slate-400">
+                          {[item.category, item.brand]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5 text-center text-slate-500">
                       {item.quantity}
@@ -199,7 +200,9 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
               )}
               {sale.taxAmount > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Tax ({sale.taxRate}%)</span>
+                  <span className="text-slate-500">
+                    Tax ({sale.taxRate}%)
+                  </span>
                   <span className="font-medium text-slate-700">
                     +{sale.taxAmount.toLocaleString()} Ks
                   </span>
@@ -224,6 +227,11 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
                 ⚠ Discount approved by manager: {sale.approvedByName}
               </p>
             )}
+            {sale.linkedReturnNumber && (
+              <p className="mt-2 text-xs text-blue-600">
+                🔄 Exchange for {sale.linkedReturnNumber}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -236,8 +244,14 @@ export const SalesOverview: React.FC = () => {
   const [branchId, setBranchId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [summaries, setSummaries] = useState<SaleSummary[]>([]);
+  const filteredSummaries = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return summaries;
+    return summaries.filter((s) => s.saleNumber.toLowerCase().includes(q));
+  }, [summaries, searchTerm]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [byBranch, setByBranch] = useState<BranchSalesBreakdown[]>([]);
   const [loading, setLoading] = useState(false);
@@ -326,6 +340,17 @@ export const SalesOverview: React.FC = () => {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by Sale ID..."
+              className="w-56 rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+            />
+          </div>
+
           <div className="flex items-center gap-2">
             <Store size={18} className="text-slate-400" />
             <label className="font-medium text-slate-700">Branch:</label>
@@ -405,7 +430,7 @@ export const SalesOverview: React.FC = () => {
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
           {loading ? (
             <LoadingSpinner />
-          ) : summaries.length === 0 ? (
+          ) : filteredSummaries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="rounded-full bg-blue-50 p-4">
                 <Receipt className="h-12 w-12 text-blue-500" />
@@ -454,7 +479,7 @@ export const SalesOverview: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {summaries.map((s) => (
+                    {filteredSummaries.map((s) => (
                       <tr
                         key={s._id}
                         className="transition hover:bg-slate-50/50"
@@ -480,7 +505,7 @@ export const SalesOverview: React.FC = () => {
                               -{s.discountAmount.toLocaleString()} Ks
                             </span>
                           ) : (
-                            <span className="font-medium text-red-500">0 Ks</span>
+                            <span className="text-slate-300">—</span>
                           )}
                         </td>
                         <td className="px-6 py-4 font-semibold text-slate-900">

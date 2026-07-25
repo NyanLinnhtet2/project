@@ -31,6 +31,9 @@ export interface Sale {
   voidedReason?: string;
   approvedByName?: string; // set when a discount over the normal cap was manager-approved
   linkedReturnId?: string; // set when this sale is the replacement half of an exchange
+  linkedReturnNumber?: string; // human-readable code for the above
+  canReturn?: boolean; // only present on getMySales/getBranchSales — whether anything is still returnable
+  returnType?: "return" | "exchange"; // only present on the same — set if this sale has had a return processed against it
   createdAt: string;
   updatedAt: string;
 }

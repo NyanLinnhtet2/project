@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   RotateCcw,
@@ -8,6 +8,7 @@ import {
   Eye,
   X,
   Repeat,
+  Search,
 } from "lucide-react";
 import {
   getReturnsOverviewApi,
@@ -195,6 +196,7 @@ export const AdminReturns: React.FC = () => {
   const [branchId, setBranchId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [summaries, setSummaries] = useState<ReturnSummary[]>([]);
   const [totalRefunded, setTotalRefunded] = useState(0);
@@ -250,6 +252,16 @@ export const AdminReturns: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId, startDate, endDate]);
 
+  const filteredSummaries = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return summaries;
+    return summaries.filter((r) =>
+      [r.returnNumber, r.originalSaleNumber, r.branchName, r.processedByName]
+        .filter(Boolean)
+        .some((field) => field.toLowerCase().includes(q)),
+    );
+  }, [summaries, searchQuery]);
+
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-amber-50/30 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -257,7 +269,7 @@ export const AdminReturns: React.FC = () => {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-amber-500 to-amber-600 p-2.5 shadow-lg shadow-amber-200">
+              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <RotateCcw size={24} className="text-white" />
               </div>
               <div>
@@ -271,7 +283,7 @@ export const AdminReturns: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-linear-to-r from-amber-500 to-amber-600 px-6 py-3.5 shadow-lg shadow-amber-200">
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
             <div className="flex items-center gap-2">
               <TrendingDown size={18} className="text-white/90" />
               <span className="text-xs font-medium text-white/90">
@@ -286,10 +298,25 @@ export const AdminReturns: React.FC = () => {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50">
+          <div className="relative w-full sm:w-72">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search return #, sale #, branch, processed by..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
+            />
+          </div>
+
           <div className="flex items-center gap-2">
             <Store size={18} className="text-slate-400" />
             <label className="font-medium text-slate-700">Branch:</label>
           </div>
+
           <select
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
@@ -377,6 +404,18 @@ export const AdminReturns: React.FC = () => {
                 No return records found for the selected filters.
               </p>
             </div>
+          ) : filteredSummaries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-amber-50 p-4">
+                <Search className="h-12 w-12 text-amber-500" />
+              </div>
+              <h3 className="mt-4 text-xl font-semibold text-slate-600">
+                No matches
+              </h3>
+              <p className="mt-2 text-slate-400">
+                No returns match "{searchQuery}".
+              </p>
+            </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200/50">
               <div className="overflow-x-auto">
@@ -411,7 +450,7 @@ export const AdminReturns: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {summaries.map((r) => (
+                    {filteredSummaries.map((r) => (
                       <tr
                         key={r._id}
                         className="transition hover:bg-slate-50/50"

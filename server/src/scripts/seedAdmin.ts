@@ -33,7 +33,7 @@ const seedAdmin = async () => {
       email: "admin@clothhub.com",
       password: hashedPassword,
       phone: "09-123456789",
-      position: "Administrator",
+      position: "System Administrator",
       role: "admin",
       branch: "System",
       joinDate: new Date(),

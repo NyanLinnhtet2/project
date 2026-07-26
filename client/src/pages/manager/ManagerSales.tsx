@@ -15,14 +15,16 @@ import {
 import { getBranchSalesApi, voidSaleApi } from "../../services/saleService";
 import type { Sale } from "../../types/sale";
 import { createReturnApi } from "../../services/returnService";
-
 import type { ReturnRecord, ReturnType } from "../../types/return";
 
 const LoadingSpinner: React.FC<{ label?: string }> = ({
-  label = "Loading...",
+  label = "Loading sales...",
 }) => (
   <div className="flex flex-col items-center justify-center py-16">
-    <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+    <div className="relative">
+      <div className="h-16 w-16 rounded-full border-4 border-slate-200"></div>
+      <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+    </div>
     <p className="mt-4 text-sm text-slate-500 font-medium">{label}</p>
   </div>
 );
@@ -31,101 +33,114 @@ const StatusBadge: React.FC<{ sale: Sale }> = ({ sale }) => {
   if (sale.status === "voided") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
-        Voided
+        <Ban size={12} /> Voided
       </span>
     );
   }
   if (sale.returnType === "exchange") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-        Exchange
+        <RotateCcw size={12} /> Exchange
       </span>
     );
   }
   if (sale.returnType === "return") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-        Return
+        <RotateCcw size={12} /> Returned
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
-      Completed
+      <CheckCircle2 size={12} /> Completed
     </span>
   );
 };
 
-// The list endpoint already returns the full Sale (items, subtotal,
-// discount, tax) — no need to fetch again just to show the detail modal.
+// ============================================================
+// Sale Detail Modal (updated styles)
+// ============================================================
 const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
   sale,
   onClose,
 }) => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
     onClick={onClose}
   >
     <div
-      className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+      className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+      <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">
+          <h2 className="text-xl font-bold text-slate-900">
             {sale.saleNumber}
           </h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             {new Date(sale.createdAt).toLocaleString()} · {sale.cashierName}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="rounded-lg p-2 transition hover:bg-slate-100"
         >
-          <X size={18} />
+          <X size={20} className="text-slate-500" />
         </button>
       </div>
 
-      <div className="px-6 py-4">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-              <th className="py-2">Product</th>
-              <th className="py-2 text-center">Qty</th>
-              <th className="py-2 text-right">Price</th>
-              <th className="py-2 text-right">Line Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sale.items.map((item, idx) => (
-              <tr key={idx} className="border-b border-slate-50">
-                <td className="py-2.5 text-slate-700">
-                  {item.name}
-                  {(item.category || item.brand) && (
-                    <div className="text-xs text-slate-400">
-                      {[item.category, item.brand].filter(Boolean).join(" · ")}
-                    </div>
-                  )}
-                </td>
-                <td className="py-2.5 text-center text-slate-500">
-                  {item.quantity}
-                </td>
-                <td className="py-2.5 text-right text-slate-500">
-                  {item.price.toLocaleString()} Ks
-                </td>
-                <td className="py-2.5 text-right font-medium text-slate-700">
-                  {(item.price * item.quantity).toLocaleString()} Ks
-                </td>
+      <div className="p-6">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/50">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200/50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Product
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Qty
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Price
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Line Total
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sale.items.map((item, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-900">{item.name}</p>
+                    {(item.category || item.brand) && (
+                      <p className="text-xs text-slate-400">
+                        {[item.category, item.brand]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-600">
+                    {item.quantity}
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-600">
+                    {item.price.toLocaleString()} Ks
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-900">
+                    {(item.price * item.quantity).toLocaleString()} Ks
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-        <div className="mt-4 space-y-1.5 rounded-xl bg-slate-50 p-3">
+        <div className="mt-4 space-y-2 rounded-2xl bg-slate-50 p-4 border border-slate-200/50">
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-500">Subtotal</span>
-            <span className="font-medium text-slate-700">
+            <span className="font-medium text-slate-900">
               {sale.subtotal.toLocaleString()} Ks
             </span>
           </div>
@@ -145,20 +160,20 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
           {sale.taxAmount > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500">Tax ({sale.taxRate}%)</span>
-              <span className="font-medium text-slate-700">
+              <span className="font-medium text-slate-900">
                 +{sale.taxAmount.toLocaleString()} Ks
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-2">
             <span className="text-sm font-medium text-slate-500">Total</span>
-            <span className="text-xl font-bold text-slate-800">
+            <span className="text-2xl font-bold text-slate-900">
               {sale.totalAmount.toLocaleString()} Ks
             </span>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+        <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
           <span>Payment: {sale.paymentMethod.replace("_", " ")}</span>
           <StatusBadge sale={sale} />
         </div>
@@ -177,6 +192,9 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
   </div>
 );
 
+// ============================================================
+// Return Modal (updated styles)
+// ============================================================
 interface ReturnModalProps {
   sale: Sale;
   onClose: () => void;
@@ -242,124 +260,132 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={() => !submitting && onClose()}
     >
       <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">
+            <h2 className="text-xl font-bold text-slate-900">
               Return / Exchange
             </h2>
-            <p className="text-xs text-slate-400">{sale.saleNumber}</p>
+            <p className="text-xs text-slate-500">{sale.saleNumber}</p>
           </div>
           <button
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-2 transition hover:bg-slate-100"
           >
-            <X size={18} />
+            <X size={20} className="text-slate-500" />
           </button>
         </div>
 
-        <div className="px-6 py-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Items to return
-          </p>
-          <div className="space-y-2">
-            {sale.items.map((item) => (
-              <div
-                key={item.productId}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-700">
-                    {item.name}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    Sold {item.quantity} × {item.price.toLocaleString()} Ks
-                  </p>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Items to return
+            </label>
+            <div className="space-y-2">
+              {sale.items.map((item) => (
+                <div
+                  key={item.productId}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {item.name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Sold {item.quantity} × {item.price.toLocaleString()} Ks
+                    </p>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={item.quantity}
+                    value={quantities[item.productId] || 0}
+                    onChange={(e) =>
+                      setQty(
+                        item.productId,
+                        Number(e.target.value),
+                        item.quantity,
+                      )
+                    }
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-center text-sm outline-none transition focus:border-blue-500 focus:shadow-md"
+                  />
                 </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={item.quantity}
-                  value={quantities[item.productId] || 0}
-                  onChange={(e) =>
-                    setQty(
-                      item.productId,
-                      Number(e.target.value),
-                      item.quantity,
-                    )
-                  }
-                  className="w-20 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          <p className="mt-4 mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Type
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setType("return")}
-              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium ${
-                type === "return"
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              Return (refund)
-            </button>
-            <button
-              type="button"
-              onClick={() => setType("exchange")}
-              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium ${
-                type === "exchange"
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              Exchange
-            </button>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Type
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setType("return")}
+                className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                  type === "return"
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Return (refund)
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("exchange")}
+                className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                  type === "exchange"
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Exchange
+              </button>
+            </div>
           </div>
 
-          <p className="mt-4 mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Reason
-          </p>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. wrong size, defective item..."
-            rows={2}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 p-3">
-            <span className="text-sm font-medium text-slate-500">
-              Estimated refund
-            </span>
-            <span className="text-lg font-bold text-slate-800">
-              {estimatedRefund.toLocaleString()} Ks
-            </span>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Reason
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. wrong size, defective item..."
+              rows={2}
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:shadow-md"
+            />
           </div>
-          <p className="mt-1 text-xs text-slate-400">
-            Prorated by this sale's discount and tax — the server confirms the
-            exact amount.
-          </p>
+
+          <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200/50">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">
+                Estimated refund
+              </span>
+              <span className="text-2xl font-bold text-slate-900">
+                {estimatedRefund.toLocaleString()} Ks
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Prorated by this sale's discount and tax — the server confirms the
+              exact amount.
+            </p>
+          </div>
 
           <button
             onClick={handleSubmit}
             disabled={submitting || selectedItems.length === 0}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-emerald-600 py-3 font-semibold text-white hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition hover:scale-105 hover:shadow-xl hover:shadow-blue-300 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {submitting ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 size={20} className="animate-spin" />
             ) : type === "exchange" ? (
               "Record Return & Get Exchange Code"
             ) : (
@@ -372,8 +398,9 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
   );
 };
 
-// Shown right after an exchange-type return is created — gives the manager
-// a code to hand the cashier so the replacement sale links back to it.
+// ============================================================
+// Exchange Code Modal (updated styles)
+// ============================================================
 const ExchangeCodeModal: React.FC<{
   returnRecord: ReturnRecord;
   onClose: () => void;
@@ -387,30 +414,34 @@ const ExchangeCodeModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+          <CheckCircle2 className="h-8 w-8 text-blue-600" />
         </div>
-        <h2 className="mt-4 text-lg font-bold text-slate-800">
+        <h2 className="mt-4 text-2xl font-bold text-slate-900">
           Return Recorded
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-slate-500">
           Give this code to the cashier — they'll enter it when ringing up the
           replacement items.
         </p>
 
         <button
           onClick={handleCopy}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 py-4 font-mono text-xl font-bold tracking-wider text-emerald-700 hover:bg-emerald-100"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50 py-4 font-mono text-xl font-bold tracking-wider text-blue-700 transition hover:bg-blue-100"
         >
           {returnRecord.returnNumber}
-          {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+          {copied ? (
+            <CheckCircle2 size={20} className="text-blue-600" />
+          ) : (
+            <Copy size={20} />
+          )}
         </button>
 
         <button
           onClick={onClose}
-          className="mt-5 w-full rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="mt-5 w-full rounded-xl border border-slate-200 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
         >
           Done
         </button>
@@ -419,6 +450,9 @@ const ExchangeCodeModal: React.FC<{
   );
 };
 
+// ============================================================
+// Main Component
+// ============================================================
 export const ManagerSales: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -430,6 +464,14 @@ export const ManagerSales: React.FC = () => {
   const [exchangeCode, setExchangeCode] = useState<ReturnRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Stats
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    voided: 0,
+    returned: 0,
+  });
+
   const fetchSales = async () => {
     setLoading(true);
     try {
@@ -438,6 +480,7 @@ export const ManagerSales: React.FC = () => {
         setSales(res.data);
         setTotalRevenue(res.totalRevenue || 0);
         setBranchName(res.branchName || "");
+        computeStats(res.data);
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -447,9 +490,27 @@ export const ManagerSales: React.FC = () => {
     }
   };
 
+  const computeStats = (data: Sale[]) => {
+    const completed = data.filter(
+      (s) => s.status === "completed" && !s.returnType,
+    ).length;
+    const voided = data.filter((s) => s.status === "voided").length;
+    const returned = data.filter(
+      (s) => s.returnType === "return" || s.returnType === "exchange",
+    ).length;
+    setStats({
+      total: data.length,
+      completed,
+      voided,
+      returned,
+    });
+  };
+
   React.useEffect(() => {
     const t = setTimeout(() => fetchSales(), 0);
     return () => clearTimeout(t);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredSales = useMemo(() => {
@@ -484,138 +545,261 @@ export const ManagerSales: React.FC = () => {
   };
 
   return (
-    <div>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Branch Sales</h1>
-          <p className="text-sm text-slate-500">{branchName}</p>
-        </div>
-        <div className="rounded-2xl bg-linear-to-r from-emerald-500 to-emerald-600 px-5 py-3 text-white shadow-lg shadow-emerald-500/30">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={18} />
-            <span className="text-xs font-medium opacity-90">
-              Total Revenue
-            </span>
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+                <Receipt size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">
+                  Branch Sales
+                </h1>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  {branchName || "Select a branch"}
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-xl font-bold">
-            {totalRevenue.toLocaleString()} Ks
-          </p>
-        </div>
-      </div>
 
-      <div className="mb-4 relative w-full sm:w-80">
-        <Search
-          size={16}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-        />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search sale # or cashier..."
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:shadow-md"
-        />
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        {loading ? (
-          <LoadingSpinner />
-        ) : sales.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Receipt className="h-10 w-10 text-slate-300" />
-            <p className="mt-3 font-medium text-slate-500">No sales yet</p>
-          </div>
-        ) : filteredSales.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="h-10 w-10 text-slate-300" />
-            <p className="mt-3 font-medium text-slate-500">
-              No sales match "{searchQuery}"
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={18} className="text-white/90" />
+              <span className="text-xs font-medium text-white/90">
+                Total Revenue
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white">
+              {totalRevenue.toLocaleString()} Ks
             </p>
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <th className="py-3">Sale #</th>
-                <th className="py-3">Cashier</th>
-                <th className="py-3">Items</th>
-                <th className="py-3">Discount</th>
-                <th className="py-3">Total</th>
-                <th className="py-3">Status</th>
-                <th className="py-3">Time</th>
-                <th className="py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSales.map((sale) => (
-                <tr key={sale._id} className="border-b border-slate-50">
-                  <td className="py-3 font-medium text-slate-700">
-                    {sale.saleNumber}
-                  </td>
-                  <td className="py-3 text-slate-500">{sale.cashierName}</td>
-                  <td className="py-3 text-slate-500">
-                    {sale.items.length} item
-                    {sale.items.length !== 1 ? "s" : ""}
-                  </td>
-                  <td className="py-3">
-                    {sale.discountAmount > 0 ? (
-                      <span className="font-medium text-red-500">
-                        -{sale.discountAmount.toLocaleString()} Ks
-                      </span>
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
-                  </td>
-                  <td className="py-3 font-semibold text-slate-700">
-                    {sale.totalAmount.toLocaleString()} Ks
-                  </td>
-                  <td className="py-3">
-                    <StatusBadge sale={sale} />
-                  </td>
-                  <td className="py-3 text-slate-400">
-                    {new Date(sale.createdAt).toLocaleTimeString()}
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => setSelectedSale(sale)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">
+                  Total Sales
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {stats.total}
+                </p>
+              </div>
+              <div className="rounded-xl bg-blue-50 p-3">
+                <Receipt size={20} className="text-blue-600" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Completed</p>
+                <p className="mt-2 text-3xl font-bold text-emerald-600">
+                  {stats.completed}
+                </p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 p-3">
+                <CheckCircle2 size={20} className="text-emerald-600" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Voided</p>
+                <p className="mt-2 text-3xl font-bold text-red-600">
+                  {stats.voided}
+                </p>
+              </div>
+              <div className="rounded-xl bg-red-50 p-3">
+                <Ban size={20} className="text-red-600" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">
+                  Returns / Exchanges
+                </p>
+                <p className="mt-2 text-3xl font-bold text-amber-600">
+                  {stats.returned}
+                </p>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-3">
+                <RotateCcw size={20} className="text-amber-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+          <div className="relative flex-1">
+            <Search
+              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search sale # or cashier..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+            />
+          </div>
+          <button
+            onClick={fetchSales}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+          >
+            <Loader2 size={16} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
+
+        {/* Sales Table */}
+        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+          {loading ? (
+            <LoadingSpinner />
+          ) : sales.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-blue-50 p-4">
+                <Receipt className="h-12 w-12 text-blue-500" />
+              </div>
+              <h3 className="mt-4 text-xl font-semibold text-slate-600">
+                No sales yet
+              </h3>
+              <p className="mt-2 text-slate-400">
+                Sales will appear here once customers make purchases.
+              </p>
+            </div>
+          ) : filteredSales.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-slate-50 p-4">
+                <Search className="h-12 w-12 text-slate-400" />
+              </div>
+              <h3 className="mt-4 text-xl font-semibold text-slate-600">
+                No sales match "{searchQuery}"
+              </h3>
+              <p className="mt-2 text-slate-400">Try adjusting your search.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-200/50">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200/50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Sale #
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Cashier
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Items
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Discount
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Total
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Time
+                      </th>
+                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredSales.map((sale) => (
+                      <tr
+                        key={sale._id}
+                        className="transition hover:bg-slate-50/50"
                       >
-                        <Eye size={12} />
-                        View
-                      </button>
-                      {sale.canReturn && (
-                        <button
-                          onClick={() => setReturnSale(sale)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50"
-                        >
-                          <RotateCcw size={12} />
-                          Return
-                        </button>
-                      )}
-                      {sale.status === "completed" && (
-                        <button
-                          onClick={() => handleVoid(sale)}
-                          disabled={voidingId === sale._id}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          {voidingId === sale._id ? (
-                            <Loader2 size={12} className="animate-spin" />
+                        <td className="px-6 py-4 font-medium text-slate-900">
+                          {sale.saleNumber}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {sale.cashierName}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {sale.items.length} item
+                          {sale.items.length !== 1 ? "s" : ""}
+                        </td>
+                        <td className="px-6 py-4">
+                          {sale.discountAmount > 0 ? (
+                            <span className="font-medium text-red-500">
+                              -{sale.discountAmount.toLocaleString()} Ks
+                            </span>
                           ) : (
-                            <Ban size={12} />
+                            <span className="text-slate-400">0 Ks</span>
                           )}
-                          Void
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-900">
+                          {sale.totalAmount.toLocaleString()} Ks
+                        </td>
+                        <td className="px-6 py-4">
+                          <StatusBadge sale={sale} />
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-500">
+                          {new Date(sale.createdAt).toLocaleTimeString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setSelectedSale(sale)}
+                              className="inline-flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100 hover:shadow-md"
+                            >
+                              <Eye size={14} />
+                              View
+                            </button>
+                            {sale.canReturn && (
+                              <button
+                                onClick={() => setReturnSale(sale)}
+                                className="inline-flex items-center gap-1 rounded-xl bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-600 transition hover:bg-amber-100 hover:shadow-md"
+                              >
+                                <RotateCcw size={14} />
+                                Return
+                              </button>
+                            )}
+                            {sale.status === "completed" && (
+                              <button
+                                onClick={() => handleVoid(sale)}
+                                disabled={voidingId === sale._id}
+                                className="inline-flex items-center gap-1 rounded-xl bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100 hover:shadow-md disabled:opacity-50"
+                              >
+                                {voidingId === sale._id ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <Ban size={14} />
+                                )}
+                                Void
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Modals */}
       {selectedSale && (
         <SaleDetailModal
           sale={selectedSale}

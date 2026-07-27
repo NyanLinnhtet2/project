@@ -11,9 +11,12 @@ import {
   Package,
   ArrowRight,
   CheckCircle,
+  Printer,
 } from "lucide-react";
 import { getMySalesApi } from "../../services/saleService";
 import type { Sale } from "../../types/sale";
+import { useAuth } from "../../context/useAuth";
+import { printReceipt } from "../../utils/printReceipt";
 
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading your sales...",
@@ -56,89 +59,84 @@ const StatusBadge: React.FC<{ sale: Sale }> = ({ sale }) => {
   );
 };
 
-// ============================================================
-// Sale Detail Modal (updated styles)
-// ============================================================
-const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
-  sale,
-  onClose,
-}) => (
+const SaleDetailModal: React.FC<{
+  sale: Sale;
+  branchName?: string;
+  onClose: () => void;
+}> = ({ sale, branchName, onClose }) => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
     onClick={onClose}
   >
     <div
-      className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
+      className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+      <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-slate-800">
             {sale.saleNumber}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             {new Date(sale.createdAt).toLocaleString()}
           </p>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded-lg p-2 transition hover:bg-slate-100"
-        >
-          <X size={20} className="text-slate-500" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => printReceipt(sale, branchName)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Printer size={14} />
+            Print
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
-      <div className="p-6">
-        <div className="overflow-hidden rounded-2xl border border-slate-200/50">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Product
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Qty
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Price
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Line Total
-                </th>
+      <div className="px-6 py-4">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="py-2">Product</th>
+              <th className="py-2 text-center">Qty</th>
+              <th className="py-2 text-right">Price</th>
+              <th className="py-2 text-right">Line Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sale.items.map((item, idx) => (
+              <tr key={idx} className="border-b border-slate-50">
+                <td className="py-2.5 text-slate-700">
+                  {item.name}
+                  {(item.category || item.brand) && (
+                    <div className="text-xs text-slate-400">
+                      {[item.category, item.brand].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                </td>
+                <td className="py-2.5 text-center text-slate-500">
+                  {item.quantity}
+                </td>
+                <td className="py-2.5 text-right text-slate-500">
+                  {item.price.toLocaleString()} Ks
+                </td>
+                <td className="py-2.5 text-right font-medium text-slate-700">
+                  {(item.price * item.quantity).toLocaleString()} Ks
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {sale.items.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-900">{item.name}</p>
-                    {(item.category || item.brand) && (
-                      <p className="text-xs text-slate-400">
-                        {[item.category, item.brand]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center text-slate-600">
-                    {item.quantity}
-                  </td>
-                  <td className="px-4 py-3 text-right text-slate-600">
-                    {item.price.toLocaleString()} Ks
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-slate-900">
-                    {(item.price * item.quantity).toLocaleString()} Ks
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
 
-        <div className="mt-4 space-y-2 rounded-2xl bg-slate-50 p-4 border border-slate-200/50">
+        <div className="mt-4 space-y-1.5 rounded-xl bg-slate-50 p-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-500">Subtotal</span>
-            <span className="font-medium text-slate-900">
+            <span className="font-medium text-slate-700">
               {sale.subtotal.toLocaleString()} Ks
             </span>
           </div>
@@ -158,20 +156,20 @@ const SaleDetailModal: React.FC<{ sale: Sale; onClose: () => void }> = ({
           {sale.taxAmount > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500">Tax ({sale.taxRate}%)</span>
-              <span className="font-medium text-slate-900">
+              <span className="font-medium text-slate-700">
                 +{sale.taxAmount.toLocaleString()} Ks
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between border-t border-slate-200 pt-2">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
             <span className="text-sm font-medium text-slate-500">Total</span>
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-xl font-bold text-slate-800">
               {sale.totalAmount.toLocaleString()} Ks
             </span>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+        <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
           <span>Payment: {sale.paymentMethod.replace("_", " ")}</span>
           <StatusBadge sale={sale} />
         </div>
@@ -194,6 +192,7 @@ export const MySales: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const { userInfo } = useAuth();
 
   // Stats
   const [stats, setStats] = useState({
@@ -439,10 +438,10 @@ export const MySales: React.FC = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
       {selectedSale && (
         <SaleDetailModal
           sale={selectedSale}
+          branchName={userInfo?.branch}
           onClose={() => setSelectedSale(null)}
         />
       )}

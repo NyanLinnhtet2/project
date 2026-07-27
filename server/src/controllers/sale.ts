@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
 import { getCentralSaleSummaryModel } from "../models/CentralDB/saleSummary";
+import { getCentralReturnSummaryModel } from "../models/CentralDB/returnSummary";
 import { getBranchConnection } from "../db/db";
 import { getSaleModel } from "../models/BranchDB/sale";
 import { getReturnModel } from "../models/BranchDB/return";
@@ -56,21 +57,15 @@ const resolveBranch = async (branchIdOrName: string) => {
 // ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const {
-      items,
-      paymentMethod,
-      discountType,
-      discountValue,
-      taxRate,
-      linkedReturnId,
-    } = req.body as {
-      items: { productId: string; quantity: number }[];
-      paymentMethod?: string;
-      discountType?: string;
-      discountValue?: number;
-      taxRate?: number;
-      linkedReturnId?: string;
-    };
+    const { items, paymentMethod, discountType, discountValue, taxRate, linkedReturnId } =
+      req.body as {
+        items: { productId: string; quantity: number }[];
+        paymentMethod?: string;
+        discountType?: string;
+        discountValue?: number;
+        taxRate?: number;
+        linkedReturnId?: string;
+      };
 
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -141,9 +136,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
         ? await Return.findById(linkedReturnId)
         : await Return.findOne({ returnNumber: linkedReturnId });
       if (!linkedReturn) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Linked return not found" });
+        return res.status(404).json({ success: false, message: "Linked return not found" });
       }
       if (linkedReturn.type !== "exchange") {
         return res.status(400).json({
@@ -163,9 +156,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
     //    item (checked up-front so we don't deduct half the cart before failing)
     const priced = await priceAndValidateItems(items, branchDb);
     if (!priced.ok) {
-      return res
-        .status(priced.status)
-        .json({ success: false, message: priced.message });
+      return res.status(priced.status).json({ success: false, message: priced.message });
     }
     const saleItems = priced.items;
     const { discountAmount, taxAmount, totalAmount } = computeDiscountAndTax(
@@ -272,10 +263,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
 // Admin: pass ?branchId= (SaleSummary rows carry it already).
 // Manager/Cashier: scoped to their own branch automatically.
 // ============================================================
-export const getSaleDetail = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -283,9 +271,7 @@ export const getSaleDetail = async (
 
     const id = req.params.id;
     if (!id || typeof id !== "string" || !isValidObjectId(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid Sale ID" });
+      return res.status(400).json({ success: false, message: "Invalid Sale ID" });
     }
 
     const branchIdOrName =
@@ -295,9 +281,7 @@ export const getSaleDetail = async (
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -305,9 +289,7 @@ export const getSaleDetail = async (
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Sale not found" });
+      return res.status(404).json({ success: false, message: "Sale not found" });
     }
 
     // Cashiers may only drill into their own sales
@@ -337,9 +319,7 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(req.user.branch);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -370,10 +350,7 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/sales/branch — Manager: every sale in their own branch
 // (Admin can also call this with ?branchId= to inspect one branch)
 // ============================================================
-export const getBranchSales = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getBranchSales = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -386,9 +363,7 @@ export const getBranchSales = async (
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -400,9 +375,15 @@ export const getBranchSales = async (
 
     const sales = await Sale.find(filter).sort({ createdAt: -1 });
 
-    const totalRevenue = sales
+    const grossRevenue = sales
       .filter((s) => s.status === "completed")
       .reduce((sum, s) => sum + s.totalAmount, 0);
+
+    const Return = getReturnModel(branchDb);
+    const returns = await Return.find();
+    const totalRefunded = returns.reduce((sum, r) => sum + r.refundAmount, 0);
+
+    const totalRevenue = grossRevenue - totalRefunded;
 
     const enriched = await attachReturnInfo(sales, branchDb);
 
@@ -410,6 +391,7 @@ export const getBranchSales = async (
       success: true,
       data: enriched,
       totalRevenue,
+      totalRefunded,
       branchName: branch.name,
     });
   } catch (error: any) {
@@ -422,10 +404,7 @@ export const getBranchSales = async (
 // GET /api/sales/overview — Admin: all branches, filterable by branchId
 // Reads from CentralDB SaleSummary (no need to touch every branch DB)
 // ============================================================
-export const getSalesOverview = async (
-  req: AuthenticatedRequest,
-  res: Response,
-) => {
+export const getSalesOverview = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { branchId, startDate, endDate } = req.query;
 
@@ -445,15 +424,26 @@ export const getSalesOverview = async (
     const SaleSummary = getCentralSaleSummaryModel();
     const summaries = await SaleSummary.find(filter).sort({ createdAt: -1 });
 
-    const totalRevenue = summaries
+    const grossRevenue = summaries
       .filter((s) => s.status === "completed")
       .reduce((sum, s) => sum + s.totalAmount, 0);
 
+    // Returns aren't tagged with a "status" (there's no voided-equivalent
+    // for a return), so the same branchId/date filter applies as-is.
+    const ReturnSummary = getCentralReturnSummaryModel();
+    const returnSummaries = await ReturnSummary.find(filter);
+    const totalRefunded = returnSummaries.reduce((sum, r) => sum + r.refundAmount, 0);
+
+    const totalRevenue = grossRevenue - totalRefunded;
+
+    const refundByBranch: Record<string, number> = {};
+    for (const r of returnSummaries) {
+      const key = r.branchId.toString();
+      refundByBranch[key] = (refundByBranch[key] || 0) + r.refundAmount;
+    }
+
     // Per-branch breakdown — handy for an admin dashboard chart
-    const byBranch: Record<
-      string,
-      { branchName: string; total: number; count: number }
-    > = {};
+    const byBranch: Record<string, { branchName: string; total: number; count: number }> = {};
     for (const s of summaries) {
       if (s.status !== "completed") continue;
       const key = s.branchId.toString();
@@ -463,11 +453,16 @@ export const getSalesOverview = async (
       byBranch[key].total += s.totalAmount;
       byBranch[key].count += 1;
     }
+    for (const key of Object.keys(byBranch)) {
+      const entry = byBranch[key];
+      if (entry) entry.total -= refundByBranch[key] || 0;
+    }
 
     return res.status(200).json({
       success: true,
       data: summaries,
       totalRevenue,
+      totalRefunded,
       byBranch: Object.values(byBranch),
     });
   } catch (error: any) {
@@ -495,9 +490,7 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -506,14 +499,10 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Sale not found" });
+      return res.status(404).json({ success: false, message: "Sale not found" });
     }
     if (sale.status === "voided") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Sale is already voided" });
+      return res.status(400).json({ success: false, message: "Sale is already voided" });
     }
 
     // restock every item from the voided sale

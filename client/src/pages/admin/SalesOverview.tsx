@@ -9,11 +9,13 @@ import {
   Eye,
   X,
   Search,
+  Printer,
 } from "lucide-react";
 import {
   getSalesOverviewApi,
   getSaleDetailApi,
 } from "../../services/saleService";
+import { printReceipt } from "../../utils/printReceipt";
 import { getBranchesForDropdownApi } from "../../services/branchService";
 import type { BranchSalesBreakdown, Sale, SaleSummary } from "../../types/sale";
 
@@ -79,6 +81,7 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
   onClose,
 }) => {
   const [sale, setSale] = useState<Sale | null>(null);
+  const [branchName, setBranchName] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -87,7 +90,10 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
       setLoading(true);
       try {
         const res = await getSaleDetailApi(saleId, branchId);
-        if (!cancelled && res.success) setSale(res.data);
+        if (!cancelled && res.success) {
+          setSale(res.data);
+          setBranchName(res.branchName || "");
+        }
       } catch (error: unknown) {
         const err = error as { response?: { data?: { message?: string } } };
         toast.error(
@@ -126,12 +132,23 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
               </p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {sale && (
+              <button
+                onClick={() => printReceipt(sale, branchName)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                <Printer size={14} />
+                Print
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -505,7 +522,7 @@ export const SalesOverview: React.FC = () => {
                               -{s.discountAmount.toLocaleString()} Ks
                             </span>
                           ) : (
-                            <span className="font-medium text-red-500">0 Ks</span>
+                            <span className="text-slate-300">—</span>
                           )}
                         </td>
                         <td className="px-6 py-4 font-semibold text-slate-900">

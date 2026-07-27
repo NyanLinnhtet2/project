@@ -41,6 +41,10 @@ import type {
 import { validateImageFile, compressImage } from "../../utils/imageCompressing";
 import axios from "axios";
 import type { ErrorResponse } from "../../types/ErrorResponse";
+
+// ============================================================
+// Confirm Dialog Component (Responsive)
+// ============================================================
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -93,25 +97,22 @@ const ConfirmDialog = ({
   const styles = getTypeStyles();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div
         className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
       >
-        {/* Icon */}
         <div className="flex justify-center mb-4">
           <div className={`rounded-full p-3 ${styles.bg}`}>
             <AlertCircle size={32} className={styles.icon} />
           </div>
         </div>
 
-        {/* Title & Message */}
         <h3 className="text-xl font-bold text-slate-900 text-center mb-2">
           {title}
         </h3>
         <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
 
-        {/* Buttons */}
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onCancel}
             className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50"
@@ -130,6 +131,9 @@ const ConfirmDialog = ({
   );
 };
 
+// ============================================================
+// Interfaces & Types
+// ============================================================
 interface Branch {
   _id: string;
   name: string;
@@ -151,7 +155,6 @@ interface EmployeeFormData {
   avatarPreview: string;
 }
 
-// Sort types
 type SortField =
   | "name"
   | "email"
@@ -163,8 +166,11 @@ type SortField =
   | "joinDate";
 type SortOrder = "asc" | "desc";
 
+// ============================================================
+// Main Component
+// ============================================================
 export const Employees = () => {
-  // States
+  // States (unchanged)
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -253,61 +259,7 @@ export const Employees = () => {
     },
   ];
 
-  useEffect(() => {
-    let filtered = [...employees];
-
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (emp) =>
-          emp.name.toLowerCase().includes(term) ||
-          emp.email.toLowerCase().includes(term) ||
-          emp.position.toLowerCase().includes(term) ||
-          emp.branch.toLowerCase().includes(term),
-      );
-    }
-
-    // Status filter
-    if (statusFilter !== "All") {
-      filtered = filtered.filter(
-        (emp) => emp.status === statusFilter.toLowerCase(),
-      );
-    }
-
-    // ✅ Sorting
-    filtered.sort((a, b) => {
-      let aValue = a[sortField as keyof Employee];
-      let bValue = b[sortField as keyof Employee];
-
-      // Handle string comparison
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-
-      // Handle null/undefined values
-      if (aValue == null) aValue = "";
-      if (bValue == null) bValue = "";
-
-      // For salary (number)
-      if (sortField === "salary") {
-        aValue = Number(aValue) || 0;
-        bValue = Number(bValue) || 0;
-      }
-
-      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    const t = setTimeout(() => {
-      setFilteredEmployees(filtered);
-    }, 0);
-
-    return () => clearTimeout(t);
-  }, [searchTerm, statusFilter, employees, sortField, sortOrder]);
-
+  // Fetch functions (unchanged)
   const fetchBranches = async () => {
     try {
       setIsFetchingBranches(true);
@@ -324,7 +276,6 @@ export const Employees = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setIsFetchingBranches(false);
@@ -364,7 +315,6 @@ export const Employees = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     }
   };
@@ -375,62 +325,89 @@ export const Employees = () => {
       fetchStats();
       fetchBranches();
     }, 0);
-
     return () => clearTimeout(t);
   }, []);
 
+  // Filtering & sorting (unchanged)
+  useEffect(() => {
+    let filtered = [...employees];
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (emp) =>
+          emp.name.toLowerCase().includes(term) ||
+          emp.email.toLowerCase().includes(term) ||
+          emp.position.toLowerCase().includes(term) ||
+          emp.branch.toLowerCase().includes(term),
+      );
+    }
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(
+        (emp) => emp.status === statusFilter.toLowerCase(),
+      );
+    }
+    filtered.sort((a, b) => {
+      let aValue = a[sortField as keyof Employee];
+      let bValue = b[sortField as keyof Employee];
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+      if (aValue == null) aValue = "";
+      if (bValue == null) bValue = "";
+      if (sortField === "salary") {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      }
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+    const t = setTimeout(() => {
+      setFilteredEmployees(filtered);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchTerm, statusFilter, employees, sortField, sortOrder]);
+
+  // Handlers (unchanged)
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const validation = validateImageFile(file);
     if (!validation.valid) {
       toast.error(validation.message || "Invalid image file");
       return;
     }
-
     try {
       toast.loading("Compressing image...");
       const compressedImage = await compressImage(file, 5);
       toast.dismiss();
-
       setFormData((prev) => ({
         ...prev,
         avatar: file,
         avatarPreview: compressedImage,
       }));
-
       toast.success("Image uploaded successfully!");
     } catch (error: unknown) {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     }
   };
 
   const handleRemoveImage = () => {
-    setFormData((prev) => ({
-      ...prev,
-      avatar: null,
-      avatarPreview: "",
-    }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    setFormData((prev) => ({ ...prev, avatar: null, avatarPreview: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resetForm = () => {
@@ -451,7 +428,6 @@ export const Employees = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (
       !formData.name ||
       !formData.email ||
@@ -463,10 +439,8 @@ export const Employees = () => {
       toast.error("Please fill in all required fields");
       return;
     }
-
     try {
       setIsSubmitting(true);
-
       let avatarBase64 = "";
       if (formData.avatar) {
         const reader = new FileReader();
@@ -475,7 +449,6 @@ export const Employees = () => {
           reader.readAsDataURL(formData.avatar as File);
         });
       }
-
       const employeeData: CreateEmployeeData = {
         name: formData.name,
         email: formData.email,
@@ -488,9 +461,7 @@ export const Employees = () => {
         salary: Number(formData.salary) || 0,
         avatar: avatarBase64 || undefined,
       };
-
       const response = await createEmployeeApi(employeeData);
-
       if (response.success) {
         toast.success(response.message || "Employee created successfully!");
         setIsModalOpen(false);
@@ -504,7 +475,6 @@ export const Employees = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
@@ -513,12 +483,9 @@ export const Employees = () => {
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!editingEmployee) return;
-
     try {
       setIsSubmitting(true);
-
       let avatarBase64 = "";
       if (formData.avatar) {
         const reader = new FileReader();
@@ -527,7 +494,6 @@ export const Employees = () => {
           reader.readAsDataURL(formData.avatar as File);
         });
       }
-
       const updateData: UpdateEmployeeData = {
         name: formData.name,
         email: formData.email,
@@ -539,13 +505,8 @@ export const Employees = () => {
         salary: Number(formData.salary) || 0,
         avatar: avatarBase64 || undefined,
       };
-
-      if (formData.password) {
-        updateData.password = formData.password;
-      }
-
+      if (formData.password) updateData.password = formData.password;
       const response = await updateEmployeeApi(editingEmployee._id, updateData);
-
       if (response.success) {
         toast.success(response.message || "Employee updated successfully!");
         setIsEditModalOpen(false);
@@ -560,7 +521,6 @@ export const Employees = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
@@ -575,7 +535,6 @@ export const Employees = () => {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-
     try {
       const response = await deleteEmployeeApi(deleteTarget.id);
       if (response.success) {
@@ -589,7 +548,6 @@ export const Employees = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setShowDeleteConfirm(false);
@@ -626,6 +584,7 @@ export const Employees = () => {
     setIsEditModalOpen(true);
   };
 
+  // Helpers (unchanged)
   const getStatusBadge = (status: string) => {
     const statusMap = {
       active: { label: "Active", className: "bg-emerald-100 text-emerald-700" },
@@ -671,9 +630,10 @@ export const Employees = () => {
     }).format(amount);
   };
 
+  // Loading / Error states
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading employees...</p>
@@ -684,8 +644,8 @@ export const Employees = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
             Error Loading Employees
@@ -693,7 +653,7 @@ export const Employees = () => {
           <p className="mt-2 text-slate-600">{error}</p>
           <button
             onClick={fetchEmployees}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition w-full sm:w-auto"
           >
             Retry
           </button>
@@ -706,7 +666,7 @@ export const Employees = () => {
   // Main Render
   // ============================================================
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-4 sm:p-6">
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Delete Employee"
@@ -719,15 +679,15 @@ export const Employees = () => {
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Users size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Employee Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -737,21 +697,19 @@ export const Employees = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
-            >
-              <UserPlus size={20} />
-              Add New Employee
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
+          >
+            <UserPlus size={20} />
+            Add New Employee
+          </button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - responsive grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
@@ -834,9 +792,9 @@ export const Employees = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
+        {/* Search and Filter - responsive stacking */}
         <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -849,11 +807,11 @@ export const Employees = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="All">All Status</option>
               <option value="Active">Active</option>
@@ -861,11 +819,10 @@ export const Employees = () => {
               <option value="Suspended">Suspended</option>
             </select>
 
-            {/* ✅ Sorting Dropdown */}
             <select
               value={sortField}
               onChange={(e) => setSortField(e.target.value as SortField)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="name">Sort by Name</option>
               <option value="email">Sort by Email</option>
@@ -877,10 +834,9 @@ export const Employees = () => {
               <option value="joinDate">Sort by Join Date</option>
             </select>
 
-            {/* ✅ Sort Order Toggle */}
             <button
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white flex-1 md:flex-initial"
             >
               {sortOrder === "asc" ? (
                 <>
@@ -897,7 +853,7 @@ export const Employees = () => {
           </div>
         </div>
 
-        {/* Employee Table */}
+        {/* Employee Table - with horizontal scroll on mobile */}
         {filteredEmployees.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
             <Users className="h-16 w-16 text-slate-300 mx-auto" />
@@ -911,31 +867,31 @@ export const Employees = () => {
         ) : (
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200/50">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-800px">
                 <thead className="bg-slate-50 border-b border-slate-200/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Employee
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Contact
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Position
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Branch
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Salary
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Role
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Actions
                     </th>
                   </tr>
@@ -946,7 +902,7 @@ export const Employees = () => {
                       key={employee._id}
                       className="transition hover:bg-slate-50/50"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
                             src={
@@ -957,7 +913,7 @@ export const Employees = () => {
                             className="h-10 w-10 rounded-xl object-cover"
                           />
                           <div>
-                            <p className="font-medium text-slate-900">
+                            <p className="font-medium text-slate-900 text-sm sm:text-base">
                               {employee.name}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -966,41 +922,43 @@ export const Employees = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                            <Mail size={14} className="text-slate-400" />
-                            <span>{employee.email}</span>
+                            <Mail size={14} className="text-slate-400 shrink-0" />
+                            <span className="truncate max-w-120px sm:max-w-none">
+                              {employee.email}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                            <Phone size={14} className="text-slate-400" />
+                            <Phone size={14} className="text-slate-400 shrink-0" />
                             <span>{employee.phone}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <p className="text-sm font-medium text-slate-900">
                           {employee.position}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                          <MapPin size={14} className="text-slate-400" />
+                          <MapPin size={14} className="text-slate-400 shrink-0" />
                           <span>{employee.branch}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <p className="text-sm font-semibold text-slate-900">
                           {formatCurrency(employee.salary || 0)}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         {getRoleBadge(employee.role)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         {getStatusBadge(employee.status)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex justify-center gap-1.5">
                           <button
                             onClick={() => handleView(employee)}
@@ -1034,13 +992,13 @@ export const Employees = () => {
       </div>
 
       {/* ============================================================
-          Add Employee Modal
+          Add Employee Modal (Responsive)
           ============================================================ */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Add New Employee
               </h2>
               <button
@@ -1055,7 +1013,7 @@ export const Employees = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              {/* Avatar Upload */}
+              {/* Avatar Upload - responsive */}
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="relative">
                   <div className="h-24 w-24 rounded-2xl overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center border-2 border-dashed border-slate-300">
@@ -1106,7 +1064,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Full Name <span className="text-red-500">*</span>
@@ -1137,7 +1095,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Phone Number <span className="text-red-500">*</span>
@@ -1168,7 +1126,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Position <span className="text-red-500">*</span>
@@ -1220,7 +1178,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Role <span className="text-red-500">*</span>
@@ -1272,7 +1230,7 @@ export const Employees = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -1304,13 +1262,13 @@ export const Employees = () => {
       )}
 
       {/* ============================================================
-          Edit Employee Modal
+          Edit Employee Modal (Responsive)
           ============================================================ */}
       {isEditModalOpen && editingEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Edit Employee
               </h2>
               <button
@@ -1377,7 +1335,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Full Name <span className="text-red-500">*</span>
@@ -1408,7 +1366,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Phone Number <span className="text-red-500">*</span>
@@ -1438,7 +1396,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Position <span className="text-red-500">*</span>
@@ -1485,7 +1443,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Role <span className="text-red-500">*</span>
@@ -1537,7 +1495,7 @@ export const Employees = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -1570,13 +1528,13 @@ export const Employees = () => {
       )}
 
       {/* ============================================================
-          View Employee Modal
+          View Employee Modal (Responsive)
           ============================================================ */}
       {isViewModalOpen && selectedEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Employee Details
               </h2>
               <button
@@ -1588,7 +1546,7 @@ export const Employees = () => {
             </div>
 
             <div className="mt-6 space-y-6">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
                 <img
                   src={
                     selectedEmployee.image?.url ||
@@ -1597,39 +1555,39 @@ export const Employees = () => {
                   alt={selectedEmployee.name}
                   className="h-20 w-20 rounded-2xl object-cover shadow-lg"
                 />
-                <div>
+                <div className="text-center sm:text-left">
                   <h3 className="text-2xl font-bold text-slate-900">
                     {selectedEmployee.name}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
                     {getRoleBadge(selectedEmployee.role)}
                     {getStatusBadge(selectedEmployee.status)}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <Mail size={18} className="text-slate-400" />
-                    <span className="text-slate-600">
+                    <Mail size={18} className="text-slate-400 shrink-0" />
+                    <span className="text-slate-600 break-all">
                       {selectedEmployee.email}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Phone size={18} className="text-slate-400" />
+                    <Phone size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">
                       {selectedEmployee.phone}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Briefcase size={18} className="text-slate-400" />
+                    <Briefcase size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">
                       {selectedEmployee.position}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <DollarSign size={18} className="text-slate-400" />
+                    <DollarSign size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600 font-semibold">
                       {formatCurrency(selectedEmployee.salary || 0)}
                     </span>
@@ -1637,19 +1595,19 @@ export const Employees = () => {
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <MapPin size={18} className="text-slate-400" />
+                    <MapPin size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">
                       {selectedEmployee.branch}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Shield size={18} className="text-slate-400" />
+                    <Shield size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600 capitalize">
                       {selectedEmployee.role}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Calendar size={18} className="text-slate-400" />
+                    <Calendar size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">
                       Joined:{" "}
                       {new Date(selectedEmployee.joinDate).toLocaleDateString()}
@@ -1658,7 +1616,7 @@ export const Employees = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   onClick={() => setIsViewModalOpen(false)}
                   className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-700 transition hover:bg-slate-50"

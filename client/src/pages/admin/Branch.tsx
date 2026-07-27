@@ -41,7 +41,7 @@ import axios from "axios";
 import type { ErrorResponse } from "../../types/ErrorResponse";
 
 // ============================================================
-// Confirm Dialog Component
+// Confirm Dialog Component (Responsive)
 // ============================================================
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -97,7 +97,7 @@ const ConfirmDialog = ({
   const styles = getTypeStyles();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div
         className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
       >
@@ -112,7 +112,7 @@ const ConfirmDialog = ({
         </h3>
         <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
@@ -141,7 +141,7 @@ const ConfirmDialog = ({
 };
 
 // ============================================================
-// View Branch Modal
+// View Branch Modal (Responsive)
 // ============================================================
 interface ViewBranchModalProps {
   isOpen: boolean;
@@ -194,15 +194,15 @@ const ViewBranchModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-4 sm:p-6 shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-linear-to-br from-blue-600 to-blue-700 p-2 shadow-lg shadow-blue-200">
               <Building2 size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 {branch.name}
               </h2>
               <p className="text-sm text-slate-500">Branch Details</p>
@@ -326,7 +326,7 @@ const ViewBranchModal = ({
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
             <button
               onClick={onClose}
               className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
@@ -359,7 +359,6 @@ interface Manager {
   branch: string;
 }
 
-// Sort types
 type SortField =
   | "name"
   | "code"
@@ -392,7 +391,6 @@ export const Branch = () => {
     name: string;
   } | null>(null);
 
-  // ✅ Sorting states
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
@@ -494,11 +492,10 @@ export const Branch = () => {
     return () => clearTimeout(t);
   }, []);
 
-  // ✅ Apply filters and sorting
+  // Apply filters and sorting
   useEffect(() => {
     let filtered = [...branches];
 
-    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -509,25 +506,21 @@ export const Branch = () => {
       );
     }
 
-    // Status filter
     if (statusFilter !== "All") {
       filtered = filtered.filter(
         (branch) => branch.status === statusFilter.toLowerCase(),
       );
     }
 
-    // ✅ Sorting
     filtered.sort((a, b) => {
       let aValue = a[sortField as keyof BranchType];
       let bValue = b[sortField as keyof BranchType];
 
-      // Handle string comparison
       if (typeof aValue === "string" && typeof bValue === "string") {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
 
-      // Handle null/undefined values
       if (aValue == null) aValue = "";
       if (bValue == null) bValue = "";
 
@@ -734,7 +727,7 @@ export const Branch = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading branches...</p>
@@ -745,8 +738,8 @@ export const Branch = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
             Error Loading Branches
@@ -754,7 +747,7 @@ export const Branch = () => {
           <p className="mt-2 text-slate-600">{error}</p>
           <button
             onClick={fetchBranches}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition w-full sm:w-auto"
           >
             Retry
           </button>
@@ -764,7 +757,7 @@ export const Branch = () => {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-4 sm:p-6">
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
@@ -794,15 +787,15 @@ export const Branch = () => {
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - fully responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Building2 size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Branch Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -817,14 +810,14 @@ export const Branch = () => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
           >
             <Plus size={20} />
             Add New Branch
           </button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - responsive grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <p className="text-sm font-medium text-slate-500">Total Branches</p>
@@ -877,9 +870,9 @@ export const Branch = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
+        {/* Search and Filter - responsive stacking */}
         <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -892,22 +885,21 @@ export const Branch = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="All">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
 
-            {/* ✅ Sorting Dropdown */}
             <select
               value={sortField}
               onChange={(e) => setSortField(e.target.value as SortField)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="name">Sort by Name</option>
               <option value="code">Sort by Code</option>
@@ -917,10 +909,9 @@ export const Branch = () => {
               <option value="revenue">Sort by Revenue</option>
             </select>
 
-            {/* ✅ Sort Order Toggle */}
             <button
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white flex-1 md:flex-initial"
             >
               {sortOrder === "asc" ? (
                 <>
@@ -937,7 +928,7 @@ export const Branch = () => {
           </div>
         </div>
 
-        {/* Branch Cards Grid */}
+        {/* Branch Cards Grid - responsive */}
         {filteredBranches.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
             <Building2 className="h-16 w-16 text-slate-300 mx-auto" />
@@ -953,11 +944,11 @@ export const Branch = () => {
             {filteredBranches.map((branch) => (
               <div
                 key={branch._id}
-                className="group rounded-2xl bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50"
+                className="group rounded-2xl bg-white p-4 sm:p-6 shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold text-slate-900">
                         {branch.name}
                       </h3>
@@ -984,8 +975,8 @@ export const Branch = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-                  <div className="flex items-center gap-4 text-sm">
+                <div className="mt-4 flex flex-wrap items-center justify-between border-t border-slate-100 pt-4 gap-2">
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
                     <div>
                       <p className="text-xs text-slate-400">Employees</p>
                       <p className="font-semibold text-slate-900">
@@ -1032,12 +1023,12 @@ export const Branch = () => {
         )}
       </div>
 
-      {/* Add Branch Modal */}
+      {/* Add Branch Modal - responsive */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Add New Branch
               </h2>
               <button
@@ -1052,7 +1043,7 @@ export const Branch = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Branch Name <span className="text-red-500">*</span>
@@ -1083,7 +1074,7 @@ export const Branch = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Email
@@ -1113,7 +1104,7 @@ export const Branch = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Manager
@@ -1174,7 +1165,7 @@ export const Branch = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -1205,12 +1196,14 @@ export const Branch = () => {
         </div>
       )}
 
-      {/* Edit Branch Modal */}
+      {/* Edit Branch Modal - responsive */}
       {isEditModalOpen && editingBranch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">Edit Branch</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+                Edit Branch
+              </h2>
               <button
                 onClick={() => {
                   setIsEditModalOpen(false);
@@ -1224,7 +1217,7 @@ export const Branch = () => {
             </div>
 
             <form onSubmit={handleUpdate} className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Branch Name <span className="text-red-500">*</span>
@@ -1256,7 +1249,7 @@ export const Branch = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Email
@@ -1286,7 +1279,7 @@ export const Branch = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Manager
@@ -1342,7 +1335,7 @@ export const Branch = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -1377,6 +1370,7 @@ export const Branch = () => {
   );
 };
 
+// Custom Code icon (since it's not in lucide-react)
 const Code = ({ size, className }: { size: number; className: string }) => (
   <svg
     width={size}

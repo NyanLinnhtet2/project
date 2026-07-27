@@ -47,21 +47,39 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
 const StatusBadge: React.FC<{ event: DiscountEvent }> = ({ event }) => {
   const getStatus = (): { label: string; className: string; icon: string } => {
     if (!event.isActive) {
-      return { label: "Disabled", className: "bg-slate-100 text-slate-600", icon: "⛔" };
+      return {
+        label: "Disabled",
+        className: "bg-slate-100 text-slate-600",
+        icon: "⛔",
+      };
     }
     const now = new Date();
     if (new Date(event.endDate) < now) {
-      return { label: "Ended", className: "bg-slate-100 text-slate-600", icon: "📅" };
+      return {
+        label: "Ended",
+        className: "bg-slate-100 text-slate-600",
+        icon: "📅",
+      };
     }
     if (new Date(event.startDate) > now) {
-      return { label: "Scheduled", className: "bg-blue-100 text-blue-700", icon: "⏳" };
+      return {
+        label: "Scheduled",
+        className: "bg-blue-100 text-blue-700",
+        icon: "⏳",
+      };
     }
-    return { label: "Live", className: "bg-emerald-100 text-emerald-700", icon: "🔴" };
+    return {
+      label: "Live",
+      className: "bg-emerald-100 text-emerald-700",
+      icon: "🔴",
+    };
   };
 
   const status = getStatus();
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}
+    >
       {status.icon} {status.label}
     </span>
   );
@@ -164,15 +182,17 @@ export const DiscountEvents: React.FC = () => {
     let filtered = [...events];
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((ev) =>
-        ev.name.toLowerCase().includes(term)
-      );
+      filtered = filtered.filter((ev) => ev.name.toLowerCase().includes(term));
     }
     if (statusFilter !== "All") {
       const now = new Date();
       filtered = filtered.filter((ev) => {
         if (statusFilter === "Live") {
-          return ev.isActive && new Date(ev.startDate) <= now && new Date(ev.endDate) >= now;
+          return (
+            ev.isActive &&
+            new Date(ev.startDate) <= now &&
+            new Date(ev.endDate) >= now
+          );
         }
         if (statusFilter === "Scheduled") {
           return ev.isActive && new Date(ev.startDate) > now;
@@ -186,7 +206,7 @@ export const DiscountEvents: React.FC = () => {
         return true;
       });
     }
-    const t = setTimeout(()=>  setFilteredEvents(filtered), 0);
+    const t = setTimeout(() => setFilteredEvents(filtered), 0);
     return () => clearTimeout(t);
   }, [searchTerm, statusFilter, events]);
 
@@ -283,7 +303,6 @@ export const DiscountEvents: React.FC = () => {
     }
   };
 
-  // Helper to format branch names
   const getBranchNames = (event: DiscountEvent): string => {
     if (event.scope === "all") return "All Branches";
     if (event.branchNames?.length) return event.branchNames.join(", ");
@@ -291,17 +310,17 @@ export const DiscountEvents: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Percent size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Discount Events
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -313,20 +332,24 @@ export const DiscountEvents: React.FC = () => {
 
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
           >
             <Plus size={20} />
             New Event
           </button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Stats Cards - responsive grid */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-500">Total Events</p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">{stats.total}</p>
+                <p className="text-sm font-medium text-slate-500">
+                  Total Events
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {stats.total}
+                </p>
               </div>
               <div className="rounded-xl bg-blue-50 p-3">
                 <Sparkles size={20} className="text-blue-600" />
@@ -337,7 +360,9 @@ export const DiscountEvents: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Live</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-600">{stats.live}</p>
+                <p className="mt-2 text-3xl font-bold text-emerald-600">
+                  {stats.live}
+                </p>
               </div>
               <div className="rounded-xl bg-emerald-50 p-3">
                 <CheckCircle size={20} className="text-emerald-600" />
@@ -348,7 +373,9 @@ export const DiscountEvents: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Scheduled</p>
-                <p className="mt-2 text-3xl font-bold text-blue-600">{stats.scheduled}</p>
+                <p className="mt-2 text-3xl font-bold text-blue-600">
+                  {stats.scheduled}
+                </p>
               </div>
               <div className="rounded-xl bg-blue-50 p-3">
                 <Clock size={20} className="text-blue-600" />
@@ -359,7 +386,9 @@ export const DiscountEvents: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Ended</p>
-                <p className="mt-2 text-3xl font-bold text-slate-600">{stats.ended}</p>
+                <p className="mt-2 text-3xl font-bold text-slate-600">
+                  {stats.ended}
+                </p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <Calendar size={20} className="text-slate-600" />
@@ -370,7 +399,9 @@ export const DiscountEvents: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Disabled</p>
-                <p className="mt-2 text-3xl font-bold text-amber-600">{stats.disabled}</p>
+                <p className="mt-2 text-3xl font-bold text-amber-600">
+                  {stats.disabled}
+                </p>
               </div>
               <div className="rounded-xl bg-amber-50 p-3">
                 <AlertCircle size={20} className="text-amber-600" />
@@ -379,9 +410,9 @@ export const DiscountEvents: React.FC = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
+        {/* Search and Filter - responsive stacking */}
         <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -394,11 +425,11 @@ export const DiscountEvents: React.FC = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full md:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="All">All Status</option>
               <option value="Live">Live</option>
@@ -410,7 +441,7 @@ export const DiscountEvents: React.FC = () => {
         </div>
 
         {/* Events Table */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           {loading ? (
             <LoadingSpinner />
           ) : filteredEvents.length === 0 ? (
@@ -430,63 +461,78 @@ export const DiscountEvents: React.FC = () => {
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200/50">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-900px">
                   <thead className="bg-slate-50 border-b border-slate-200/50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Name
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Scope
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Cashier Cap
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Manager Cap
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Window
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Status
                       </th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredEvents.map((event) => (
-                      <tr key={event._id} className="transition hover:bg-slate-50/50">
-                        <td className="px-6 py-4 font-medium text-slate-900">
+                      <tr
+                        key={event._id}
+                        className="transition hover:bg-slate-50/50"
+                      >
+                        <td className="px-4 sm:px-6 py-4 font-medium text-slate-900 text-sm sm:text-base">
                           {event.name}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                            <Store size={14} className="text-slate-400" />
-                            <span title={getBranchNames(event)}>
-                              {event.scope === "all" ? "All Branches" : getBranchNames(event)}
+                            <Store
+                              size={14}
+                              className="text-slate-400 shrink-0"
+                            />
+                            <span
+                              title={getBranchNames(event)}
+                              className="truncate max-w-120px sm:max-w-none"
+                            >
+                              {event.scope === "all"
+                                ? "All Branches"
+                                : getBranchNames(event)}
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-medium text-slate-900">
+                        <td className="px-4 sm:px-6 py-4 font-medium text-slate-900">
                           {event.cashierCap}%
                         </td>
-                        <td className="px-6 py-4 font-medium text-slate-900">
+                        <td className="px-4 sm:px-6 py-4 font-medium text-slate-900">
                           {event.managerCap}%
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="text-sm text-slate-600">
-                            <div>{new Date(event.startDate).toLocaleDateString()}</div>
-                            <div className="text-xs text-slate-400">→ {new Date(event.endDate).toLocaleDateString()}</div>
+                            <div>
+                              {new Date(event.startDate).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              → {new Date(event.endDate).toLocaleDateString()}
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <StatusBadge event={event} />
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="px-4 sm:px-6 py-4">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
                             <button
                               onClick={() => handleToggleActive(event)}
                               disabled={busyId === event._id}
@@ -523,12 +569,14 @@ export const DiscountEvents: React.FC = () => {
         </div>
       </div>
 
-      {/* Create Modal - styled like employee modals */}
+      {/* Create Modal - responsive */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">New Discount Event</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+                New Discount Event
+              </h2>
               <button
                 onClick={resetForm}
                 className="rounded-lg p-2 transition hover:bg-slate-100"
@@ -545,7 +593,9 @@ export const DiscountEvents: React.FC = () => {
                 <input
                   type="text"
                   value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
                   placeholder="e.g., Thingyan Sale 2026"
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                 />
@@ -558,7 +608,9 @@ export const DiscountEvents: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, scope: "all", branchIds: [] }))}
+                    onClick={() =>
+                      setForm((f) => ({ ...f, scope: "all", branchIds: [] }))
+                    }
                     className={`rounded-xl border px-4 py-3 font-medium transition ${
                       form.scope === "all"
                         ? "border-blue-500 bg-blue-50 text-blue-700"
@@ -588,7 +640,9 @@ export const DiscountEvents: React.FC = () => {
                   </label>
                   <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 p-3 space-y-1">
                     {branches.length === 0 ? (
-                      <p className="text-sm text-slate-400">No branches available</p>
+                      <p className="text-sm text-slate-400">
+                        No branches available
+                      </p>
                     ) : (
                       branches.map((b) => (
                         <label
@@ -602,7 +656,9 @@ export const DiscountEvents: React.FC = () => {
                             className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           />
                           <Store size={16} className="text-slate-400" />
-                          <span className="text-sm text-slate-700">{b.name}</span>
+                          <span className="text-sm text-slate-700">
+                            {b.name}
+                          </span>
                         </label>
                       ))
                     )}
@@ -610,7 +666,7 @@ export const DiscountEvents: React.FC = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Cashier Cap (%) <span className="text-red-500">*</span>
@@ -621,7 +677,10 @@ export const DiscountEvents: React.FC = () => {
                     max={100}
                     value={form.cashierCap}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, cashierCap: Number(e.target.value) }))
+                      setForm((f) => ({
+                        ...f,
+                        cashierCap: Number(e.target.value),
+                      }))
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   />
@@ -636,14 +695,17 @@ export const DiscountEvents: React.FC = () => {
                     max={100}
                     value={form.managerCap}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, managerCap: Number(e.target.value) }))
+                      setForm((f) => ({
+                        ...f,
+                        managerCap: Number(e.target.value),
+                      }))
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Start Date <span className="text-red-500">*</span>
@@ -651,7 +713,9 @@ export const DiscountEvents: React.FC = () => {
                   <input
                     type="date"
                     value={form.startDate}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, startDate: e.target.value }))
+                    }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   />
                 </div>
@@ -662,13 +726,15 @@ export const DiscountEvents: React.FC = () => {
                   <input
                     type="date"
                     value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, endDate: e.target.value }))
+                    }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={resetForm}

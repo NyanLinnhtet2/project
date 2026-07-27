@@ -35,7 +35,7 @@ import axios from "axios";
 import type { ErrorResponse } from "../../types/ErrorResponse";
 
 // ============================================================
-// Confirm Dialog Component
+// Confirm Dialog Component (Responsive)
 // ============================================================
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -91,7 +91,7 @@ const ConfirmDialog = ({
   const styles = getTypeStyles();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div
         className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
       >
@@ -106,7 +106,7 @@ const ConfirmDialog = ({
         </h3>
         <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
@@ -138,7 +138,7 @@ const ConfirmDialog = ({
 // Main Component
 // ============================================================
 export const CategoryBrand = () => {
-  // States
+  // States (unchanged)
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
@@ -153,7 +153,6 @@ export const CategoryBrand = () => {
     "categories",
   );
 
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<Category | Brand | null>(null);
   const [modalType, setModalType] = useState<"category" | "brand">("category");
@@ -174,7 +173,6 @@ export const CategoryBrand = () => {
     status: "active",
   });
 
-  // Stats
   const [categoryStats, setCategoryStats] = useState({
     total: 0,
     active: 0,
@@ -187,15 +185,13 @@ export const CategoryBrand = () => {
   });
 
   // ============================================================
-  // Fetch Functions
+  // Fetch Functions (unchanged)
   // ============================================================
   const fetchCategories = async () => {
     try {
       const params: any = {};
       if (statusFilter !== "All") params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
-
-      // ✅ Use the new API with product count
       const response = await getCategoriesWithCountApi(params);
       if (response.success) {
         setCategories(response.data);
@@ -205,7 +201,6 @@ export const CategoryBrand = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     }
   };
@@ -215,8 +210,6 @@ export const CategoryBrand = () => {
       const params: any = {};
       if (statusFilter !== "All") params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
-
-      // ✅ Use the new API with product count
       const response = await getBrandsWithCountApi(params);
       if (response.success) {
         setBrands(response.data);
@@ -226,7 +219,6 @@ export const CategoryBrand = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     }
   };
@@ -243,7 +235,6 @@ export const CategoryBrand = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     }
   };
@@ -268,11 +259,11 @@ export const CategoryBrand = () => {
     const t = setTimeout(() => {
       fetchAll();
     }, 0);
-
     return () => clearTimeout(t);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filter on search/status change
   useEffect(() => {
     let filtered = [...categories];
     if (searchTerm) {
@@ -287,7 +278,6 @@ export const CategoryBrand = () => {
     const t = setTimeout(() => {
       setFilteredCategories(filtered);
     }, 0);
-
     return () => clearTimeout(t);
   }, [searchTerm, statusFilter, categories]);
 
@@ -302,16 +292,14 @@ export const CategoryBrand = () => {
         (b) => b.status === statusFilter.toLowerCase(),
       );
     }
-
     const t = setTimeout(() => {
       setFilteredBrands(filtered);
     }, 0);
-
     return () => clearTimeout(t);
   }, [searchTerm, statusFilter, brands]);
 
   // ============================================================
-  // Handlers
+  // Handlers (unchanged)
   // ============================================================
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -359,17 +347,13 @@ export const CategoryBrand = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!formData.name.trim()) {
       toast.error("Name is required");
       return;
     }
-
     try {
       setIsSubmitting(true);
-
       if (editingItem) {
-        // Update
         let response;
         if (modalType === "category") {
           response = await updateCategoryApi(editingItem._id, formData);
@@ -384,7 +368,6 @@ export const CategoryBrand = () => {
           handleCloseModal();
         }
       } else {
-        // Create
         let response;
         if (modalType === "category") {
           response = await createCategoryApi(formData);
@@ -403,7 +386,6 @@ export const CategoryBrand = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
@@ -422,7 +404,6 @@ export const CategoryBrand = () => {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-
     try {
       let response;
       if (deleteTarget.type === "category") {
@@ -444,7 +425,6 @@ export const CategoryBrand = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setShowDeleteConfirm(false);
@@ -474,11 +454,11 @@ export const CategoryBrand = () => {
   };
 
   // ============================================================
-  // Loading & Error States
+  // Loading & Error States (unchanged)
   // ============================================================
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading...</p>
@@ -489,8 +469,8 @@ export const CategoryBrand = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
             Error Loading Data
@@ -498,7 +478,7 @@ export const CategoryBrand = () => {
           <p className="mt-2 text-slate-600">{error}</p>
           <button
             onClick={fetchAll}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition w-full sm:w-auto"
           >
             Retry
           </button>
@@ -512,7 +492,7 @@ export const CategoryBrand = () => {
   const currentStats = activeTab === "categories" ? categoryStats : brandStats;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-4 sm:p-6">
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
@@ -529,15 +509,15 @@ export const CategoryBrand = () => {
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Layers size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Category & Brand Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -551,14 +531,14 @@ export const CategoryBrand = () => {
             onClick={() =>
               handleOpenModal(activeTab === "categories" ? "category" : "brand")
             }
-            className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
           >
             <Plus size={20} />
             Add New {activeTab === "categories" ? "Category" : "Brand"}
           </button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - responsive grid (3 columns) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
@@ -601,17 +581,17 @@ export const CategoryBrand = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - responsive */}
         <div className="flex gap-2 rounded-2xl bg-white p-2 shadow-sm">
           <button
             onClick={() => setActiveTab("categories")}
-            className={`flex-1 rounded-xl px-6 py-3 font-medium transition ${
+            className={`flex-1 rounded-xl px-4 py-3 sm:px-6 font-medium transition ${
               activeTab === "categories"
                 ? "bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200"
                 : "text-slate-600 hover:bg-slate-50"
             }`}
           >
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
               <Tag size={18} />
               Categories
               <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">
@@ -621,13 +601,13 @@ export const CategoryBrand = () => {
           </button>
           <button
             onClick={() => setActiveTab("brands")}
-            className={`flex-1 rounded-xl px-6 py-3 font-medium transition ${
+            className={`flex-1 rounded-xl px-4 py-3 sm:px-6 font-medium transition ${
               activeTab === "brands"
                 ? "bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200"
                 : "text-slate-600 hover:bg-slate-50"
             }`}
           >
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
               <Layers size={18} />
               Brands
               <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">
@@ -637,9 +617,9 @@ export const CategoryBrand = () => {
           </button>
         </div>
 
-        {/* Search and Filter */}
+        {/* Search and Filter - responsive stacking */}
         <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -652,11 +632,11 @@ export const CategoryBrand = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full md:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="All">All Status</option>
               <option value="active">Active</option>
@@ -665,7 +645,7 @@ export const CategoryBrand = () => {
           </div>
         </div>
 
-        {/* List with Product Count */}
+        {/* List with Product Count - Table with horizontal scroll */}
         {currentData.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
             <Tag className="h-16 w-16 text-slate-300 mx-auto" />
@@ -679,25 +659,25 @@ export const CategoryBrand = () => {
         ) : (
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200/50">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-700px">
                 <thead className="bg-slate-50 border-b border-slate-200/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Name
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Description
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Products
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Created At
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Actions
                     </th>
                   </tr>
@@ -708,22 +688,22 @@ export const CategoryBrand = () => {
                       key={item._id}
                       className="transition hover:bg-slate-50/50"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-md">
                             {item.name.charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium text-slate-900">
+                          <span className="font-medium text-slate-900 text-sm sm:text-base">
                             {item.name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="text-sm text-slate-600">
                           {item.description || "—"}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-1.5">
                           <Package size={14} className="text-slate-400" />
                           <span className="font-medium text-slate-900">
@@ -734,15 +714,15 @@ export const CategoryBrand = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         {getStatusBadge(item.status)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="text-sm text-slate-600">
                           {new Date(item.createdAt).toLocaleDateString()}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex justify-center gap-1.5">
                           <button
                             onClick={() =>
@@ -782,10 +762,10 @@ export const CategoryBrand = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal - Same as before */}
+      {/* Add/Edit Modal - responsive */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <h2 className="text-xl font-bold text-slate-900">
                 {editingItem ? "Edit" : "Add New"} {modalType}
@@ -843,7 +823,7 @@ export const CategoryBrand = () => {
                 </select>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={handleCloseModal}

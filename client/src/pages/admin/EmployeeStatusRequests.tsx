@@ -15,41 +15,75 @@ import {
   rejectEmployeeStatusChangeRequestApi,
 } from "../../services/employeeServices";
 import type { EmployeeStatusRequest } from "../../types/employee";
-import { useAuth } from "../../context/useAuth"; // ⚠️ သင့်ရဲ့ actual path နဲ့ ချိန်ညှိပါ
+import { useAuth } from "../../context/useAuth";
 
 // ============================================================
 // Status Badges
 // ============================================================
 const EmployeeStatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, { label: string; className: string; icon: string }> = {
-    active: { label: "Active", className: "bg-emerald-100 text-emerald-700", icon: "🟢" },
-    inactive: { label: "Inactive", className: "bg-slate-100 text-slate-700", icon: "⚪" },
-    suspended: { label: "Suspended", className: "bg-red-100 text-red-700", icon: "🔴" },
+  const map: Record<
+    string,
+    { label: string; className: string; icon: string }
+  > = {
+    active: {
+      label: "Active",
+      className: "bg-emerald-100 text-emerald-700",
+      icon: "🟢",
+    },
+    inactive: {
+      label: "Inactive",
+      className: "bg-slate-100 text-slate-700",
+      icon: "⚪",
+    },
+    suspended: {
+      label: "Suspended",
+      className: "bg-red-100 text-red-700",
+      icon: "🔴",
+    },
   };
   const info = map[status] || map.inactive;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${info.className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${info.className}`}
+    >
       {info.icon} {info.label}
     </span>
   );
 };
 
 const RequestStatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, { label: string; className: string; icon: string }> = {
-    PENDING: { label: "Pending", className: "bg-amber-100 text-amber-700", icon: "⏳" },
-    APPROVED: { label: "Approved", className: "bg-emerald-100 text-emerald-700", icon: "✅" },
-    REJECTED: { label: "Rejected", className: "bg-red-100 text-red-700", icon: "❌" },
+  const map: Record<
+    string,
+    { label: string; className: string; icon: string }
+  > = {
+    PENDING: {
+      label: "Pending",
+      className: "bg-amber-100 text-amber-700",
+      icon: "⏳",
+    },
+    APPROVED: {
+      label: "Approved",
+      className: "bg-emerald-100 text-emerald-700",
+      icon: "✅",
+    },
+    REJECTED: {
+      label: "Rejected",
+      className: "bg-red-100 text-red-700",
+      icon: "❌",
+    },
   };
   const info = map[status?.toUpperCase()] || map.PENDING;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${info.className}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${info.className}`}
+    >
       {info.icon} {info.label}
     </span>
   );
 };
 
 // ============================================================
-// Reject Modal
+// Reject Modal (Responsive)
 // ============================================================
 interface RejectModalProps {
   isOpen: boolean;
@@ -58,14 +92,19 @@ interface RejectModalProps {
   isLoading: boolean;
 }
 
-const RejectModal: React.FC<RejectModalProps> = ({ isOpen, onClose, onConfirm, isLoading }) => {
+const RejectModal: React.FC<RejectModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  isLoading,
+}) => {
   const [note, setNote] = useState("");
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-4 sm:p-6 shadow-2xl">
         <h3 className="text-lg font-bold text-slate-900">Reject Request</h3>
         <p className="mt-1 text-sm text-slate-500">
           Manager အတွက် အကြောင်းရင်း ရေးထားပေးရင် ပိုနားလည်ပါလိမ့်မယ် (optional)
@@ -77,7 +116,7 @@ const RejectModal: React.FC<RejectModalProps> = ({ isOpen, onClose, onConfirm, i
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex flex-col sm:flex-row gap-3">
           <button
             onClick={onClose}
             disabled={isLoading}
@@ -90,7 +129,11 @@ const RejectModal: React.FC<RejectModalProps> = ({ isOpen, onClose, onConfirm, i
             disabled={isLoading}
             className="flex-1 rounded-xl bg-red-600 py-3 font-medium text-white transition hover:bg-red-700 disabled:opacity-70"
           >
-            {isLoading ? <Loader2 size={18} className="mx-auto animate-spin" /> : "Reject"}
+            {isLoading ? (
+              <Loader2 size={18} className="mx-auto animate-spin" />
+            ) : (
+              "Reject"
+            )}
           </button>
         </div>
       </div>
@@ -101,7 +144,10 @@ const RejectModal: React.FC<RejectModalProps> = ({ isOpen, onClose, onConfirm, i
 // ============================================================
 // Empty State
 // ============================================================
-const EmptyState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
+const EmptyState: React.FC<{ title: string; description: string }> = ({
+  title,
+  description,
+}) => (
   <div className="text-center py-12">
     <div className="flex justify-center">
       <div className="rounded-full bg-blue-50 p-4">
@@ -120,9 +166,9 @@ export const EmployeeStatusRequests: React.FC = () => {
   const { userInfo } = useAuth();
 
   const [requests, setRequests] = useState<EmployeeStatusRequest[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">(
-    "PENDING",
-  );
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "PENDING" | "APPROVED" | "REJECTED"
+  >("PENDING");
   const [loading, setLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
@@ -151,7 +197,10 @@ export const EmployeeStatusRequests: React.FC = () => {
   const handleApprove = async (id: string): Promise<void> => {
     setActioningId(id);
     try {
-      const res = await approveEmployeeStatusChangeRequestApi(id, userInfo?.name || "Admin");
+      const res = await approveEmployeeStatusChangeRequestApi(
+        id,
+        userInfo?.name || "Admin",
+      );
       if (res.success) {
         toast.success("Request approved and employee status updated");
         fetchRequests();
@@ -187,27 +236,32 @@ export const EmployeeStatusRequests: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
               <Users size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Staff Status Requests</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Staff Status Requests
+              </h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                Manager တင်ထားသည့် Employee Status ပြောင်းလိုသော Request များကို Review လုပ်ပါ
+                Manager တင်ထားသည့် Employee Status ပြောင်းလိုသော Request များကို
+                Review လုပ်ပါ
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <select
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 sm:flex-initial rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as typeof statusFilter)
+              }
             >
               <option value="PENDING">Pending</option>
               <option value="APPROVED">Approved</option>
@@ -217,21 +271,26 @@ export const EmployeeStatusRequests: React.FC = () => {
             <button
               onClick={fetchRequests}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
             >
-              <RefreshCw size={16} className={`text-slate-400 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                size={16}
+                className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           <div className="overflow-hidden rounded-2xl border border-slate-200/50">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Loader2 size={32} className="animate-spin text-blue-500" />
-                <p className="mt-4 text-sm text-slate-500 font-medium">Loading requests...</p>
+                <p className="mt-4 text-sm text-slate-500 font-medium">
+                  Loading requests...
+                </p>
               </div>
             ) : requests.length === 0 ? (
               <EmptyState
@@ -240,62 +299,76 @@ export const EmployeeStatusRequests: React.FC = () => {
               />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-800px">
                   <thead className="bg-slate-50 border-b border-slate-200/50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Employee
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Branch
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Change
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Reason
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Requested By
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Status
                       </th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {requests.map((r) => (
-                      <tr key={r._id} className="transition hover:bg-slate-50/50">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-slate-900">{r.employeeName}</p>
+                      <tr
+                        key={r._id}
+                        className="transition hover:bg-slate-50/50"
+                      >
+                        <td className="px-4 sm:px-6 py-4">
+                          <p className="font-medium text-slate-900 text-sm sm:text-base">
+                            {r.employeeName}
+                          </p>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-700">{r.branch}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-sm">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-700">
+                          {r.branch}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4">
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
                             <EmployeeStatusBadge status={r.currentStatus} />
                             <span className="text-slate-400">→</span>
                             <EmployeeStatusBadge status={r.requestedStatus} />
                           </div>
                         </td>
-                        <td className="px-6 py-4 max-w-220px">
-                          <p className="text-sm text-slate-600 line-clamp-2">{r.reason}</p>
+                        <td className="px-4 sm:px-6 py-4 max-w-200px">
+                          <p className="text-sm text-slate-600 line-clamp-2">
+                            {r.reason}
+                          </p>
                           {r.status !== "PENDING" && r.adminNote && (
                             <p className="mt-1 flex items-start gap-1 text-xs text-slate-400 italic">
-                              <MessageSquare size={12} className="mt-0.5 shrink-0" />
+                              <MessageSquare
+                                size={12}
+                                className="mt-0.5 shrink-0"
+                              />
                               {r.adminNote}
                             </p>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-700">{r.requestedBy}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-700">
+                          {r.requestedBy}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4">
                           <RequestStatusBadge status={r.status} />
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           {r.status === "PENDING" ? (
-                            <div className="flex justify-center gap-2">
+                            <div className="flex flex-wrap justify-center gap-2">
                               <button
                                 onClick={() => handleApprove(r._id)}
                                 disabled={actioningId === r._id}
@@ -333,6 +406,7 @@ export const EmployeeStatusRequests: React.FC = () => {
         </div>
       </div>
 
+      {/* Reject Modal */}
       <RejectModal
         isOpen={!!rejectTargetId}
         onClose={() => setRejectTargetId(null)}

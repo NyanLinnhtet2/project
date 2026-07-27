@@ -126,8 +126,6 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ quantity }) => {
 
 // ============================================================
 // Transaction Type Badge Component
-// ✅ FIXED: keys now match backend enum (INBOUND/OUTBOUND/ADJUSTMENT/DAMAGE)
-//    and lookup is case-insensitive via toUpperCase()
 // ============================================================
 const TransactionTypeBadge: React.FC<TransactionTypeBadgeProps> = ({
   type,
@@ -236,7 +234,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
 );
 
 // ============================================================
-// Deduct Stock Modal Component
+// Deduct Stock Modal Component (Responsive)
 // ============================================================
 const DeductStockModal: React.FC<DeductStockModalProps> = ({
   isOpen,
@@ -338,8 +336,8 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <h3 className="text-xl font-bold text-slate-900">Deduct Stock</h3>
           <button
@@ -414,7 +412,7 @@ const DeductStockModal: React.FC<DeductStockModalProps> = ({
           />
         </div>
 
-        <div className="flex gap-3 pt-4 border-t border-slate-200">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
           <button
             type="button"
             onClick={onClose}
@@ -481,8 +479,7 @@ export const Inventory: React.FC = () => {
   ] as const;
 
   // ============================================================
-  // Fetch Functions (each one silent — no shared loading toggle
-  // so they're safe to call together inside refreshAll)
+  // Fetch Functions
   // ============================================================
   const fetchBranches = async (): Promise<void> => {
     try {
@@ -520,7 +517,6 @@ export const Inventory: React.FC = () => {
     }
   };
 
-  // ✅ NEW: transactions now has its own fetch function
   const fetchTransactions = async (branchId: string): Promise<void> => {
     if (!branchId) return;
     try {
@@ -542,8 +538,6 @@ export const Inventory: React.FC = () => {
     }
   };
 
-  // ✅ NEW: refreshAll — one single function every "Refresh" button
-  // and every success handler calls, so all tabs always stay in sync
   const refreshAll = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -558,14 +552,13 @@ export const Inventory: React.FC = () => {
       const message = axios.isAxiosError<ErrorResponse>(error)
         ? error.response?.data.message
         : undefined;
-
       toast.error(message ?? "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial load (branches, products, transfers)
+  // Initial load
   useEffect(() => {
     const t = setTimeout(() => {
       fetchBranches();
@@ -573,6 +566,7 @@ export const Inventory: React.FC = () => {
       fetchTransfers();
     }, 0);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Whenever selected branch changes, load its inventory + transactions
@@ -613,7 +607,7 @@ export const Inventory: React.FC = () => {
         toast.success("Stock allocated successfully!");
         setIsAddModalOpen(false);
         setAllocateData({ productId: "", quantity: 0 });
-        refreshAll(); // ✅ keep everything in sync
+        refreshAll();
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -625,7 +619,7 @@ export const Inventory: React.FC = () => {
     try {
       await approveTransferApi(id, userInfo?.name || "Admin");
       toast.success("Transfer Approved");
-      refreshAll(); // ✅ keep everything in sync
+      refreshAll();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message ?? "Something went wrong");
@@ -636,7 +630,7 @@ export const Inventory: React.FC = () => {
     try {
       await rejectTransferApi(id, userInfo?.name || "Admin");
       toast.success("Transfer Rejected");
-      refreshAll(); // ✅ keep everything in sync
+      refreshAll();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message ?? "Something went wrong");
@@ -649,7 +643,7 @@ export const Inventory: React.FC = () => {
   };
 
   const handleDeductSuccess = (): void => {
-    refreshAll(); // ✅ keep everything in sync (was fetchInventory + fetchTransfers only)
+    refreshAll();
   };
 
   const getProductName = (stock: Stock): string => {
@@ -675,17 +669,17 @@ export const Inventory: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Package size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Inventory Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -696,31 +690,29 @@ export const Inventory: React.FC = () => {
           </div>
 
           {activeTab === "stock" && (
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
-              >
-                <PlusCircle size={20} />
-                Add Stock
-              </button>
-            </div>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
+            >
+              <PlusCircle size={20} />
+              Add Stock
+            </button>
           )}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - responsive */}
         <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-2 shadow-sm border border-slate-200/50">
           {visibleTabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-xl px-6 py-3 font-medium capitalize transition-all duration-300 ${
+              className={`flex-1 min-w-80px rounded-xl px-3 py-3 sm:px-6 font-medium capitalize transition-all duration-300 ${
                 activeTab === tab
                   ? "bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2 text-xs sm:text-sm">
                 {tab === "stock" && <Package size={18} />}
                 {tab === "transfer" && <Truck size={18} />}
                 {tab === "transactions" && <HistoryIcon size={18} />}
@@ -744,17 +736,17 @@ export const Inventory: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           {/* Stock Tab */}
           {activeTab === "stock" && (
             <div>
-              {/* Branch Selector */}
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-                <div className="flex items-center gap-3">
+              {/* Branch Selector - responsive */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
                   <Store size={20} className="text-slate-400" />
                   <label className="font-medium text-slate-700">Branch:</label>
                   <select
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+                    className="w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
                     value={selectedBranch}
                     onChange={(e) => setSelectedBranch(e.target.value)}
                   >
@@ -765,11 +757,10 @@ export const Inventory: React.FC = () => {
                     ))}
                   </select>
                 </div>
-                {/* ✅ FIXED: was fetchInventory only, now refreshAll */}
                 <button
                   onClick={refreshAll}
                   disabled={loading}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
                 >
                   <RefreshCw
                     size={16}
@@ -792,22 +783,22 @@ export const Inventory: React.FC = () => {
                     />
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full">
+                      <table className="w-full min-w-600px">
                         <thead className="bg-slate-50 border-b border-slate-200/50">
                           <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                               No.
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                               Product Name
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                               In Stock
                             </th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                               Status
                             </th>
-                            <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                               Actions
                             </th>
                           </tr>
@@ -818,12 +809,12 @@ export const Inventory: React.FC = () => {
                               key={item._id || index}
                               className="transition hover:bg-slate-50/50"
                             >
-                              <td className="px-6 py-4 text-sm text-slate-500">
+                              <td className="px-4 sm:px-6 py-4 text-sm text-slate-500">
                                 {index + 1}
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-4 sm:px-6 py-4">
                                 <div>
-                                  <p className="font-medium text-slate-900">
+                                  <p className="font-medium text-slate-900 text-sm sm:text-base">
                                     {getProductName(item)}
                                   </p>
                                   <p className="text-xs text-slate-400">
@@ -831,15 +822,15 @@ export const Inventory: React.FC = () => {
                                   </p>
                                 </div>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-4 sm:px-6 py-4">
                                 <p className="text-2xl font-bold text-slate-900">
                                   {item.quantity}
                                 </p>
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-4 sm:px-6 py-4">
                                 <StatusBadge quantity={item.quantity} />
                               </td>
-                              <td className="px-6 py-4">
+                              <td className="px-4 sm:px-6 py-4">
                                 <div className="flex justify-center gap-2">
                                   <button
                                     onClick={() => handleOpenDeductModal(item)}
@@ -869,7 +860,7 @@ export const Inventory: React.FC = () => {
           {/* Transfer Tab */}
           {activeTab === "transfer" && (
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">
                     Transfer Requests
@@ -878,11 +869,10 @@ export const Inventory: React.FC = () => {
                     Manage stock transfer requests between branches
                   </p>
                 </div>
-                {/* ✅ FIXED: was fetchTransfers only, now refreshAll */}
                 <button
                   onClick={refreshAll}
                   disabled={loading}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
                 >
                   <RefreshCw
                     size={16}
@@ -901,22 +891,22 @@ export const Inventory: React.FC = () => {
                   />
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-700px">
                       <thead className="bg-slate-50 border-b border-slate-200/50">
                         <tr>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Product
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             From ➔ To
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Qty
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Status
                           </th>
-                          <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Actions
                           </th>
                         </tr>
@@ -927,9 +917,9 @@ export const Inventory: React.FC = () => {
                             key={t._id}
                             className="transition hover:bg-slate-50/50"
                           >
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <div>
-                                <p className="font-medium text-slate-900">
+                                <p className="font-medium text-slate-900 text-sm sm:text-base">
                                   {typeof t.productId === "object" &&
                                   t.productId !== null
                                     ? (t.productId as Product).name
@@ -946,8 +936,8 @@ export const Inventory: React.FC = () => {
                                 </p>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
+                            <td className="px-4 sm:px-6 py-4">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium text-red-500">
                                   {typeof t.fromBranchId === "object" &&
                                   t.fromBranchId !== null
@@ -967,17 +957,17 @@ export const Inventory: React.FC = () => {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <p className="text-lg font-bold text-slate-900">
                                 {t.quantity}
                               </p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <TransferStatusBadge status={t.status} />
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               {t.status === "pending" ? (
-                                <div className="flex justify-center gap-2">
+                                <div className="flex flex-wrap justify-center gap-2">
                                   <button
                                     onClick={() => handleApprove(t._id)}
                                     className="rounded-lg bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-200 hover:scale-105 active:scale-95"
@@ -1010,7 +1000,7 @@ export const Inventory: React.FC = () => {
           {/* Transactions Tab */}
           {activeTab === "transactions" && (
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">
                     Transaction History
@@ -1019,12 +1009,10 @@ export const Inventory: React.FC = () => {
                     Complete history of all stock transactions
                   </p>
                 </div>
-                {/* ✅ FIXED: was fetchInventory (bug — never refreshed transactions),
-                    now refreshAll refreshes transactions too */}
                 <button
                   onClick={refreshAll}
                   disabled={loading}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
                 >
                   <RefreshCw
                     size={16}
@@ -1043,19 +1031,19 @@ export const Inventory: React.FC = () => {
                   />
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-600px">
                       <thead className="bg-slate-50 border-b border-slate-200/50">
                         <tr>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Product
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Type
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Qty
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Date
                           </th>
                         </tr>
@@ -1066,15 +1054,15 @@ export const Inventory: React.FC = () => {
                             key={t._id}
                             className="transition hover:bg-slate-50/50"
                           >
-                            <td className="px-6 py-4">
-                              <p className="font-medium text-slate-900">
+                            <td className="px-4 sm:px-6 py-4">
+                              <p className="font-medium text-slate-900 text-sm sm:text-base">
                                 {(t.productId as Product)?.name || "N/A"}
                               </p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <TransactionTypeBadge type={t.transactionType} />
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <p
                                 className={`text-lg font-bold ${
                                   t.quantity > 0
@@ -1086,7 +1074,7 @@ export const Inventory: React.FC = () => {
                                 {t.quantity}
                               </p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <p className="text-sm text-slate-500">
                                 {new Date(t.createdAt).toLocaleDateString()}
                               </p>
@@ -1104,7 +1092,7 @@ export const Inventory: React.FC = () => {
             </div>
           )}
 
-          {/* ✅ NEW: Stock Requests Tab (admin only — reviews manager edit requests) */}
+          {/* Stock Edit Requests Tab */}
           {activeTab === "stock-requests" && (
             <StockEditRequestsTab
               reviewedBy={userInfo?.name || "Admin"}
@@ -1114,10 +1102,10 @@ export const Inventory: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Stock Modal */}
+      {/* Add Stock Modal - responsive */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <h3 className="text-xl font-bold text-slate-900">Add Stock</h3>
               <button
@@ -1174,7 +1162,7 @@ export const Inventory: React.FC = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
@@ -1194,7 +1182,7 @@ export const Inventory: React.FC = () => {
         </div>
       )}
 
-      {/* Deduct Stock Modal (Admin only) */}
+      {/* Deduct Stock Modal */}
       <DeductStockModal
         isOpen={isDeductModalOpen}
         onClose={() => {

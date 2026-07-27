@@ -10,7 +10,7 @@ export const ManagerReports = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-emerald-50/30 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Reports</h1>

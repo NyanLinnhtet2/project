@@ -52,7 +52,7 @@ const TypeBadge: React.FC<{ type: ReturnSummary["type"] }> = ({ type }) => (
 );
 
 // ============================================================
-// Return Detail Modal — fetches full line items from the branch DB
+// Return Detail Modal (Responsive)
 // ============================================================
 interface ReturnDetailModalProps {
   returnId: string;
@@ -101,7 +101,7 @@ const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+        <div className="sticky top-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 sm:px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-slate-800">
               {returnDoc?.returnNumber || "Return Detail"}
@@ -128,7 +128,7 @@ const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({
             Return not found
           </p>
         ) : (
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             <div className="mb-3">
               <TypeBadge type={returnDoc.type} />
             </div>
@@ -191,6 +191,9 @@ const ReturnDetailModal: React.FC<ReturnDetailModalProps> = ({
   );
 };
 
+// ============================================================
+// Main Component
+// ============================================================
 export const AdminReturns: React.FC = () => {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [branchId, setBranchId] = useState("");
@@ -248,7 +251,6 @@ export const AdminReturns: React.FC = () => {
   useEffect(() => {
     const t = setTimeout(() => fetchOverview(), 0);
     return () => clearTimeout(t);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId, startDate, endDate]);
 
@@ -263,17 +265,17 @@ export const AdminReturns: React.FC = () => {
   }, [summaries, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-amber-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-amber-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <RotateCcw size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Returns & Exchanges
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -283,22 +285,22 @@ export const AdminReturns: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
-            <div className="flex items-center gap-2">
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
               <TrendingDown size={18} className="text-white/90" />
               <span className="text-xs font-medium text-white/90">
                 Total Refunded
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
               {totalRefunded.toLocaleString()} Ks
             </p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50">
-          <div className="relative w-full sm:w-72">
+        {/* Filters - responsive wrapping */}
+        <div className="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50">
+          <div className="relative flex-1 min-w-150px w-full sm:w-auto">
             <Search
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -307,12 +309,12 @@ export const AdminReturns: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search return #, sale #, branch, processed by..."
+              placeholder="Search return #, sale #, branch..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-120px">
             <Store size={18} className="text-slate-400" />
             <label className="font-medium text-slate-700">Branch:</label>
           </div>
@@ -320,7 +322,7 @@ export const AdminReturns: React.FC = () => {
           <select
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
-            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md sm:flex-none"
+            className="flex-1 min-w-120px rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
           >
             <option value="">All Branches</option>
             {branches.map((b) => (
@@ -330,30 +332,30 @@ export const AdminReturns: React.FC = () => {
             ))}
           </select>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-140px">
             <span className="text-sm text-slate-500">From:</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-140px">
             <span className="text-sm text-slate-500">To:</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:bg-white focus:shadow-md"
             />
           </div>
 
           <button
             onClick={fetchOverview}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
           >
             <RefreshCw
               size={16}
@@ -363,9 +365,9 @@ export const AdminReturns: React.FC = () => {
           </button>
         </div>
 
-        {/* Per-branch breakdown */}
+        {/* Per-branch breakdown - responsive grid */}
         {byBranch.length > 0 && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {byBranch.map((b) => (
               <div
                 key={b.branchName}
@@ -389,7 +391,7 @@ export const AdminReturns: React.FC = () => {
         )}
 
         {/* Returns Table */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           {loading ? (
             <LoadingSpinner />
           ) : summaries.length === 0 ? (
@@ -419,34 +421,34 @@ export const AdminReturns: React.FC = () => {
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200/50">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-900px">
                   <thead className="bg-slate-50 border-b border-slate-200/50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Return #
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Branch
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Original Sale
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Type
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Items
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Refund
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Processed By
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Time
                       </th>
-                      <th className="px-6 py-4"></th>
+                      <th className="px-4 sm:px-6 py-4"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -455,31 +457,31 @@ export const AdminReturns: React.FC = () => {
                         key={r._id}
                         className="transition hover:bg-slate-50/50"
                       >
-                        <td className="px-6 py-4 font-medium text-slate-900">
+                        <td className="px-4 sm:px-6 py-4 font-medium text-slate-900 text-sm sm:text-base">
                           {r.returnNumber}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.branchName}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.originalSaleNumber}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <TypeBadge type={r.type} />
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.itemCount}
                         </td>
-                        <td className="px-6 py-4 font-semibold text-amber-600">
+                        <td className="px-4 sm:px-6 py-4 font-semibold text-amber-600">
                           -{r.refundAmount.toLocaleString()} Ks
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.processedByName}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                           {new Date(r.createdAt).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-4 sm:px-6 py-4 text-right">
                           <button
                             onClick={() =>
                               setSelectedReturn({

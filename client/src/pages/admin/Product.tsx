@@ -45,7 +45,7 @@ import type {
 } from "../../types/product";
 
 // ============================================================
-// Confirm Dialog Component
+// Confirm Dialog Component (Responsive)
 // ============================================================
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -101,7 +101,7 @@ const ConfirmDialog = ({
   const styles = getTypeStyles();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div
         className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
       >
@@ -116,7 +116,7 @@ const ConfirmDialog = ({
         </h3>
         <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
@@ -145,7 +145,7 @@ const ConfirmDialog = ({
 };
 
 // ============================================================
-// View Product Modal
+// View Product Modal (Responsive)
 // ============================================================
 interface ViewProductModalProps {
   isOpen: boolean;
@@ -187,15 +187,15 @@ const ViewProductModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-4 sm:p-6 shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-linear-to-br from-blue-600 to-blue-700 p-2 shadow-lg shadow-blue-200">
               <Package size={20} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 {product.name}
               </h2>
               <p className="text-sm text-slate-500">Product Details</p>
@@ -220,36 +220,36 @@ const ViewProductModal = ({
             </span>
           </div>
 
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col sm:flex-row items-start gap-6">
             <img
               src={
                 product.image?.url ||
                 "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=400"
               }
               alt={product.name}
-              className="h-48 w-48 rounded-2xl object-cover shadow-lg"
+              className="h-48 w-full sm:w-48 rounded-2xl object-cover shadow-lg"
             />
-            <div className="flex-1">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex-1 w-full">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <Tag size={18} className="text-slate-400" />
+                    <Tag size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">{product.category}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Store size={18} className="text-slate-400" />
+                    <Store size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">
                       Shop: {product.shopName || "N/A"}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <DollarSign size={18} className="text-slate-400" />
+                    <DollarSign size={18} className="text-slate-400 shrink-0" />
                     <span className="font-semibold text-slate-900">
                       Price: {formatCurrency(product.price)}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <DollarSign size={18} className="text-slate-400" />
+                    <DollarSign size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">
                       Cost: {formatCurrency(product.cost || 0)}
                     </span>
@@ -257,11 +257,14 @@ const ViewProductModal = ({
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-sm">
-                    <Layers size={18} className="text-slate-400" />
+                    <Layers size={18} className="text-slate-400 shrink-0" />
                     <span className="text-slate-600">Unit: {product.unit}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <CalendarIcon size={18} className="text-slate-400" />
+                    <CalendarIcon
+                      size={18}
+                      className="text-slate-400 shrink-0"
+                    />
                     <span className="text-slate-600">
                       Added: {new Date(product.createdAt).toLocaleDateString()}
                     </span>
@@ -271,7 +274,7 @@ const ViewProductModal = ({
             </div>
           </div>
 
-          {/* Variants Section - Simplified */}
+          {/* Variants Section */}
           {product.variants && product.variants.length > 0 && (
             <div className="border-t border-slate-200 pt-4">
               <h4 className="text-sm font-semibold text-slate-700 mb-3">
@@ -313,7 +316,7 @@ const ViewProductModal = ({
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
             <button
               onClick={onClose}
               className="flex-1 rounded-xl border border-slate-200 py-3 font-medium text-slate-700 transition hover:bg-slate-50"
@@ -337,7 +340,7 @@ const ViewProductModal = ({
 };
 
 // ============================================================
-// Variant Form Component - Simplified
+// Variant Form Component (unchanged)
 // ============================================================
 interface VariantFormProps {
   variants: ProductVariant[];
@@ -370,7 +373,6 @@ const VariantForm = ({ variants, onChange }: VariantFormProps) => {
     onChange(newVariants);
   };
 
-  // Common sizes and colors for suggestions
   const commonSizes = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
   const commonColors = [
     "Black",
@@ -517,7 +519,7 @@ type SortField =
 type SortOrder = "asc" | "desc";
 
 export const Product = () => {
-  // States
+  // States (unchanged)
   const [products, setProducts] = useState<Products[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Products[]>([]);
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
@@ -573,7 +575,7 @@ export const Product = () => {
   const units = ["pcs", "pairs", "sets", "boxes", "dozens"];
 
   // ============================================================
-  // API Functions
+  // API Functions (unchanged)
   // ============================================================
   const fetchCategories = async () => {
     try {
@@ -644,7 +646,7 @@ export const Product = () => {
   };
 
   // ============================================================
-  // Effects
+  // Effects (unchanged)
   // ============================================================
   useEffect(() => {
     const t = setTimeout(() => {
@@ -653,9 +655,7 @@ export const Product = () => {
       fetchCategories();
       fetchBrands();
     }, 0);
-
     return () => clearTimeout(t);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -682,7 +682,6 @@ export const Product = () => {
       filtered = filtered.filter((p) => p.category === categoryFilter);
     }
 
-    // Sorting
     filtered.sort((a, b) => {
       let aValue = a[sortField as keyof Products];
       let bValue = b[sortField as keyof Products];
@@ -708,7 +707,6 @@ export const Product = () => {
     const t = setTimeout(() => {
       setFilteredProducts(filtered);
     }, 0);
-
     return () => clearTimeout(t);
   }, [
     searchTerm,
@@ -720,7 +718,7 @@ export const Product = () => {
   ]);
 
   // ============================================================
-  // Form Handlers
+  // Form Handlers (unchanged)
   // ============================================================
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -799,7 +797,7 @@ export const Product = () => {
   };
 
   // ============================================================
-  // CRUD Handlers
+  // CRUD Handlers (unchanged)
   // ============================================================
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -975,7 +973,7 @@ export const Product = () => {
   };
 
   // ============================================================
-  // Helper Functions
+  // Helper Functions (unchanged)
   // ============================================================
   const getStatusBadge = (status: string) => {
     const statusMap = {
@@ -1002,11 +1000,11 @@ export const Product = () => {
   };
 
   // ============================================================
-  // Loading & Error States
+  // Loading & Error States (responsive)
   // ============================================================
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="mt-4 text-slate-600">Loading products...</p>
@@ -1017,8 +1015,8 @@ export const Product = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 flex items-center justify-center p-4">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
           <h3 className="mt-4 text-xl font-semibold text-slate-900">
             Error Loading Products
@@ -1026,7 +1024,7 @@ export const Product = () => {
           <p className="mt-2 text-slate-600">{error}</p>
           <button
             onClick={fetchProducts}
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition w-full sm:w-auto"
           >
             Retry
           </button>
@@ -1035,8 +1033,11 @@ export const Product = () => {
     );
   }
 
+  // ============================================================
+  // Main Render
+  // ============================================================
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-4 sm:p-6">
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
@@ -1066,15 +1067,15 @@ export const Product = () => {
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Header - responsive */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
                 <Package size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                   Product Management
                 </h1>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -1089,14 +1090,14 @@ export const Product = () => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
           >
             <Plus size={20} />
             Add New Product
           </button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - responsive */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
@@ -1160,9 +1161,9 @@ export const Product = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
+        {/* Search and Filter - responsive stacking */}
         <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1175,11 +1176,11 @@ export const Product = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-11 pr-4 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
             />
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="All">All Status</option>
               <option value="active">Active</option>
@@ -1188,7 +1189,7 @@ export const Product = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="All">All Categories</option>
               {categories.map((cat) => (
@@ -1200,7 +1201,7 @@ export const Product = () => {
             <select
               value={sortField}
               onChange={(e) => setSortField(e.target.value as SortField)}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 outline-none transition focus:border-blue-500 focus:bg-white"
             >
               <option value="name">Sort by Name</option>
               <option value="sku">Sort by SKU</option>
@@ -1213,7 +1214,7 @@ export const Product = () => {
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:border-blue-500 focus:bg-white flex-1 md:flex-initial"
             >
               {sortOrder === "asc" ? (
                 <>
@@ -1299,7 +1300,7 @@ export const Product = () => {
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between">
+                  <div className="mt-3 flex flex-wrap items-center justify-between">
                     <div>
                       <p className="text-sm font-bold text-slate-900">
                         {formatCurrency(product.price)}
@@ -1319,11 +1320,10 @@ export const Product = () => {
                   </div>
 
                   <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
-                    <Layers size={14} className="text-slate-400" />
+                    <Layers size={14} className="text-slate-400 shrink-0" />
                     <span>{product.category}</span>
                   </div>
 
-                  {/* Variant tags in grid view */}
                   {product.variants && product.variants.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {product.variants.slice(0, 3).map((variant, idx) => (
@@ -1344,7 +1344,7 @@ export const Product = () => {
                     </div>
                   )}
 
-                  <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+                  <div className="mt-4 flex flex-wrap items-center justify-between border-t border-slate-100 pt-3 gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-500 truncate max-w-120px">
                         {product.shopName || "No shop"}
@@ -1380,37 +1380,37 @@ export const Product = () => {
         ) : (
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200/50">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-900px">
                 <thead className="bg-slate-50 border-b border-slate-200/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Product
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       SKU
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Category
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Price
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Cost
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Unit
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Variants
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Shop
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Actions
                     </th>
                   </tr>
@@ -1421,7 +1421,7 @@ export const Product = () => {
                       key={product._id}
                       className="transition hover:bg-slate-50/50"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
                             src={
@@ -1432,7 +1432,7 @@ export const Product = () => {
                             className="h-12 w-12 rounded-lg object-cover"
                           />
                           <div>
-                            <p className="font-medium text-slate-900">
+                            <p className="font-medium text-slate-900 text-sm sm:text-base">
                               {product.name}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -1441,32 +1441,32 @@ export const Product = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="font-mono text-sm text-slate-600">
                           {product.sku}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="text-sm text-slate-600">
                           {product.category}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="font-semibold text-slate-900">
                           {formatCurrency(product.price)}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="text-sm text-slate-600">
                           {formatCurrency(product.cost || 0)}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="text-sm text-slate-600">
                           {product.unit}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex flex-wrap gap-1">
                           {product.variants && product.variants.length > 0 ? (
                             product.variants.slice(0, 2).map((variant, idx) => (
@@ -1489,15 +1489,15 @@ export const Product = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <span className="text-sm text-slate-600">
                           {product.shopName || "N/A"}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         {getStatusBadge(product.status)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4">
                         <div className="flex justify-center gap-1.5">
                           <button
                             onClick={() => handleView(product)}
@@ -1530,12 +1530,12 @@ export const Product = () => {
         )}
       </div>
 
-      {/* Add Product Modal */}
+      {/* Add Product Modal - responsive */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-3xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Add New Product
               </h2>
               <button
@@ -1601,7 +1601,7 @@ export const Product = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Product Name <span className="text-red-500">*</span>
@@ -1632,7 +1632,7 @@ export const Product = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Category <span className="text-red-500">*</span>
@@ -1711,7 +1711,7 @@ export const Product = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Price <span className="text-red-500">*</span>
@@ -1799,7 +1799,7 @@ export const Product = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -1830,12 +1830,12 @@ export const Product = () => {
         </div>
       )}
 
-      {/* Edit Product Modal */}
+      {/* Edit Product Modal - responsive */}
       {isEditModalOpen && editingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-3xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h2 className="text-2xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Edit Product
               </h2>
               <button
@@ -1902,7 +1902,7 @@ export const Product = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Product Name <span className="text-red-500">*</span>
@@ -1933,7 +1933,7 @@ export const Product = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Category <span className="text-red-500">*</span>
@@ -2001,7 +2001,7 @@ export const Product = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Price <span className="text-red-500">*</span>
@@ -2089,7 +2089,7 @@ export const Product = () => {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {

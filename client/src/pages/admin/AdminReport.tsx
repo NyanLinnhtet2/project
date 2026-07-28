@@ -1,0 +1,360 @@
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  BarChart3,
+  Users,
+  Tag,
+  Percent,
+  RotateCcw,
+  Store,
+  RefreshCw,
+  TrendingUp,
+  DollarSign,
+} from "lucide-react";
+import { getReportSummaryApi } from "../../services/reportService";
+import { getBranchesForDropdownApi } from "../../services/branchService";
+import { RankedBarList } from "../../components/ui/RankedBarList";
+import type { ReportSummary } from "../../types/report";
+
+interface BranchOption {
+  _id: string;
+  name: string;
+}
+
+// ─── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner: React.FC<{ label?: string }> = ({
+  label = "Loading report...",
+}) => (
+  <div className="flex flex-col items-center justify-center py-16">
+    <div className="relative">
+      <div className="h-16 w-16 rounded-full border-4 border-slate-200"></div>
+      <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+    </div>
+    <p className="mt-4 text-sm text-slate-500 font-medium">{label}</p>
+  </div>
+);
+
+// ─── Stat Card ─────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  accent: string;
+}> = ({ label, value, icon, accent }) => (
+  <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md border border-slate-200/50">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`rounded-xl p-3 ${accent}`}>{icon}</div>
+    </div>
+  </div>
+);
+
+// ─── Main Component ────────────────────────────────────────────
+export const AdminReports: React.FC = () => {
+  const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [branchId, setBranchId] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [report, setReport] = useState<ReportSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchBranches = async () => {
+    try {
+      const res = await getBranchesForDropdownApi();
+      if (res.success) setBranches(res.data);
+    } catch {
+      // dropdown is optional
+    }
+  };
+
+  const fetchReport = async () => {
+    setLoading(true);
+    try {
+      const res = await getReportSummaryApi({
+        branchId: branchId || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+      if (res.success) setReport(res.data);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Failed to load report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchBranches(), 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchReport(), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId, startDate, endDate]);
+
+  // ── derived stats ──
+  const totalRevenue =
+    report?.cashierPerformance.reduce((sum, c) => sum + c.totalRevenue, 0) ?? 0;
+
+  return (
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <BarChart3 size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Reports
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Company-wide performance & insights
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <DollarSign size={18} className="text-white/90" />
+              <span className="text-xs font-medium text-white/90">
+                Total Revenue
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
+              {totalRevenue.toLocaleString()} Ks
+            </p>
+          </div>
+        </div>
+
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            label="Total Revenue"
+            value={`${totalRevenue.toLocaleString()} Ks`}
+            icon={<TrendingUp size={20} className="text-white" />}
+            accent="bg-emerald-500"
+          />
+          <StatCard
+            label="Total Discount Given"
+            value={`${report?.discountReturnRate.totalDiscount.toLocaleString() ?? 0} Ks`}
+            icon={<Percent size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
+          <StatCard
+            label="Discount Rate"
+            value={`${report?.discountReturnRate.discountRatePercent ?? 0}%`}
+            icon={<Percent size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
+          <StatCard
+            label="Total Refunded"
+            value={`${report?.discountReturnRate.totalRefund.toLocaleString() ?? 0} Ks`}
+            icon={<RotateCcw size={20} className="text-white" />}
+            accent="bg-red-500"
+          />
+          <StatCard
+            label="Return Rate"
+            value={`${report?.discountReturnRate.returnRatePercent ?? 0}%`}
+            icon={<RotateCcw size={20} className="text-white" />}
+            accent="bg-red-500"
+          />
+        </div>
+
+        {/* ─── Filters ────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50">
+          <div className="flex items-center gap-2 min-w-120px">
+            <Store size={18} className="text-slate-400" />
+            <label className="font-medium text-slate-700">Branch:</label>
+          </div>
+          <select
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="flex-1 min-w-120px rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+          >
+            <option value="">All Branches</option>
+            {branches.map((b) => (
+              <option key={b._id} value={b._id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-2 min-w-140px">
+            <span className="text-sm text-slate-500">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+            />
+          </div>
+          <div className="flex items-center gap-2 min-w-140px">
+            <span className="text-sm text-slate-500">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:shadow-md"
+            />
+          </div>
+
+          <button
+            onClick={fetchReport}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
+          >
+            <RefreshCw
+              size={16}
+              className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
+        </div>
+
+        {/* ─── Report Content ────────────────────────────────────── */}
+        {loading ? (
+          <LoadingSpinner />
+        ) : !report ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="rounded-full bg-blue-50 p-4">
+              <BarChart3 className="h-12 w-12 text-blue-500" />
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-slate-600">
+              No data available
+            </h3>
+            <p className="mt-2 text-slate-400">
+              No sales data found for the selected filters.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* ─── Cashier Performance Table ────────────────────── */}
+            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Users size={20} className="text-blue-600" />
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Cashier Performance
+                </h2>
+                <span className="ml-auto text-xs text-slate-400">
+                  {report.cashierPerformance.length} cashiers
+                </span>
+              </div>
+
+              {report.cashierPerformance.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">
+                  No sales in this period
+                </p>
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-slate-200/50">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-600px">
+                      <thead className="bg-slate-50 border-b border-slate-200/50">
+                        <tr>
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Cashier
+                          </th>
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Branch
+                          </th>
+                          <th className="px-4 sm:px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Revenue
+                          </th>
+                          <th className="px-4 sm:px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Transactions
+                          </th>
+                          <th className="px-4 sm:px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            Avg Basket
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {report.cashierPerformance.map((c, idx) => (
+                          <tr
+                            key={idx}
+                            className="transition hover:bg-slate-50/50"
+                          >
+                            <td className="px-4 sm:px-6 py-4 font-medium text-slate-900 text-sm sm:text-base">
+                              {c.cashierName}
+                            </td>
+                            <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
+                              {c.branchName}
+                            </td>
+                            <td className="px-4 sm:px-6 py-4 text-right font-semibold text-slate-900">
+                              {c.totalRevenue.toLocaleString()} Ks
+                            </td>
+                            <td className="px-4 sm:px-6 py-4 text-right text-slate-600">
+                              {c.transactionCount}
+                            </td>
+                            <td className="px-4 sm:px-6 py-4 text-right text-slate-600">
+                              {c.avgBasket.toLocaleString()} Ks
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ─── Sales by Category ──────────────────────────────── */}
+            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Tag size={20} className="text-blue-600" />
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Sales by Category
+                </h2>
+                <span className="ml-auto text-xs text-slate-400">
+                  {report.categoryBreakdown.length} categories
+                </span>
+              </div>
+              {report.categoryBreakdown.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">
+                  No sales in this period
+                </p>
+              ) : (
+                <RankedBarList
+                  items={report.categoryBreakdown.map((c) => ({
+                    label: c.category,
+                    sublabel: `${c.quantity} sold`,
+                    value: c.revenue,
+                    valueLabel: `${c.revenue.toLocaleString()} Ks`,
+                  }))}
+                  emptyMessage="No sales in this period"
+                />
+              )}
+            </div>
+
+            {/* ─── Quick Summary ───────────────────────────────────── */}
+            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+              <p className="text-sm text-slate-500">
+                <span className="font-medium text-slate-700">
+                  {report.discountReturnRate.salesWithDiscountCount}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-slate-700">
+                  {report.discountReturnRate.totalTransactions}
+                </span>{" "}
+                sales had a discount ·{" "}
+                <span className="font-medium text-slate-700">
+                  {report.discountReturnRate.returnCount}
+                </span>{" "}
+                return
+                {report.discountReturnRate.returnCount !== 1 ? "s" : ""}{" "}
+                processed
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

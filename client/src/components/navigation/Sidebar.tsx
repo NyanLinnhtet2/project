@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   GitBranch,
@@ -286,8 +286,16 @@ export const Sidebar = ({
               <span>Alerts</span>
             </button>
             <button className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm">
-              <FileText size={14} />
-              <span>Reports</span>
+              <Link
+                to={"/admin/reports"}
+                className="w-full flex items-center justify-center gap-1.5"
+                onClick={() => {
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }}
+              >
+                <FileText size={14} />
+                <span>Reports</span>
+              </Link>
             </button>
           </div>
 
@@ -314,7 +322,7 @@ export const Sidebar = ({
               ${collapsed ? "lg:hidden" : "block"}
             `}
           >
-            Version 2.0.1 • © 2024 Retail POS
+            Version 2.0.1 • © 2026 Smart Retail System
           </p>
         </div>
       </aside>

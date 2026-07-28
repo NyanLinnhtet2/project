@@ -15,6 +15,7 @@ import saleRoute from "./routes/saleRoute";
 import discountEventRoute from "./routes/discountEventRoute";
 import discountApprovalRequestRoute from "./routes/discountApprovalRoute";
 import returnRoute from "./routes/returnRoute";
+import reportRoute from "./routes/reportRoute";
 
 dotenv.config({
   path: "./.env",
@@ -44,6 +45,7 @@ app.use("/api/sales", saleRoute);
 app.use("/api/discount-events", discountEventRoute);
 app.use("/api/discount-approval-requests", discountApprovalRequestRoute);
 app.use("/api/returns", returnRoute);
+app.use("/api/reports", reportRoute);
 
 app.use(
   (

@@ -521,7 +521,9 @@ export const SalesOverview: React.FC = () => {
                               -{s.discountAmount.toLocaleString()} Ks
                             </span>
                           ) : (
-                            <span className="text-slate-300">—</span>
+                            <span className="font-medium text-red-500">
+                              0 Ks
+                            </span>
                           )}
                         </td>
                         <td className="px-4 sm:px-6 py-4 font-semibold text-slate-900">

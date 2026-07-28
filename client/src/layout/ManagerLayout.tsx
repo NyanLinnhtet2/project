@@ -1,16 +1,25 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { ManagerSidebar } from "../components/navigation/ManagerSidebar";
 
 export const ManagerLayout = () => {
-  return (
-    <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
-      <ManagerSidebar />
+  
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-8">
-        <Outlet />
-      </main>
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      <ManagerSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+       
+      />
+      <div className="flex-1 overflow-y-auto">
+       
+        <main className="p-4 lg:p-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };
+

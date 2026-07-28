@@ -39,6 +39,7 @@ import { ManagerApprovals } from "./pages/manager/ManagerApproval";
 import { AdminApprovals } from "./pages/admin/AdminApproval";
 import { AdminReturns } from "./pages/admin/AdminReturn";
 import { ManagerReturns } from "./pages/manager/ManagerReturn";
+import { AdminReports } from "./pages/admin/AdminReport";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -155,6 +156,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminReturns />
+          </ProtectedRoute>
+        ),
+      },
+        {
+        path: "reports",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminReports />
           </ProtectedRoute>
         ),
       },

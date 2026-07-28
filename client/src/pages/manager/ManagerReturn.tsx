@@ -15,9 +15,6 @@ import {
 import { getBranchReturnsApi } from "../../services/returnService";
 import type { ReturnRecord } from "../../types/return";
 
-// ============================================================
-// Loading Spinner (matching employee page)
-// ============================================================
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading returns...",
 }) => (
@@ -30,9 +27,6 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   </div>
 );
 
-// ============================================================
-// Type Badge (updated styles)
-// ============================================================
 const TypeBadge: React.FC<{ type: ReturnRecord["type"] }> = ({ type }) => (
   <span
     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
@@ -46,9 +40,6 @@ const TypeBadge: React.FC<{ type: ReturnRecord["type"] }> = ({ type }) => (
   </span>
 );
 
-// ============================================================
-// Return Detail Modal (updated styles)
-// ============================================================
 const ReturnDetailModal: React.FC<{
   returnRecord: ReturnRecord;
   onClose: () => void;
@@ -238,7 +229,7 @@ export const ManagerReturns: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-linear-to-r from-amber-600 to-amber-700 px-6 py-3.5 shadow-lg shadow-amber-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-300">
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg  shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
             <div className="flex items-center gap-2">
               <TrendingDown size={18} className="text-white/90" />
               <span className="text-xs font-medium text-white/90">

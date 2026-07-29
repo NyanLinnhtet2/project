@@ -47,10 +47,10 @@ function Navbar() {
           </div>
           <div>
             <h2 className="text-xl font-bold bg-linear-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-              ClothHub
+              Smart Retail
             </h2>
             <p className="text-xs font-medium text-slate-500">
-              Distributed Shop System
+              Distributed Management System
             </p>
           </div>
         </Link>
@@ -200,7 +200,7 @@ function Navbar() {
 
             <div className="mt-6 pt-4 border-t border-slate-200/60">
               <p className="text-center text-xs text-slate-400">
-                © 2024 ClothHub. All rights reserved.
+                © 2026 Smart Retail System. All rights reserved.
               </p>
             </div>
           </div>

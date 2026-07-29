@@ -9,10 +9,10 @@ import {
   ShoppingBag,
   RefreshCw,
   Users,
-  AlertCircle,
   Timer,
   CheckCircle,
-  Store
+  Store,
+  TrendingUp,
 } from "lucide-react";
 import {
   getPendingApprovalsApi,
@@ -21,9 +21,7 @@ import {
 } from "../../services/discountApprovalService";
 import type { DiscountApprovalRequest } from "../../types/discountApprovalRequest";
 
-// ============================================================
-// Loading Spinner (matching employee page)
-// ============================================================
+// ─── Loading Spinner ──────────────────────────────────────────────
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading approvals...",
 }) => (
@@ -36,9 +34,7 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   </div>
 );
 
-// ============================================================
-// Time Left Display
-// ============================================================
+// ─── Time Left Display ───────────────────────────────────────────
 const timeLeft = (expiresAt: string): { text: string; isExpiring: boolean } => {
   const ms = new Date(expiresAt).getTime() - Date.now();
   if (ms <= 0) return { text: "Expired", isExpiring: true };
@@ -48,9 +44,25 @@ const timeLeft = (expiresAt: string): { text: string; isExpiring: boolean } => {
   return { text: `${mins}m ${secs}s left`, isExpiring: false };
 };
 
-// ============================================================
-// Request Card Component
-// ============================================================
+// ─── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accent: string;
+}> = ({ label, value, icon, accent }) => (
+  <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md border border-slate-200/50">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`rounded-xl p-3 ${accent}`}>{icon}</div>
+    </div>
+  </div>
+);
+
+// ─── Request Card ──────────────────────────────────────────────
 interface RequestCardProps {
   request: DiscountApprovalRequest;
   onApprove: (id: string) => void;
@@ -78,11 +90,11 @@ const RequestCard: React.FC<RequestCardProps> = ({
   const { text: timeLeftText, isExpiring } = timeLeft(request.expiresAt);
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm border border-slate-200/50 transition hover:shadow-md">
+    <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-slate-200/50 transition hover:shadow-md">
       {/* Header: Cashier & Branch */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-full bg-blue-50 p-1.5">
               <User size={14} className="text-blue-600" />
             </div>
@@ -131,7 +143,7 @@ const RequestCard: React.FC<RequestCardProps> = ({
         {request.items.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-between text-xs text-slate-700"
+            className="flex flex-wrap items-center justify-between text-xs text-slate-700 gap-1"
           >
             <span className="truncate pr-2">
               {item.name} × {item.quantity}
@@ -147,7 +159,7 @@ const RequestCard: React.FC<RequestCardProps> = ({
       </div>
 
       {/* Actions */}
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-col sm:flex-row gap-2">
         <button
           onClick={() => onReject(request._id)}
           disabled={busy}
@@ -173,15 +185,12 @@ const RequestCard: React.FC<RequestCardProps> = ({
   );
 };
 
-// ============================================================
-// Main Component
-// ============================================================
+// ─── Main Component ─────────────────────────────────────────────
 export const ManagerApprovals: React.FC = () => {
   const [requests, setRequests] = useState<DiscountApprovalRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Stats
   const [stats, setStats] = useState({
     total: 0,
     expiring: 0,
@@ -223,7 +232,6 @@ export const ManagerApprovals: React.FC = () => {
       clearTimeout(t);
       clearInterval(interval);
     };
-    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -263,76 +271,69 @@ export const ManagerApprovals: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
-                <Clock size={24} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  Discount Approvals
-                </h1>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Cashier requests waiting on you
-                </p>
-              </div>
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <Clock size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Discount Approvals
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Cashier requests waiting on you
+              </p>
             </div>
           </div>
+
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <TrendingUp size={18} className="text-white/90" />
+              <span className="text-xs font-medium text-white/90">
+                Pending
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
+              {stats.total}
+            </p>
+          </div>
+        </div>
+
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Pending Requests"
+            value={stats.total}
+            icon={<Users size={20} className="text-white" />}
+            accent="bg-blue-500"
+          />
+          <StatCard
+            label="Expiring Soon"
+            value={stats.expiring}
+            icon={<Timer size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
+        </div>
+
+        {/* ─── Refresh ────────────────────────────────────────────── */}
+        <div className="flex justify-end">
           <button
             onClick={fetchRequests}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3.5 font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
           >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={16}
+              className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         </div>
 
-        {/* Stats Cards - Only Two Cards Now */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Pending Requests
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">
-                  {stats.total}
-                </p>
-              </div>
-              <div className="rounded-xl bg-blue-50 p-3">
-                <Users size={20} className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Expiring Soon
-                </p>
-                <p className="mt-2 text-3xl font-bold text-amber-600">
-                  {stats.expiring}
-                </p>
-              </div>
-              <div className="rounded-xl bg-amber-50 p-3">
-                <Timer size={20} className="text-amber-600" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-xs text-amber-600">
-              <AlertCircle size={12} />
-              <span className="text-slate-400">
-                Requests with &lt;2min left
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Requests Grid */}
+        {/* ─── Requests Grid ──────────────────────────────────────── */}
         {loading && requests.length === 0 ? (
           <LoadingSpinner />
         ) : requests.length === 0 ? (

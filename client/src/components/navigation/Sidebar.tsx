@@ -126,7 +126,7 @@ export const Sidebar = ({
                 Retail POS
               </h1>
               <p className="text-xs text-slate-500 whitespace-nowrap">
-                Multi Branch Management
+                Admin Portal
               </p>
             </div>
           </div>

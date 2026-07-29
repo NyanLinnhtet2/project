@@ -2,13 +2,16 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
   Users,
-  RefreshCw,
   ClipboardList,
   MessageSquare,
   Mail,
   Phone,
   Wallet,
   ShieldAlert,
+  UserCheck,
+  UserX,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import {
   getEmployeesByBranchApi,
@@ -16,11 +19,9 @@ import {
   getEmployeeStatusChangeRequestsApi,
 } from "../../services/employeeServices";
 import type { Employee, EmployeeStatusRequest } from "../../types/employee";
-import { useAuth } from "../../context/useAuth"; // ⚠️ သင့်ရဲ့ actual path နဲ့ ချိန်ညှိပါ
+import { useAuth } from "../../context/useAuth";
 
-// ============================================================
-// Status Badge (employee active/inactive/suspended)
-// ============================================================
+// ─── Status Badge (employee active/inactive/suspended) ────────
 const EmployeeStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const map: Record<
     string,
@@ -52,9 +53,7 @@ const EmployeeStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// ============================================================
-// Request Status Badge (workflow lifecycle)
-// ============================================================
+// ─── Request Status Badge ──────────────────────────────────────
 const RequestStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const map: Record<
     string,
@@ -86,9 +85,7 @@ const RequestStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// ============================================================
-// Loading Spinner
-// ============================================================
+// ─── Loading Spinner ────────────────────────────────────────────
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading...",
 }) => (
@@ -101,9 +98,7 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   </div>
 );
 
-// ============================================================
-// Empty State
-// ============================================================
+// ─── Empty State ────────────────────────────────────────────────
 const EmptyState: React.FC<{
   icon: React.ReactNode;
   title: string;
@@ -118,9 +113,25 @@ const EmptyState: React.FC<{
   </div>
 );
 
-// ============================================================
-// Request Status Change Modal
-// ============================================================
+// ─── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accent: string;
+}> = ({ label, value, icon, accent }) => (
+  <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md border border-slate-200/50">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`rounded-xl p-3 ${accent}`}>{icon}</div>
+    </div>
+  </div>
+);
+
+// ─── Request Status Change Modal ──────────────────────────────
 interface RequestStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -145,14 +156,12 @@ const RequestStatusModal: React.FC<RequestStatusModalProps> = ({
 
   useEffect(() => {
     if (isOpen && employee) {
-      // default to the "next logical" status instead of the current one
       const t = setTimeout(() => {
         setRequestedStatus(
           employee.status === "active" ? "inactive" : "active",
         );
         setReason("");
       }, 0);
-
       return () => clearTimeout(t);
     }
   }, [isOpen, employee]);
@@ -193,8 +202,8 @@ const RequestStatusModal: React.FC<RequestStatusModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900">
             <ShieldAlert size={20} className="text-blue-600" />
@@ -250,7 +259,7 @@ const RequestStatusModal: React.FC<RequestStatusModalProps> = ({
           />
         </div>
 
-        <div className="flex gap-3 pt-4 border-t border-slate-200 mt-4">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200 mt-4">
           <button
             type="button"
             onClick={onClose}
@@ -273,9 +282,7 @@ const RequestStatusModal: React.FC<RequestStatusModalProps> = ({
   );
 };
 
-// ============================================================
-// Main Manager Employees Page
-// ============================================================
+// ─── Main Component ─────────────────────────────────────────────
 export const ManagerEmployees: React.FC = () => {
   const { userInfo } = useAuth();
 
@@ -288,10 +295,16 @@ export const ManagerEmployees: React.FC = () => {
     null,
   );
 
-  // branch is stored as a NAME (e.g. "Yangon") on userInfo, same as the
-  // inventory pages — the branch-scoped employee endpoint takes a name
-  // directly so no ObjectId resolution is needed here.
   const branchId = userInfo?.branch || "";
+
+  // ── compute stats ──
+  const totalStaff = employees.length;
+  const active = employees.filter((e) => e.status === "active").length;
+  const inactive = employees.filter((e) => e.status === "inactive").length;
+  const suspended = employees.filter((e) => e.status === "suspended").length;
+  const pendingRequests = myRequests.filter(
+    (r) => r.status === "PENDING",
+  ).length;
 
   const fetchEmployees = async (): Promise<void> => {
     if (!branchId) return;
@@ -350,7 +363,7 @@ export const ManagerEmployees: React.FC = () => {
 
   if (!branchId) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
         <div className="mx-auto max-w-3xl">
           <EmptyState
             icon={<Users className="h-12 w-12 text-blue-500" />}
@@ -363,53 +376,87 @@ export const ManagerEmployees: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
               <Users size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
-                My Branch Staff
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                My Branch Employees
               </h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                {branchId} — staff directory &amp; status change requests
+                {branchId} — Employees directory &amp; status change requests
               </p>
             </div>
           </div>
 
-          <button
-            onClick={refreshAll}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
-          >
-            <RefreshCw
-              size={16}
-              className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </button>
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <Users size={18} className="text-white/90" />
+              <span className="text-xs font-medium text-white/90">
+                Total Employees
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
+              {totalStaff}
+            </p>
+          </div>
         </div>
 
-        {/* Tabs */}
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            label="Total Staff"
+            value={totalStaff}
+            icon={<Users size={20} className="text-white" />}
+            accent="bg-blue-500"
+          />
+          <StatCard
+            label="Active"
+            value={active}
+            icon={<UserCheck size={20} className="text-white" />}
+            accent="bg-emerald-500"
+          />
+          <StatCard
+            label="Inactive"
+            value={inactive}
+            icon={<UserX size={20} className="text-white" />}
+            accent="bg-slate-500"
+          />
+          <StatCard
+            label="Suspended"
+            value={suspended}
+            icon={<AlertCircle size={20} className="text-white" />}
+            accent="bg-red-500"
+          />
+          <StatCard
+            label="Pending Requests"
+            value={pendingRequests}
+            icon={<Clock size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
+        </div>
+
+        {/* ─── Tabs ────────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-2 shadow-sm border border-slate-200/50">
           {(["staff", "my-requests"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-xl px-6 py-3 font-medium transition-all duration-300 ${
+              className={`flex-1 rounded-xl px-4 py-3 sm:px-6 font-medium transition-all duration-300 ${
                 activeTab === tab
                   ? "bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
                 {tab === "staff" && <Users size={18} />}
                 {tab === "my-requests" && <ClipboardList size={18} />}
-                <span>{tab === "staff" ? "Staff" : "My Requests"}</span>
+                <span>{tab === "staff" ? "Employees" : "My Requests"}</span>
                 {tab === "staff" && (
                   <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">
                     {employees.length}
@@ -417,7 +464,7 @@ export const ManagerEmployees: React.FC = () => {
                 )}
                 {tab === "my-requests" && (
                   <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                    {myRequests.filter((r) => r.status === "PENDING").length}
+                    {pendingRequests}
                   </span>
                 )}
               </div>
@@ -425,8 +472,8 @@ export const ManagerEmployees: React.FC = () => {
           ))}
         </div>
 
-        {/* Content */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        {/* ─── Content ────────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           {/* Staff Tab */}
           {activeTab === "staff" &&
             (loading ? (
@@ -441,25 +488,25 @@ export const ManagerEmployees: React.FC = () => {
                   />
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-700px">
                       <thead className="bg-slate-50 border-b border-slate-200/50">
                         <tr>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Name
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Contact
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Position
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Salary
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Status
                           </th>
-                          <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Actions
                           </th>
                         </tr>
@@ -470,7 +517,7 @@ export const ManagerEmployees: React.FC = () => {
                             key={emp._id}
                             className="transition hover:bg-slate-50/50"
                           >
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <div className="flex items-center gap-3">
                                 {emp.image?.url ? (
                                   <img
@@ -484,7 +531,7 @@ export const ManagerEmployees: React.FC = () => {
                                   </div>
                                 )}
                                 <div>
-                                  <p className="font-medium text-slate-900">
+                                  <p className="font-medium text-slate-900 text-sm sm:text-base">
                                     {emp.name}
                                   </p>
                                   <p className="text-xs text-slate-400 capitalize">
@@ -493,29 +540,40 @@ export const ManagerEmployees: React.FC = () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <p className="flex items-center gap-1 text-sm text-slate-600">
-                                <Mail size={12} className="text-slate-400" />{" "}
-                                {emp.email}
+                                <Mail
+                                  size={12}
+                                  className="text-slate-400 shrink-0"
+                                />
+                                <span className="truncate max-w-120px sm:max-w-none">
+                                  {emp.email}
+                                </span>
                               </p>
                               <p className="flex items-center gap-1 text-xs text-slate-400">
-                                <Phone size={12} className="text-slate-400" />{" "}
+                                <Phone
+                                  size={12}
+                                  className="text-slate-400 shrink-0"
+                                />
                                 {emp.phone}
                               </p>
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-700">
+                            <td className="px-4 sm:px-6 py-4 text-sm text-slate-700">
                               {emp.position}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <p className="flex items-center gap-1 text-sm font-semibold text-slate-900">
-                                <Wallet size={14} className="text-slate-400" />
+                                <Wallet
+                                  size={14}
+                                  className="text-slate-400 shrink-0"
+                                />
                                 {emp.salary?.toLocaleString() ?? 0} MMK
                               </p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <EmployeeStatusBadge status={emp.status} />
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <div className="flex justify-center">
                                 <button
                                   onClick={() => handleOpenModal(emp)}
@@ -550,22 +608,22 @@ export const ManagerEmployees: React.FC = () => {
                   />
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-700px">
                       <thead className="bg-slate-50 border-b border-slate-200/50">
                         <tr>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Employee
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Change
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Reason
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Status
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Submitted
                           </th>
                         </tr>
@@ -576,13 +634,13 @@ export const ManagerEmployees: React.FC = () => {
                             key={r._id}
                             className="transition hover:bg-slate-50/50"
                           >
-                            <td className="px-6 py-4">
-                              <p className="font-medium text-slate-900">
+                            <td className="px-4 sm:px-6 py-4">
+                              <p className="font-medium text-slate-900 text-sm sm:text-base">
                                 {r.employeeName}
                               </p>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2 text-sm">
+                            <td className="px-4 sm:px-6 py-4">
+                              <div className="flex flex-wrap items-center gap-2 text-sm">
                                 <EmployeeStatusBadge status={r.currentStatus} />
                                 <span className="text-slate-400">→</span>
                                 <EmployeeStatusBadge
@@ -590,7 +648,7 @@ export const ManagerEmployees: React.FC = () => {
                                 />
                               </div>
                             </td>
-                            <td className="px-6 py-4 max-w-220px">
+                            <td className="px-4 sm:px-6 py-4 max-w-200px">
                               <p className="text-sm text-slate-600 line-clamp-2">
                                 {r.reason}
                               </p>
@@ -604,14 +662,14 @@ export const ManagerEmployees: React.FC = () => {
                                 </p>
                               )}
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-4 sm:px-6 py-4">
                               <RequestStatusBadge status={r.status} />
                             </td>
-                            <td className="px-6 py-4">
-                              <p className="text-sm text-slate-500">
+                            <td className="px-4 sm:px-6 py-4">
+                              <p className="text-sm text-slate-500 whitespace-nowrap">
                                 {new Date(r.createdAt).toLocaleDateString()}
                               </p>
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-slate-400 whitespace-nowrap">
                                 {new Date(r.createdAt).toLocaleTimeString()}
                               </p>
                             </td>

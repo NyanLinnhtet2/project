@@ -55,7 +55,7 @@ export const ManagerDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-emerald-50/30 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -169,7 +169,7 @@ export const ManagerDashboard = () => {
                   </div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={`h-full rounded-full bg-gradient-to-r ${color}`}
+                      className={`h-full rounded-full bg-linear-to-r ${color}`}
                       style={{ width: `${percent}%` }}
                     />
                   </div>

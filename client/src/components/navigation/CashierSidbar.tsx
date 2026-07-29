@@ -6,7 +6,6 @@ import {
   Store,
   Sparkles,
   ChevronRight,
-  Package,
   TrendingUp,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
@@ -42,10 +41,8 @@ export const CashierSidebar = () => {
 
   return (
     <aside className="flex h-screen w-72 flex-col bg-linear-to-b from-white to-slate-50/80 shadow-xl shadow-slate-200/50 overflow-hidden">
-      {/* Decorative Top Gradient Line - Blue */}
       <div className="h-1 bg-linear-to-r from-blue-400 via-indigo-400 to-blue-500 shrink-0"></div>
 
-      {/* Logo Section */}
       <div className="shrink-0 border-b border-slate-200/60 px-7 py-5">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -65,7 +62,6 @@ export const CashierSidebar = () => {
         </div>
       </div>
 
-      {/* Quick Stats - Cashier's Today's Sales */}
       <div className="shrink-0 mx-5 mt-4 rounded-xl bg-linear-to-r from-blue-50 to-indigo-50 p-3.5 border border-blue-100/50">
         <div className="flex items-center justify-between">
           <div>
@@ -137,9 +133,7 @@ export const CashierSidebar = () => {
         })}
       </nav>
 
-      {/* Bottom Section - Fixed height */}
       <div className="shrink-0 border-t border-slate-200/60 p-4">
-        {/* User Profile */}
         <div className="group relative mb-2.5 rounded-2xl bg-white p-2.5 shadow-sm transition-all hover:shadow-md">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -161,19 +155,6 @@ export const CashierSidebar = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="mb-2.5 flex gap-2">
-          <button className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm">
-            <Package size={14} />
-            <span>Stock</span>
-          </button>
-          <button className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm">
-            <TrendingUp size={14} />
-            <span>Stats</span>
-          </button>
-        </div>
-
-        {/* Logout Button */}
         <button
           className="group cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-linear-to-r from-red-50 to-red-50/50 py-2 text-sm font-medium text-red-600 transition-all hover:from-red-100 hover:to-red-100 hover:shadow-md hover:shadow-red-200/50 active:scale-95"
           onClick={logoutHandler}
@@ -182,9 +163,8 @@ export const CashierSidebar = () => {
           <span>Logout</span>
         </button>
 
-        {/* Version */}
         <p className="mt-2 text-center text-[10px] text-slate-400">
-          Version 2.0.1 • © 2024 Retail POS
+          Version 2.0.1 • © 2026 Smart Retail System
         </p>
       </div>
     </aside>

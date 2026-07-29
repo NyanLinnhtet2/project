@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   Search,
   Printer,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { getBranchSalesApi, voidSaleApi } from "../../services/saleService";
 import type { Sale } from "../../types/sale";
@@ -19,6 +21,105 @@ import { createReturnApi } from "../../services/returnService";
 import type { ReturnRecord, ReturnType } from "../../types/return";
 import { printReceipt } from "../../utils/printReceipt";
 
+// ─── Confirm Dialog (for Void) ──────────────────────────────────
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  type?: "danger" | "warning" | "info";
+  isLoading?: boolean;
+}
+
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
+  isOpen,
+  title,
+  message,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  onConfirm,
+  onCancel,
+  type = "danger",
+  isLoading = false,
+}) => {
+  if (!isOpen) return null;
+
+  const getTypeStyles = () => {
+    switch (type) {
+      case "danger":
+        return {
+          bg: "bg-red-50",
+          border: "border-red-200",
+          icon: "text-red-600",
+          button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+        };
+      case "warning":
+        return {
+          bg: "bg-amber-50",
+          border: "border-amber-200",
+          icon: "text-amber-600",
+          button: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500",
+        };
+      default:
+        return {
+          bg: "bg-blue-50",
+          border: "border-blue-200",
+          icon: "text-blue-600",
+          button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+        };
+    }
+  };
+
+  const styles = getTypeStyles();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div
+        className={`w-full max-w-md rounded-2xl ${styles.bg} p-6 shadow-2xl border ${styles.border}`}
+      >
+        <div className="flex justify-center mb-4">
+          <div className={`rounded-full p-3 ${styles.bg}`}>
+            <AlertTriangle size={32} className={styles.icon} />
+          </div>
+        </div>
+
+        <h3 className="text-xl font-bold text-slate-900 text-center mb-2">
+          {title}
+        </h3>
+        <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isLoading}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className={`flex-1 rounded-xl px-4 py-2.5 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${styles.button}`}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={18} className="animate-spin" />
+                Voiding...
+              </span>
+            ) : (
+              confirmText
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Loading Spinner ────────────────────────────────────────────
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading sales...",
 }) => (
@@ -31,6 +132,7 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   </div>
 );
 
+// ─── Status Badge ──────────────────────────────────────────────
 const StatusBadge: React.FC<{ sale: Sale }> = ({ sale }) => {
   if (sale.status === "voided") {
     return (
@@ -60,6 +162,7 @@ const StatusBadge: React.FC<{ sale: Sale }> = ({ sale }) => {
   );
 };
 
+// ─── Sale Detail Modal ──────────────────────────────────────────
 const SaleDetailModal: React.FC<{
   sale: Sale;
   branchName: string;
@@ -73,7 +176,7 @@ const SaleDetailModal: React.FC<{
       className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+      <div className="sticky top-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 sm:px-6 py-4">
         <div>
           <h2 className="text-lg font-bold text-slate-800">
             {sale.saleNumber}
@@ -99,7 +202,7 @@ const SaleDetailModal: React.FC<{
         </div>
       </div>
 
-      <div className="px-6 py-4">
+      <div className="px-4 sm:px-6 py-4">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -170,7 +273,7 @@ const SaleDetailModal: React.FC<{
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
           <span>Payment: {sale.paymentMethod.replace("_", " ")}</span>
           <StatusBadge sale={sale} />
         </div>
@@ -189,6 +292,7 @@ const SaleDetailModal: React.FC<{
   </div>
 );
 
+// ─── Return Modal ───────────────────────────────────────────────
 interface ReturnModalProps {
   sale: Sale;
   onClose: () => void;
@@ -261,7 +365,7 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+        <div className="sticky top-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 sm:px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-slate-800">
               Return / Exchange
@@ -277,7 +381,7 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
           </button>
         </div>
 
-        <div className="px-6 py-4">
+        <div className="px-4 sm:px-6 py-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Items to return
           </p>
@@ -285,7 +389,7 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
             {sale.items.map((item) => (
               <div
                 key={item.productId}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-2.5"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-2.5"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-700">
@@ -384,9 +488,7 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ sale, onClose, onDone }) => {
   );
 };
 
-// ============================================================
-// Exchange Code Modal (updated styles)
-// ============================================================
+// ─── Exchange Code Modal ────────────────────────────────────────
 const ExchangeCodeModal: React.FC<{
   returnRecord: ReturnRecord;
   onClose: () => void;
@@ -436,6 +538,25 @@ const ExchangeCodeModal: React.FC<{
   );
 };
 
+// ─── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accent: string;
+}> = ({ label, value, icon, accent }) => (
+  <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md border border-slate-200/50">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`rounded-xl p-3 ${accent}`}>{icon}</div>
+    </div>
+  </div>
+);
+
+// ─── Main Component ─────────────────────────────────────────────
 export const ManagerSales: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -446,6 +567,10 @@ export const ManagerSales: React.FC = () => {
   const [returnSale, setReturnSale] = useState<Sale | null>(null);
   const [exchangeCode, setExchangeCode] = useState<ReturnRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // ── Void Confirm Dialog state ──
+  const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
 
   // Stats
   const [stats, setStats] = useState({
@@ -492,7 +617,6 @@ export const ManagerSales: React.FC = () => {
   React.useEffect(() => {
     const t = setTimeout(() => fetchSales(), 0);
     return () => clearTimeout(t);
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -506,15 +630,18 @@ export const ManagerSales: React.FC = () => {
     );
   }, [sales, searchQuery]);
 
-  const handleVoid = async (sale: Sale) => {
-    if (
-      !window.confirm(`Void sale ${sale.saleNumber}? Stock will be restored.`)
-    ) {
-      return;
-    }
-    setVoidingId(sale._id);
+  // ── Open void confirm dialog ──
+  const openVoidConfirm = (sale: Sale) => {
+    setVoidTarget(sale);
+    setVoidConfirmOpen(true);
+  };
+
+  // ── Actual void action ──
+  const handleConfirmVoid = async () => {
+    if (!voidTarget) return;
+    setVoidingId(voidTarget._id);
     try {
-      const res = await voidSaleApi(sale._id, "Voided by manager");
+      const res = await voidSaleApi(voidTarget._id, "Voided by manager");
       if (res.success) {
         toast.success("Sale voided");
         fetchSales();
@@ -524,103 +651,79 @@ export const ManagerSales: React.FC = () => {
       toast.error(err.response?.data?.message ?? "Failed to void sale");
     } finally {
       setVoidingId(null);
+      setVoidConfirmOpen(false);
+      setVoidTarget(null);
     }
   };
 
+  const cancelVoid = () => {
+    setVoidConfirmOpen(false);
+    setVoidTarget(null);
+  };
+
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
-                <Receipt size={24} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  Branch Sales
-                </h1>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {branchName || "Select a branch"}
-                </p>
-              </div>
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <Receipt size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Branch Sales
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                {branchName || "Select a branch"}
+              </p>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
-            <div className="flex items-center gap-2">
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
               <TrendingUp size={18} className="text-white/90" />
               <span className="text-xs font-medium text-white/90">
                 Total Revenue
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
               {totalRevenue.toLocaleString()} Ks
             </p>
           </div>
         </div>
 
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Total Sales
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">
-                  {stats.total}
-                </p>
-              </div>
-              <div className="rounded-xl bg-blue-50 p-3">
-                <Receipt size={20} className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Completed</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-600">
-                  {stats.completed}
-                </p>
-              </div>
-              <div className="rounded-xl bg-emerald-50 p-3">
-                <CheckCircle2 size={20} className="text-emerald-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Voided</p>
-                <p className="mt-2 text-3xl font-bold text-red-600">
-                  {stats.voided}
-                </p>
-              </div>
-              <div className="rounded-xl bg-red-50 p-3">
-                <Ban size={20} className="text-red-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Returns / Exchanges
-                </p>
-                <p className="mt-2 text-3xl font-bold text-amber-600">
-                  {stats.returned}
-                </p>
-              </div>
-              <div className="rounded-xl bg-amber-50 p-3">
-                <RotateCcw size={20} className="text-amber-600" />
-              </div>
-            </div>
-          </div>
+          <StatCard
+            label="Total Sales"
+            value={stats.total}
+            icon={<Receipt size={20} className="text-white" />}
+            accent="bg-blue-500"
+          />
+          <StatCard
+            label="Completed"
+            value={stats.completed}
+            icon={<CheckCircle2 size={20} className="text-white" />}
+            accent="bg-emerald-500"
+          />
+          <StatCard
+            label="Voided"
+            value={stats.voided}
+            icon={<Ban size={20} className="text-white" />}
+            accent="bg-red-500"
+          />
+          <StatCard
+            label="Returns / Exchanges"
+            value={stats.returned}
+            icon={<RotateCcw size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
         </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+        {/* ─── Search & Refresh ───────────────────────────────────── */}
+        <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50 md:flex-row md:items-center md:justify-between">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -636,15 +739,18 @@ export const ManagerSales: React.FC = () => {
           <button
             onClick={fetchSales}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
           >
-            <Loader2 size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={16}
+              className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         </div>
 
-        {/* Sales Table */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        {/* ─── Sales Table ────────────────────────────────────────── */}
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           {loading ? (
             <LoadingSpinner />
           ) : sales.length === 0 ? (
@@ -672,31 +778,31 @@ export const ManagerSales: React.FC = () => {
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200/50">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-900px">
                   <thead className="bg-slate-50 border-b border-slate-200/50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Sale #
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Cashier
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Items
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Discount
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Total
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Status
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Time
                       </th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Actions
                       </th>
                     </tr>
@@ -707,38 +813,36 @@ export const ManagerSales: React.FC = () => {
                         key={sale._id}
                         className="transition hover:bg-slate-50/50"
                       >
-                        <td className="px-6 py-4 font-medium text-slate-900">
+                        <td className="px-4 sm:px-6 py-4 font-medium text-slate-900 text-sm sm:text-base">
                           {sale.saleNumber}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {sale.cashierName}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {sale.items.length} item
                           {sale.items.length !== 1 ? "s" : ""}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           {sale.discountAmount > 0 ? (
                             <span className="font-medium text-red-500">
                               -{sale.discountAmount.toLocaleString()} Ks
                             </span>
                           ) : (
-                            <span className="font-medium text-red-500">
-                              0 Ks
-                            </span>
+                            <span className="text-slate-300">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 font-semibold text-slate-900">
+                        <td className="px-4 sm:px-6 py-4 font-semibold text-slate-900">
                           {sale.totalAmount.toLocaleString()} Ks
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <StatusBadge sale={sale} />
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                           {new Date(sale.createdAt).toLocaleTimeString()}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="px-4 sm:px-6 py-4">
+                          <div className="flex flex-wrap items-center justify-center gap-1.5">
                             <button
                               onClick={() => setSelectedSale(sale)}
                               className="inline-flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100 hover:shadow-md"
@@ -757,7 +861,7 @@ export const ManagerSales: React.FC = () => {
                             )}
                             {sale.status === "completed" && (
                               <button
-                                onClick={() => handleVoid(sale)}
+                                onClick={() => openVoidConfirm(sale)}
                                 disabled={voidingId === sale._id}
                                 className="inline-flex items-center gap-1 rounded-xl bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100 hover:shadow-md disabled:opacity-50"
                               >
@@ -809,6 +913,18 @@ export const ManagerSales: React.FC = () => {
           onClose={() => setExchangeCode(null)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={voidConfirmOpen}
+        title="Void Sale"
+        message={`Are you sure you want to void sale ${voidTarget?.saleNumber}? This will restore stock and cannot be undone.`}
+        confirmText="Void Sale"
+        cancelText="Cancel"
+        onConfirm={handleConfirmVoid}
+        onCancel={cancelVoid}
+        type="danger"
+        isLoading={voidingId !== null}
+      />
     </div>
   );
 };

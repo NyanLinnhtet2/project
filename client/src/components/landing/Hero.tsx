@@ -45,7 +45,7 @@ export function Hero() {
                 Distributed
               </span>
               <span className="block bg-linear-to-r from-blue-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent mt-2">
-                Clothing Shop
+                Smart Retail
               </span>
               <span className="block text-slate-900 mt-2">
                 Management System

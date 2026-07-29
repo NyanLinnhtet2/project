@@ -13,11 +13,42 @@ import type { ErrorResponse } from "../../types/ErrorResponse";
 import {
   Package,
   Store,
-  RefreshCw,
   AlertCircle,
-  Loader2,
   Truck,
+  TrendingUp,
+  ChevronRight,
 } from "lucide-react";
+
+// ─── Loading Spinner ────────────────────────────────────────────
+const LoadingSpinner: React.FC<{ label?: string }> = ({
+  label = "Loading...",
+}) => (
+  <div className="flex flex-col items-center justify-center py-16">
+    <div className="relative">
+      <div className="h-16 w-16 rounded-full border-4 border-slate-200"></div>
+      <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+    </div>
+    <p className="mt-4 text-sm text-slate-500 font-medium">{label}</p>
+  </div>
+);
+
+// ─── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accent: string;
+}> = ({ label, value, icon, accent }) => (
+  <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md border border-slate-200/50">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`rounded-xl p-3 ${accent}`}>{icon}</div>
+    </div>
+  </div>
+);
 
 export const TransferStock = () => {
   const { userInfo } = useAuth();
@@ -134,40 +165,68 @@ export const TransferStock = () => {
   // Determine selected product name for display
   const selectedProduct = products.find((p) => p._id === selectedProductId);
 
+  // ── stats ──
+  const totalProductsAvailable = products.length;
+
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
-                <Truck size={24} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  Stock Transfer Request
-                </h1>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Request stock from other branches to {currentBranchName}
-                </p>
-              </div>
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <Truck size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Stock Transfer Request
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Request stock from other branches to{" "}
+                <span className="font-medium text-blue-600">
+                  {currentBranchName || "your branch"}
+                </span>
+              </p>
             </div>
           </div>
-          <button
-            onClick={() => {
-              if (selectedProductId) fetchStocks(selectedProductId);
-            }}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
+
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <Package size={18} className="text-white/90" />
+              <span className="text-xs font-medium text-white/90">
+                Total Products
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
+              {totalProductsAvailable}
+            </p>
+          </div>
         </div>
 
-        {/* Main Form Card */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Products Available"
+            value={totalProductsAvailable}
+            icon={<Package size={20} className="text-white" />}
+            accent="bg-blue-500"
+          />
+          <StatCard
+            label="Selected Product"
+            value={selectedProduct ? "1" : "0"}
+            icon={<TrendingUp size={20} className="text-white" />}
+            accent="bg-emerald-500"
+          />
+          <StatCard
+            label="Branches with Stock"
+            value={stocks.filter((s) => s.quantity > 0).length}
+            icon={<Store size={20} className="text-white" />}
+            accent="bg-purple-500"
+          />
+        </div>
+
+        {/* ─── Main Form Card ────────────────────────────────────── */}
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Product Selection */}
             <div>
@@ -201,12 +260,7 @@ export const TransferStock = () => {
                   Available Stock in Other Branches
                 </label>
                 {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 size={24} className="animate-spin text-blue-500" />
-                    <span className="ml-2 text-sm text-slate-500">
-                      Loading stock data...
-                    </span>
-                  </div>
+                  <LoadingSpinner label="Loading stock data..." />
                 ) : stocks.length === 0 ? (
                   <div className="flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-amber-700 border border-amber-200">
                     <AlertCircle size={18} />
@@ -217,7 +271,7 @@ export const TransferStock = () => {
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-slate-200/50">
                     <div className="overflow-x-auto">
-                      <table className="w-full">
+                      <table className="w-full min-w-400px">
                         <thead className="bg-slate-50 border-b border-slate-200/50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -239,11 +293,20 @@ export const TransferStock = () => {
                               }`}
                               onClick={() => handleBranchChange(s.branchName)}
                             >
-                              <td className="px-4 py-3 flex items-center gap-2">
-                                <Store size={16} className="text-slate-400" />
-                                <span className="font-medium text-slate-700">
-                                  {s.branchName}
-                                </span>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <Store size={16} className="text-slate-400" />
+                                  <span className="font-medium text-slate-700">
+                                    {s.branchName}
+                                  </span>
+                                  {selectedSourceBranchName ===
+                                    s.branchName && (
+                                    <ChevronRight
+                                      size={16}
+                                      className="text-blue-600"
+                                    />
+                                  )}
+                                </div>
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-blue-600">
                                 {s.quantity} pcs
@@ -280,7 +343,7 @@ export const TransferStock = () => {
                   </p>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={() => {
@@ -305,10 +368,10 @@ export const TransferStock = () => {
           </form>
         </div>
 
-        {/* Product Info Card (if selected) */}
+        {/* ─── Product Info / Transfer Summary ──────────────────── */}
         {selectedProduct && selectedSourceBranchName && (
           <div className="rounded-2xl bg-blue-50/50 p-4 border border-blue-200/50">
-            <div className="flex items-center gap-2 text-blue-700">
+            <div className="flex flex-wrap items-center gap-2 text-blue-700">
               <Package size={18} />
               <span className="font-medium">Transfer Summary:</span>
               <span>

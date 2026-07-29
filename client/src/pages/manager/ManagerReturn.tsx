@@ -15,6 +15,7 @@ import {
 import { getBranchReturnsApi } from "../../services/returnService";
 import type { ReturnRecord } from "../../types/return";
 
+// ─── Loading Spinner ────────────────────────────────────────────
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading returns...",
 }) => (
@@ -27,6 +28,7 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   </div>
 );
 
+// ─── Type Badge ──────────────────────────────────────────────────
 const TypeBadge: React.FC<{ type: ReturnRecord["type"] }> = ({ type }) => (
   <span
     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
@@ -40,6 +42,25 @@ const TypeBadge: React.FC<{ type: ReturnRecord["type"] }> = ({ type }) => (
   </span>
 );
 
+// ─── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  accent: string;
+}> = ({ label, value, icon, accent }) => (
+  <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md border border-slate-200/50">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`rounded-xl p-3 ${accent}`}>{icon}</div>
+    </div>
+  </div>
+);
+
+// ─── Detail Modal ───────────────────────────────────────────────
 const ReturnDetailModal: React.FC<{
   returnRecord: ReturnRecord;
   onClose: () => void;
@@ -52,7 +73,7 @@ const ReturnDetailModal: React.FC<{
       className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+      <div className="sticky top-0 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 sm:px-6 py-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900">
             {returnRecord.returnNumber}
@@ -70,7 +91,7 @@ const ReturnDetailModal: React.FC<{
         </button>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="mb-4">
           <TypeBadge type={returnRecord.type} />
         </div>
@@ -141,9 +162,7 @@ const ReturnDetailModal: React.FC<{
   </div>
 );
 
-// ============================================================
-// Main Component
-// ============================================================
+// ─── Main Component ─────────────────────────────────────────────
 export const ManagerReturns: React.FC = () => {
   const [returns, setReturns] = useState<ReturnRecord[]>([]);
   const [totalRefunded, setTotalRefunded] = useState(0);
@@ -154,7 +173,6 @@ export const ManagerReturns: React.FC = () => {
     null,
   );
 
-  // Stats
   const [stats, setStats] = useState({
     total: 0,
     exchanges: 0,
@@ -209,102 +227,68 @@ export const ManagerReturns: React.FC = () => {
   }, [returns, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
-                <RotateCcw size={24} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  Returns & Exchanges
-                </h1>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {branchName || "Select a branch"}
-                </p>
-              </div>
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <RotateCcw size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Returns & Exchanges
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                {branchName || "Select a branch"}
+              </p>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg  shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300">
-            <div className="flex items-center gap-2">
+          <div className="rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-6 py-3.5 shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 w-full sm:w-auto">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
               <TrendingDown size={18} className="text-white/90" />
               <span className="text-xs font-medium text-white/90">
                 Total Refunded
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">
+            <p className="text-2xl font-bold text-white text-center sm:text-left">
               {totalRefunded.toLocaleString()} Ks
             </p>
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Total Returns
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900">
-                  {stats.total}
-                </p>
-              </div>
-              <div className="rounded-xl bg-blue-50 p-3">
-                <Receipt size={20} className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Refund Amount
-                </p>
-                <p className="mt-2 text-3xl font-bold text-amber-600">
-                  {stats.refundAmount.toLocaleString()} Ks
-                </p>
-              </div>
-              <div className="rounded-xl bg-amber-50 p-3">
-                <TrendingDown size={20} className="text-amber-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Exchanges</p>
-                <p className="mt-2 text-3xl font-bold text-blue-600">
-                  {stats.exchanges}
-                </p>
-              </div>
-              <div className="rounded-xl bg-blue-50 p-3">
-                <ArrowLeftRight size={20} className="text-blue-600" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Returns</p>
-                <p className="mt-2 text-3xl font-bold text-amber-600">
-                  {stats.returns}
-                </p>
-              </div>
-              <div className="rounded-xl bg-amber-50 p-3">
-                <Package size={20} className="text-amber-600" />
-              </div>
-            </div>
-          </div>
+          <StatCard
+            label="Total Returns"
+            value={stats.total}
+            icon={<Receipt size={20} className="text-white" />}
+            accent="bg-blue-500"
+          />
+          <StatCard
+            label="Refund Amount"
+            value={`${stats.refundAmount.toLocaleString()} Ks`}
+            icon={<TrendingDown size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
+          <StatCard
+            label="Exchanges"
+            value={stats.exchanges}
+            icon={<ArrowLeftRight size={20} className="text-white" />}
+            accent="bg-blue-500"
+          />
+          <StatCard
+            label="Returns"
+            value={stats.returns}
+            icon={<Package size={20} className="text-white" />}
+            accent="bg-amber-500"
+          />
         </div>
 
-        {/* Search & Refresh */}
-        <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="relative flex-1">
+        {/* ─── Search & Refresh ───────────────────────────────────── */}
+        <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-200/50 md:flex-row md:items-center md:justify-between">
+          <div className="relative flex-1 w-full">
             <Search
               size={18}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -320,15 +304,18 @@ export const ManagerReturns: React.FC = () => {
           <button
             onClick={fetchReturns}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-md disabled:opacity-60 w-full sm:w-auto"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={16}
+              className={`text-slate-400 ${loading ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         </div>
 
-        {/* Returns Table */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/50">
+        {/* ─── Returns Table ──────────────────────────────────────── */}
+        <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
           {loading ? (
             <LoadingSpinner />
           ) : filteredReturns.length === 0 ? (
@@ -350,31 +337,31 @@ export const ManagerReturns: React.FC = () => {
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200/50">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-800px">
                   <thead className="bg-slate-50 border-b border-slate-200/50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Return #
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Original Sale
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Type
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Items
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Refund
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Processed By
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Time
                       </th>
-                      <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 sm:px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Actions
                       </th>
                     </tr>
@@ -385,28 +372,28 @@ export const ManagerReturns: React.FC = () => {
                         key={r._id}
                         className="transition hover:bg-slate-50/50"
                       >
-                        <td className="px-6 py-4 font-medium text-slate-900">
+                        <td className="px-4 sm:px-6 py-4 font-medium text-slate-900 text-sm sm:text-base">
                           {r.returnNumber}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.originalSaleNumber}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <TypeBadge type={r.type} />
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.items.length} item{r.items.length !== 1 ? "s" : ""}
                         </td>
-                        <td className="px-6 py-4 font-semibold text-amber-600">
+                        <td className="px-4 sm:px-6 py-4 font-semibold text-amber-600">
                           -{r.refundAmount.toLocaleString()} Ks
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-600">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-600">
                           {r.processedByName}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
                           {new Date(r.createdAt).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="flex justify-center">
                             <button
                               onClick={() => setSelectedReturn(r)}
@@ -427,7 +414,7 @@ export const ManagerReturns: React.FC = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* ─── Detail Modal ────────────────────────────────────────── */}
       {selectedReturn && (
         <ReturnDetailModal
           returnRecord={selectedReturn}

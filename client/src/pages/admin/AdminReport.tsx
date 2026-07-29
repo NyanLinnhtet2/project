@@ -7,13 +7,19 @@ import {
   Percent,
   RotateCcw,
   Store,
-  RefreshCw,
-  TrendingUp,
   DollarSign,
+  Receipt,
+  ShoppingBasket,
+  TrendingUp,
+  CreditCard,
+  Award,
+  GitCompare,
+  RefreshCw,
 } from "lucide-react";
 import { getReportSummaryApi } from "../../services/reportService";
 import { getBranchesForDropdownApi } from "../../services/branchService";
 import { RankedBarList } from "../../components/ui/RankedBarList";
+import { DailyTrendChart } from "../../components/ui/DailytrendChart";
 import type { ReportSummary } from "../../types/report";
 
 interface BranchOption {
@@ -21,7 +27,6 @@ interface BranchOption {
   name: string;
 }
 
-// ─── Loading Spinner ───────────────────────────────────────────
 const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading report...",
 }) => (
@@ -99,8 +104,7 @@ export const AdminReports: React.FC = () => {
   }, [branchId, startDate, endDate]);
 
   // ── derived stats ──
-  const totalRevenue =
-    report?.cashierPerformance.reduce((sum, c) => sum + c.totalRevenue, 0) ?? 0;
+  const totalRevenue = report?.kpis.netRevenue ?? 0;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-4 sm:p-6">
@@ -132,40 +136,6 @@ export const AdminReports: React.FC = () => {
               {totalRevenue.toLocaleString()} Ks
             </p>
           </div>
-        </div>
-
-        {/* ─── Stats Cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard
-            label="Total Revenue"
-            value={`${totalRevenue.toLocaleString()} Ks`}
-            icon={<TrendingUp size={20} className="text-white" />}
-            accent="bg-emerald-500"
-          />
-          <StatCard
-            label="Total Discount Given"
-            value={`${report?.discountReturnRate.totalDiscount.toLocaleString() ?? 0} Ks`}
-            icon={<Percent size={20} className="text-white" />}
-            accent="bg-amber-500"
-          />
-          <StatCard
-            label="Discount Rate"
-            value={`${report?.discountReturnRate.discountRatePercent ?? 0}%`}
-            icon={<Percent size={20} className="text-white" />}
-            accent="bg-amber-500"
-          />
-          <StatCard
-            label="Total Refunded"
-            value={`${report?.discountReturnRate.totalRefund.toLocaleString() ?? 0} Ks`}
-            icon={<RotateCcw size={20} className="text-white" />}
-            accent="bg-red-500"
-          />
-          <StatCard
-            label="Return Rate"
-            value={`${report?.discountReturnRate.returnRatePercent ?? 0}%`}
-            icon={<RotateCcw size={20} className="text-white" />}
-            accent="bg-red-500"
-          />
         </div>
 
         {/* ─── Filters ────────────────────────────────────────────── */}
@@ -219,7 +189,7 @@ export const AdminReports: React.FC = () => {
           </button>
         </div>
 
-        {/* ─── Report Content ────────────────────────────────────── */}
+        {/* ─── Content ─────────────────────────────────────────────── */}
         {loading ? (
           <LoadingSpinner />
         ) : !report ? (
@@ -236,7 +206,164 @@ export const AdminReports: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* ─── Cashier Performance Table ────────────────────── */}
+            {/* ─── Core KPIs ────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Net Revenue"
+                value={`${report.kpis.netRevenue.toLocaleString()} Ks`}
+                icon={<DollarSign size={20} className="text-white" />}
+                accent="bg-emerald-500"
+              />
+              <StatCard
+                label="Transactions"
+                value={report.kpis.totalTransactions.toLocaleString()}
+                icon={<Receipt size={20} className="text-white" />}
+                accent="bg-blue-500"
+              />
+              <StatCard
+                label="Avg Basket Size"
+                value={`${report.kpis.avgBasketSize.toLocaleString()} Ks`}
+                icon={<ShoppingBasket size={20} className="text-white" />}
+                accent="bg-purple-500"
+              />
+              <StatCard
+                label="Total Refunded"
+                value={`${report.kpis.totalRefunded.toLocaleString()} Ks`}
+                icon={<RotateCcw size={20} className="text-white" />}
+                accent="bg-red-500"
+              />
+            </div>
+
+            {/* ─── Daily Trend ──────────────────────────────────────── */}
+            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={20} className="text-blue-600" />
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Revenue Trend
+                </h2>
+              </div>
+              <DailyTrendChart points={report.dailyTrend} />
+            </div>
+
+            {/* ─── Branch Comparison ────────────────────────────────── */}
+            {report.branchComparison.length > 1 && (
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <div className="flex items-center gap-2 mb-4">
+                  <GitCompare size={20} className="text-blue-600" />
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Branch Comparison
+                  </h2>
+                  <span className="ml-auto text-xs text-slate-400">
+                    {report.branchComparison.length} branches
+                  </span>
+                </div>
+                <RankedBarList
+                  barColorClass="bg-emerald-500"
+                  items={report.branchComparison.map((b) => ({
+                    label: b.branchName,
+                    sublabel: `${b.transactionCount} sale${b.transactionCount !== 1 ? "s" : ""}`,
+                    value: b.revenue,
+                    valueLabel: `${b.revenue.toLocaleString()} Ks`,
+                  }))}
+                  emptyMessage="No sales in this period"
+                />
+              </div>
+            )}
+
+            {/* ─── Payment Methods & Top Products ──────────────────── */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard size={20} className="text-blue-600" />
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Payment Methods
+                  </h2>
+                  <span className="ml-auto text-xs text-slate-400">
+                    {report.paymentBreakdown.length} methods
+                  </span>
+                </div>
+                <RankedBarList
+                  barColorClass="bg-blue-500"
+                  items={report.paymentBreakdown.map((p) => ({
+                    label: p.method.replace("_", " "),
+                    sublabel: `${p.count} sale${p.count !== 1 ? "s" : ""}`,
+                    value: p.amount,
+                    valueLabel: `${p.amount.toLocaleString()} Ks`,
+                  }))}
+                  emptyMessage="No sales in this period"
+                />
+              </div>
+
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <div className="flex items-center gap-2 mb-4">
+                  <Award size={20} className="text-blue-600" />
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Top Products
+                  </h2>
+                  <span className="ml-auto text-xs text-slate-400">
+                    {report.topProducts.length} products
+                  </span>
+                </div>
+                <RankedBarList
+                  barColorClass="bg-purple-500"
+                  items={report.topProducts.map((p) => ({
+                    label: p.name,
+                    sublabel: `${p.quantity} sold`,
+                    value: p.revenue,
+                    valueLabel: `${p.revenue.toLocaleString()} Ks`,
+                  }))}
+                  emptyMessage="No sales in this period"
+                />
+              </div>
+            </div>
+
+            {/* ─── Discount & Return KPIs ───────────────────────────── */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Total Discount Given"
+                value={`${report.discountReturnRate.totalDiscount.toLocaleString()} Ks`}
+                icon={<Percent size={20} className="text-white" />}
+                accent="bg-amber-500"
+              />
+              <StatCard
+                label="Discount Rate"
+                value={`${report.discountReturnRate.discountRatePercent}%`}
+                icon={<Percent size={20} className="text-white" />}
+                accent="bg-amber-500"
+              />
+              <StatCard
+                label="Total Refunded"
+                value={`${report.discountReturnRate.totalRefund.toLocaleString()} Ks`}
+                icon={<RotateCcw size={20} className="text-white" />}
+                accent="bg-red-500"
+              />
+              <StatCard
+                label="Return Rate"
+                value={`${report.discountReturnRate.returnRatePercent}%`}
+                icon={<RotateCcw size={20} className="text-white" />}
+                accent="bg-red-500"
+              />
+            </div>
+            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+              <p className="text-sm text-slate-500">
+                <span className="font-medium text-slate-700">
+                  {report.discountReturnRate.salesWithDiscountCount}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-slate-700">
+                  {report.discountReturnRate.totalTransactions}
+                </span>{" "}
+                sales had a discount ·{" "}
+                <span className="font-medium text-slate-700">
+                  {report.discountReturnRate.returnCount}
+                </span>{" "}
+                return
+                {report.discountReturnRate.returnCount !== 1 ? "s" : ""}{" "}
+                processed
+              </p>
+            </div>
+
+            {/* ─── Cashier Performance Table ────────────────────────── */}
             <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
               <div className="flex items-center gap-2 mb-4">
                 <Users size={20} className="text-blue-600" />
@@ -247,7 +374,6 @@ export const AdminReports: React.FC = () => {
                   {report.cashierPerformance.length} cashiers
                 </span>
               </div>
-
               {report.cashierPerformance.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-400">
                   No sales in this period
@@ -305,7 +431,7 @@ export const AdminReports: React.FC = () => {
               )}
             </div>
 
-            {/* ─── Sales by Category ──────────────────────────────── */}
+            {/* ─── Sales by Category ────────────────────────────────── */}
             <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={20} className="text-blue-600" />
@@ -316,41 +442,15 @@ export const AdminReports: React.FC = () => {
                   {report.categoryBreakdown.length} categories
                 </span>
               </div>
-              {report.categoryBreakdown.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-400">
-                  No sales in this period
-                </p>
-              ) : (
-                <RankedBarList
-                  items={report.categoryBreakdown.map((c) => ({
-                    label: c.category,
-                    sublabel: `${c.quantity} sold`,
-                    value: c.revenue,
-                    valueLabel: `${c.revenue.toLocaleString()} Ks`,
-                  }))}
-                  emptyMessage="No sales in this period"
-                />
-              )}
-            </div>
-
-            {/* ─── Quick Summary ───────────────────────────────────── */}
-            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
-              <p className="text-sm text-slate-500">
-                <span className="font-medium text-slate-700">
-                  {report.discountReturnRate.salesWithDiscountCount}
-                </span>{" "}
-                of{" "}
-                <span className="font-medium text-slate-700">
-                  {report.discountReturnRate.totalTransactions}
-                </span>{" "}
-                sales had a discount ·{" "}
-                <span className="font-medium text-slate-700">
-                  {report.discountReturnRate.returnCount}
-                </span>{" "}
-                return
-                {report.discountReturnRate.returnCount !== 1 ? "s" : ""}{" "}
-                processed
-              </p>
+              <RankedBarList
+                items={report.categoryBreakdown.map((c) => ({
+                  label: c.category,
+                  sublabel: `${c.quantity} sold`,
+                  value: c.revenue,
+                  valueLabel: `${c.revenue.toLocaleString()} Ks`,
+                }))}
+                emptyMessage="No sales in this period"
+              />
             </div>
           </div>
         )}

@@ -40,6 +40,7 @@ import { AdminApprovals } from "./pages/admin/AdminApproval";
 import { AdminReturns } from "./pages/admin/AdminReturn";
 import { ManagerReturns } from "./pages/manager/ManagerReturn";
 import { AdminReports } from "./pages/admin/AdminReport";
+import { AIAssistant } from "./pages/admin/AIAssistant";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -164,6 +165,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminReports />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "ai-assistant",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AIAssistant />
           </ProtectedRoute>
         ),
       },

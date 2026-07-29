@@ -49,6 +49,7 @@ const menus = [
   { title: "Discount Events", path: "/admin/discount-events", icon: Sparkles },
   { title: "Discount Approvals", path: "/admin/approvals", icon: Clock },
   { title: "Returns", path: "/admin/returns", icon: RotateCcw },
+  { title: "AI Assistant", path: "/admin/ai-assistant", icon: Sparkles },
 ];
 
 export const Sidebar = ({

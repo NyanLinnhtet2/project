@@ -7,9 +7,16 @@ import {
   Tag,
   Percent,
   RotateCcw,
+  DollarSign,
+  Receipt,
+  ShoppingBasket,
+  TrendingUp,
+  CreditCard,
+  Award,
 } from "lucide-react";
 import { getReportSummaryApi } from "../../services/reportService";
 import { RankedBarList } from "../../components/ui/RankedBarList";
+import { DailyTrendChart } from "../../components/ui/DailytrendChart";
 import type { ReportSummary } from "../../types/report";
 
 const LoadingSpinner: React.FC = () => (
@@ -104,6 +111,80 @@ export const ManagerReports: React.FC = () => {
         </p>
       ) : (
         <div className="space-y-6">
+          {/* Core KPIs */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard
+              label="Net Revenue"
+              value={`${report.kpis.netRevenue.toLocaleString()} Ks`}
+              icon={<DollarSign size={16} className="text-white" />}
+              accent="bg-emerald-500"
+            />
+            <StatCard
+              label="Transactions"
+              value={report.kpis.totalTransactions.toLocaleString()}
+              icon={<Receipt size={16} className="text-white" />}
+              accent="bg-blue-500"
+            />
+            <StatCard
+              label="Avg Basket Size"
+              value={`${report.kpis.avgBasketSize.toLocaleString()} Ks`}
+              icon={<ShoppingBasket size={16} className="text-white" />}
+              accent="bg-purple-500"
+            />
+            <StatCard
+              label="Total Refunded"
+              value={`${report.kpis.totalRefunded.toLocaleString()} Ks`}
+              icon={<RotateCcw size={16} className="text-white" />}
+              accent="bg-red-500"
+            />
+          </div>
+
+          {/* Daily trend */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <TrendingUp size={18} className="text-emerald-600" />
+              <h2 className="font-bold text-slate-800">Revenue Trend</h2>
+            </div>
+            <DailyTrendChart points={report.dailyTrend} />
+          </div>
+
+          {/* Payment breakdown + Top products */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <CreditCard size={18} className="text-emerald-600" />
+                <h2 className="font-bold text-slate-800">Payment Methods</h2>
+              </div>
+              <RankedBarList
+                barColorClass="bg-blue-500"
+                items={report.paymentBreakdown.map((p) => ({
+                  label: p.method.replace("_", " "),
+                  sublabel: `${p.count} sale${p.count !== 1 ? "s" : ""}`,
+                  value: p.amount,
+                  valueLabel: `${p.amount.toLocaleString()} Ks`,
+                }))}
+                emptyMessage="No sales in this period"
+              />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Award size={18} className="text-emerald-600" />
+                <h2 className="font-bold text-slate-800">Top Products</h2>
+              </div>
+              <RankedBarList
+                barColorClass="bg-purple-500"
+                items={report.topProducts.map((p) => ({
+                  label: p.name,
+                  sublabel: `${p.quantity} sold`,
+                  value: p.revenue,
+                  valueLabel: `${p.revenue.toLocaleString()} Ks`,
+                }))}
+                emptyMessage="No sales in this period"
+              />
+            </div>
+          </div>
+
           {/* Discount & Return rate KPIs */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard

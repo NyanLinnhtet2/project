@@ -16,6 +16,7 @@ import discountEventRoute from "./routes/discountEventRoute";
 import discountApprovalRequestRoute from "./routes/discountApprovalRoute";
 import returnRoute from "./routes/returnRoute";
 import reportRoute from "./routes/reportRoute";
+import aiAssistantRoute from "./routes/aiAssistantRoute";
 
 dotenv.config({
   path: "./.env",
@@ -46,6 +47,7 @@ app.use("/api/discount-events", discountEventRoute);
 app.use("/api/discount-approval-requests", discountApprovalRequestRoute);
 app.use("/api/returns", returnRoute);
 app.use("/api/reports", reportRoute);
+app.use("/api/ai-assistant", aiAssistantRoute);
 
 app.use(
   (

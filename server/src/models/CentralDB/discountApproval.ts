@@ -38,6 +38,10 @@ export interface IDiscountApprovalRequest extends Document {
   reviewedByName?: string;
   reviewNote?: string;
   resultingSaleId?: Types.ObjectId; // set once approved and the real Sale is created
+  customerId?: Types.ObjectId;
+  customerName?: string;
+  couponCode?: string;
+  couponDiscountAmount?: number;
   expiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -85,6 +89,10 @@ const discountApprovalRequestSchema = new Schema<IDiscountApprovalRequest>(
     reviewedByName: { type: String },
     reviewNote: { type: String },
     resultingSaleId: { type: Schema.Types.ObjectId },
+    customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
+    customerName: { type: String },
+    couponCode: { type: String },
+    couponDiscountAmount: { type: Number },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: true },

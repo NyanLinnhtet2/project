@@ -13,6 +13,7 @@ import {
   Timer,
   CheckCircle,
   Store,
+  Ticket,
 } from "lucide-react";
 import {
   getPendingApprovalsApi,
@@ -129,6 +130,24 @@ const RequestCard: React.FC<RequestCardProps> = ({
           {request.items.length} item{request.items.length !== 1 ? "s" : ""}
         </span>
       </div>
+
+      {(request.customerName || request.couponCode) && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          {request.customerName && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+              <User size={12} /> {request.customerName}
+            </span>
+          )}
+          {request.couponCode && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700">
+              <Ticket size={12} /> {request.couponCode}
+              {request.couponDiscountAmount
+                ? ` (-${request.couponDiscountAmount.toLocaleString()} Ks)`
+                : ""}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Items list */}
       <div className="mt-2 max-h-32 overflow-y-auto rounded-xl bg-slate-50/80 p-3 space-y-1.5">

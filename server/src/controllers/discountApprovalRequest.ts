@@ -16,6 +16,9 @@ import {
   restockItems,
   computeDiscountAndTax,
 } from "../utils/salePricing";
+import { getCentralCustomerModel } from "../models/CentralDB/customer";
+import { getCentralCouponModel } from "../models/CentralDB/coupon";
+import { validateCoupon, recordCustomerPurchase } from "../utils/membership";
 
 const REQUEST_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -68,13 +71,15 @@ export const createDiscountApprovalRequest = async (
       return res.status(403).json({ success: false, message: "Forbidden" });
     }
 
-    const { items, paymentMethod, discountType, discountValue, taxRate } =
+    const { items, paymentMethod, discountType, discountValue, taxRate, customerId, couponCode } =
       req.body as {
         items: { productId: string; quantity: number }[];
         paymentMethod?: string;
         discountType?: string;
         discountValue?: number;
         taxRate?: number;
+        customerId?: string;
+        couponCode?: string;
       };
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -139,6 +144,41 @@ export const createDiscountApprovalRequest = async (
       resolvedTaxRate,
     );
 
+    // Optional customer + coupon — same rules as the direct-checkout path
+    // in controllers/sale.ts: coupon requires a customer, is validated (but
+    // NOT redeemed yet — that happens on approve), and its discount is on
+    // top of the manual discount rather than counted toward the cap below.
+    let customer = null;
+    if (customerId) {
+      if (!isValidObjectId(customerId)) {
+        return res.status(400).json({ success: false, message: "Invalid customer ID" });
+      }
+      const Customer = getCentralCustomerModel();
+      customer = await Customer.findById(customerId);
+      if (!customer) {
+        return res.status(404).json({ success: false, message: "Customer not found" });
+      }
+    }
+    if (couponCode && !customer) {
+      return res.status(400).json({
+        success: false,
+        message: "A customer must be selected to use a coupon",
+      });
+    }
+    let couponDiscountAmount = 0;
+    if (couponCode && customer) {
+      const couponResult = await validateCoupon(couponCode, customer.id);
+      if (!couponResult.ok) {
+        return res.status(400).json({ success: false, message: couponResult.message });
+      }
+      const rawCouponDiscount =
+        couponResult.coupon.discountType === "percent"
+          ? Math.round((priced.subtotal * couponResult.coupon.discountValue) / 100)
+          : Math.round(couponResult.coupon.discountValue);
+      couponDiscountAmount = Math.min(Math.max(rawCouponDiscount, 0), totalAmount);
+    }
+    const finalTotalAmount = totalAmount - couponDiscountAmount;
+
     // Route to the right approver: a manager's own request always escalates
     // straight to admin (there's no one above manager but admin). A
     // cashier's request goes to their branch manager UNLESS the discount is
@@ -176,11 +216,15 @@ export const createDiscountApprovalRequest = async (
       discountAmount,
       taxRate: resolvedTaxRate,
       taxAmount,
-      totalAmount,
+      totalAmount: finalTotalAmount,
       paymentMethod: paymentMethod || "cash",
       requiredApproverLevel,
       status: "pending",
       expiresAt: new Date(Date.now() + REQUEST_TTL_MS),
+      ...(customer ? { customerId: customer._id, customerName: customer.name } : {}),
+      ...(couponCode && couponDiscountAmount > 0
+        ? { couponCode: couponCode.trim().toUpperCase(), couponDiscountAmount }
+        : {}),
     });
 
     return res.status(201).json({ success: true, data: request });
@@ -347,6 +391,24 @@ export const approveRequest = async (
       ? (request.paymentMethod as (typeof ALLOWED_PAYMENT_METHODS)[number])
       : "cash";
 
+    // If a coupon was attached, re-check it right before redeeming — it may
+    // have expired or been used elsewhere during the time this request sat
+    // pending. On failure the request stays "pending" so it can be retried
+    // (e.g. after the cashier picks a different coupon) rather than losing
+    // the reserved stock.
+    if (request.couponCode && request.customerId) {
+      const couponResult = await validateCoupon(
+        request.couponCode,
+        request.customerId.toString(),
+      );
+      if (!couponResult.ok) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon can no longer be redeemed: ${couponResult.message}`,
+        });
+      }
+    }
+
     const saleNumber = `SALE-${branch.code}-${Date.now()}`;
     const sale = await Sale.create({
       saleNumber,
@@ -364,6 +426,10 @@ export const approveRequest = async (
       status: "completed",
       approvedBy: req.user.id,
       approvedByName: req.user.name,
+      ...(request.customerId ? { customerId: request.customerId } : {}),
+      ...(request.couponCode
+        ? { couponCode: request.couponCode, couponDiscountAmount: request.couponDiscountAmount }
+        : {}),
     });
 
     const SaleSummary = getCentralSaleSummaryModel();
@@ -381,7 +447,29 @@ export const approveRequest = async (
       totalAmount: request.totalAmount,
       paymentMethod: request.paymentMethod,
       status: "completed",
+      ...(request.customerId ? { customerId: request.customerId } : {}),
     });
+
+    // Best-effort follow-ups, same reasoning as controllers/sale.ts — the
+    // sale already committed, so these shouldn't be able to undo it.
+    if (request.couponCode && request.customerId) {
+      try {
+        const Coupon = getCentralCouponModel();
+        await Coupon.updateOne(
+          { code: request.couponCode },
+          { status: "used", usedInSaleId: sale._id, usedAt: new Date() },
+        );
+      } catch (couponErr) {
+        console.error("⚠️ Failed to mark coupon used:", couponErr);
+      }
+    }
+    if (request.customerId) {
+      try {
+        await recordCustomerPurchase(request.customerId.toString(), request.totalAmount);
+      } catch (custErr) {
+        console.error("⚠️ Failed to update customer purchase stats:", custErr);
+      }
+    }
 
     request.status = "approved";
     request.reviewedBy = req.user.id;

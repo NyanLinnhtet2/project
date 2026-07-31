@@ -79,6 +79,11 @@ export const printReceipt = (sale: Sale, branchName?: string): void => {
         ? `<tr><td class="label">Tax (${sale.taxRate}%)</td><td style="text-align:right;">+${sale.taxAmount.toLocaleString()} Ks</td></tr>`
         : ""
     }
+    ${
+      sale.couponDiscountAmount && sale.couponDiscountAmount > 0
+        ? `<tr><td class="label">Coupon${sale.couponCode ? ` (${escapeHtml(sale.couponCode)})` : ""}</td><td style="text-align:right;">-${sale.couponDiscountAmount.toLocaleString()} Ks</td></tr>`
+        : ""
+    }
     <tr class="grand"><td>Total</td><td style="text-align:right;">${sale.totalAmount.toLocaleString()} Ks</td></tr>
   </table>
   <hr />

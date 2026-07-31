@@ -38,6 +38,10 @@ export interface DiscountApprovalRequest {
   reviewedByName?: string;
   reviewNote?: string;
   resultingSaleId?: string;
+  customerId?: string;
+  customerName?: string;
+  couponCode?: string;
+  couponDiscountAmount?: number;
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
@@ -49,4 +53,6 @@ export interface CreateApprovalRequestPayload {
   discountType?: "amount" | "percent";
   discountValue?: number;
   taxRate?: number;
+  customerId?: string;
+  couponCode?: string;
 }

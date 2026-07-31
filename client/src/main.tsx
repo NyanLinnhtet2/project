@@ -41,6 +41,9 @@ import { AdminReturns } from "./pages/admin/AdminReturn";
 import { ManagerReturns } from "./pages/manager/ManagerReturn";
 import { AdminReports } from "./pages/admin/AdminReport";
 import { AIAssistant } from "./pages/admin/AIAssistant";
+import { MembershipTiers } from "./pages/admin/MemberShipTier";
+import { Customers } from "./pages/customer/customer";
+import { CustomerProfile } from "./pages/customer/customerprofile";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -160,7 +163,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-        {
+      {
         path: "reports",
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
@@ -173,6 +176,30 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["admin"]}>
             <AIAssistant />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "membership-tiers",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <MembershipTiers />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Customers />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers/:id",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <CustomerProfile />
           </ProtectedRoute>
         ),
       },
@@ -253,6 +280,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["manager"]}>
             <ManagerReturns />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <Customers />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers/:id",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <CustomerProfile />
           </ProtectedRoute>
         ),
       },

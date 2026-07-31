@@ -13,6 +13,10 @@ import {
   X,
   WifiOff,
   RefreshCw,
+  User,
+  UserPlus,
+  Ticket,
+  Star,
 } from "lucide-react";
 import { getBranchInventoryApi } from "../../services/inventoryService";
 import { createSaleApi } from "../../services/saleService";
@@ -40,7 +44,12 @@ import type {
   Sale,
 } from "../../types/sale";
 import { printReceipt } from "../../utils/printReceipt";
+import {
+  searchCustomersApi,
+  createCustomerApi,
+} from "../../services/customerService";
 import type { DiscountApprovalRequest } from "../../types/discountApprovalRequest";
+import type { Customer } from "../../types/customer";
 import { useAuth } from "../../context/useAuth";
 
 interface StockWithProduct extends Stock {
@@ -318,6 +327,79 @@ export const NewSale: React.FC = () => {
     useState<DiscountApprovalRequest | null>(null);
   const [exchangeCode, setExchangeCode] = useState("");
 
+  // Customer (optional — a sale with none selected is a normal guest/
+  // walk-in transaction, no registration required)
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [searchingCustomer, setSearchingCustomer] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  useEffect(() => {
+    const query = customerSearch.trim();
+    if (query.length < 2) {
+      const t = setTimeout(() => setCustomerResults([]), 0);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(async () => {
+      setSearchingCustomer(true);
+      try {
+        const res = await searchCustomersApi(query);
+        if (res.success) setCustomerResults(res.data);
+      } catch {
+        // search failing shouldn't block checkout — guest sale still works
+      } finally {
+        setSearchingCustomer(false);
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCustomerSearch("");
+    setCustomerResults([]);
+    setShowCustomerDropdown(false);
+  };
+
+  const handleRemoveCustomer = () => {
+    setSelectedCustomer(null);
+    setCouponCode("");
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+      toast.error("Name and phone are required");
+      return;
+    }
+    setCreatingCustomer(true);
+    try {
+      const res = await createCustomerApi({
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim(),
+      });
+      if (res.success) {
+        toast.success("Customer registered");
+        handleSelectCustomer(res.data);
+        setShowNewCustomerForm(false);
+        setNewCustomerName("");
+        setNewCustomerPhone("");
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Failed to register customer");
+    } finally {
+      setCreatingCustomer(false);
+    }
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
@@ -385,6 +467,8 @@ export const NewSale: React.FC = () => {
       const res = await createSaleApi({
         ...payload,
         ...(exchangeCode.trim() ? { linkedReturnId: exchangeCode.trim() } : {}),
+        ...(selectedCustomer ? { customerId: selectedCustomer._id } : {}),
+        ...(couponCode.trim() ? { couponCode: couponCode.trim() } : {}),
       });
       if (res.success) {
         toast.success(`Sale ${res.data.saleNumber} recorded`);
@@ -395,6 +479,8 @@ export const NewSale: React.FC = () => {
         setDiscountValue(0);
         setTaxRate(0);
         setExchangeCode("");
+        setSelectedCustomer(null);
+        setCouponCode("");
         fetchInventory(); // stock just changed
       }
     } catch (error: unknown) {
@@ -438,7 +524,6 @@ export const NewSale: React.FC = () => {
   // React once the request leaves "pending"
   useEffect(() => {
     if (!pendingRequest || pendingRequest.status === "pending") return;
-
     const t = setTimeout(() => {
       if (pendingRequest.status === "approved") {
         toast.success("Approved — sale recorded");
@@ -668,6 +753,172 @@ export const NewSale: React.FC = () => {
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-4">
+          <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Customer{" "}
+            <span className="normal-case text-slate-400">
+              (optional — leave blank for a guest sale)
+            </span>
+          </label>
+
+          {selectedCustomer ? (
+            <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <User size={16} className="shrink-0 text-emerald-600" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-700">
+                    {selectedCustomer.name}
+                  </p>
+                  <p className="flex items-center gap-1 text-xs text-slate-500">
+                    {selectedCustomer.phone}
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <Star size={9} />
+                      {selectedCustomer.membershipLevel}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleRemoveCustomer}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-white hover:text-red-500"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : !isOnline ? (
+            <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-400">
+              Customer lookup requires internet connection — this will be a
+              guest sale
+            </p>
+          ) : (
+            <div className="relative mb-4">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value);
+                    setShowCustomerDropdown(true);
+                  }}
+                  onFocus={() => setShowCustomerDropdown(true)}
+                  placeholder="Search name or phone..."
+                  className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {showCustomerDropdown && customerSearch.trim().length >= 2 && (
+                <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                  {searchingCustomer ? (
+                    <div className="flex items-center justify-center py-3">
+                      <Loader2
+                        size={16}
+                        className="animate-spin text-slate-400"
+                      />
+                    </div>
+                  ) : customerResults.length > 0 ? (
+                    customerResults.map((c) => (
+                      <button
+                        key={c._id}
+                        onClick={() => handleSelectCustomer(c)}
+                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-slate-50"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">
+                            {c.name}
+                          </p>
+                          <p className="text-xs text-slate-400">{c.phone}</p>
+                        </div>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          {c.membershipLevel}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-2.5 py-2">
+                      <p className="mb-1.5 text-xs text-slate-400">
+                        No customer found
+                      </p>
+                      {!showNewCustomerForm && (
+                        <button
+                          onClick={() => {
+                            setShowNewCustomerForm(true);
+                            setNewCustomerName(customerSearch);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                        >
+                          <UserPlus size={12} />
+                          Register new customer
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {showNewCustomerForm && (
+                    <div className="space-y-2 border-t border-slate-100 p-2.5">
+                      <input
+                        type="text"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        placeholder="Name"
+                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <input
+                        type="text"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                        placeholder="Phone"
+                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => setShowNewCustomerForm(false)}
+                          className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleCreateCustomer}
+                          disabled={creatingCustomer}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-500 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                        >
+                          {creatingCustomer ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            "Save"
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedCustomer && (
+            <>
+              <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <Ticket size={12} />
+                Coupon Code{" "}
+                <span className="normal-case text-slate-400">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                placeholder={
+                  isOnline ? "e.g. GOLD-8F3K2Q" : "Requires internet connection"
+                }
+                disabled={!isOnline}
+                className={`mb-4 w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
+                  couponCode.trim()
+                    ? "border-emerald-400 bg-emerald-50"
+                    : "border-slate-200"
+                }`}
+              />
+            </>
+          )}
+
           <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Exchange Code{" "}
             <span className="normal-case text-slate-400">(optional)</span>

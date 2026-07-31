@@ -2,7 +2,7 @@ import { getCentralMembershipTierModel } from "../models/CentralDB/membershiptie
 import { getCentralCouponModel, ICoupon } from "../models/CentralDB/coupon";
 import { getCentralCustomerModel } from "../models/CentralDB/customer";
 
-const generateCouponCode = (prefix: string): string => {
+export const generateCouponCode = (prefix: string): string => {
   const random = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `${prefix}-${random}`;
 };

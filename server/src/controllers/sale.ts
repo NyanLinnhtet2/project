@@ -16,6 +16,8 @@ import {
   computeDiscountAndTax,
 } from "../utils/salePricing";
 import { attachReturnInfo } from "../utils/returnInfo";
+import { getCentralCustomerModel } from "../models/CentralDB/customer";
+import { validateCoupon, recordCustomerPurchase } from "../utils/membership";
 
 const isValidObjectId = (id: string): boolean => {
   return mongoose.Types.ObjectId.isValid(id);
@@ -57,15 +59,25 @@ const resolveBranch = async (branchIdOrName: string) => {
 // ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { items, paymentMethod, discountType, discountValue, taxRate, linkedReturnId } =
-      req.body as {
-        items: { productId: string; quantity: number }[];
-        paymentMethod?: string;
-        discountType?: string;
-        discountValue?: number;
-        taxRate?: number;
-        linkedReturnId?: string;
-      };
+    const {
+      items,
+      paymentMethod,
+      discountType,
+      discountValue,
+      taxRate,
+      linkedReturnId,
+      customerId,
+      couponCode,
+    } = req.body as {
+      items: { productId: string; quantity: number }[];
+      paymentMethod?: string;
+      discountType?: string;
+      discountValue?: number;
+      taxRate?: number;
+      linkedReturnId?: string;
+      customerId?: string;
+      couponCode?: string;
+    };
 
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -129,6 +141,28 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
     const branchDb = getBranchConnection(branch.dbName);
     const Sale = getSaleModel(branchDb);
 
+    // Optional: attach this sale to a known customer for purchase tracking
+    let customer = null;
+    if (customerId) {
+      if (!isValidObjectId(customerId)) {
+        return res.status(400).json({ success: false, message: "Invalid customer ID" });
+      }
+      const Customer = getCentralCustomerModel();
+      customer = await Customer.findById(customerId);
+      if (!customer) {
+        return res.status(404).json({ success: false, message: "Customer not found" });
+      }
+    }
+
+    // Optional: a coupon can only be redeemed against the customer it was
+    // issued to — reject it up-front rather than silently ignoring it
+    if (couponCode && !customer) {
+      return res.status(400).json({
+        success: false,
+        message: "A customer must be selected to use a coupon",
+      });
+    }
+
     let linkedReturn = null;
     if (linkedReturnId) {
       const Return = getReturnModel(branchDb);
@@ -191,6 +225,26 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
+    // 1b) Coupon — validated against the customer, NOT counted toward the
+    //     cashier/manager discount cap above (it's a system-issued reward
+    //     from a controlled source, not cashier discretion). It reduces the
+    //     total on top of any manual discount, clamped so total never goes negative.
+    let couponDiscountAmount = 0;
+    let redeemedCoupon = null;
+    if (couponCode && customer) {
+      const couponResult = await validateCoupon(couponCode, customer.id);
+      if (!couponResult.ok) {
+        return res.status(400).json({ success: false, message: couponResult.message });
+      }
+      redeemedCoupon = couponResult.coupon;
+      const rawCouponDiscount =
+        redeemedCoupon.discountType === "percent"
+          ? Math.round((subtotal * redeemedCoupon.discountValue) / 100)
+          : Math.round(redeemedCoupon.discountValue);
+      couponDiscountAmount = Math.min(Math.max(rawCouponDiscount, 0), totalAmount);
+    }
+    const finalTotalAmount = totalAmount - couponDiscountAmount;
+
     // 2) Deduct stock for every item (up-front check above makes this safe)
     await deductStockForItems(saleItems, branchDb);
 
@@ -208,9 +262,13 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       discountAmount,
       taxRate: resolvedTaxRate,
       taxAmount,
-      totalAmount,
+      totalAmount: finalTotalAmount,
       paymentMethod: resolvePaymentMethod(paymentMethod),
       status: "completed",
+      ...(customer ? { customerId: customer._id } : {}),
+      ...(redeemedCoupon
+        ? { couponCode: redeemedCoupon.code, couponDiscountAmount }
+        : {}),
       ...(linkedReturn
         ? {
             linkedReturnId: linkedReturn._id,
@@ -218,6 +276,28 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
           }
         : {}),
     });
+
+    // 3b) Redeeming a coupon and updating customer purchase stats are
+    //     best-effort follow-ups — the sale itself already committed and
+    //     stock already moved, so a failure here shouldn't roll any of
+    //     that back or fail the whole request.
+    if (redeemedCoupon) {
+      try {
+        redeemedCoupon.status = "used";
+        redeemedCoupon.usedInSaleId = sale._id as mongoose.Types.ObjectId;
+        redeemedCoupon.usedAt = new Date();
+        await redeemedCoupon.save();
+      } catch (couponErr) {
+        console.error("⚠️ Failed to mark coupon used:", couponErr);
+      }
+    }
+    if (customer) {
+      try {
+        await recordCustomerPurchase(customer.id, finalTotalAmount);
+      } catch (custErr) {
+        console.error("⚠️ Failed to update customer purchase stats:", custErr);
+      }
+    }
 
     if (linkedReturn) {
       linkedReturn.exchangeSaleId = sale._id as mongoose.Types.ObjectId;
@@ -238,9 +318,10 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       subtotal,
       discountAmount,
       taxAmount,
-      totalAmount,
+      totalAmount: finalTotalAmount,
       paymentMethod: sale.paymentMethod,
       status: "completed",
+      ...(customer ? { customerId: customer._id } : {}),
     });
 
     return res.status(201).json({

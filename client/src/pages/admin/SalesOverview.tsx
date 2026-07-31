@@ -245,6 +245,14 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
                 🔄 Exchange for {sale.linkedReturnNumber}
               </p>
             )}
+            {sale.couponCode && (
+              <p className="mt-2 text-xs text-indigo-600">
+                🎟️ Coupon {sale.couponCode}
+                {sale.couponDiscountAmount
+                  ? ` (-${sale.couponDiscountAmount.toLocaleString()} Ks)`
+                  : ""}
+              </p>
+            )}
           </div>
         )}
       </div>

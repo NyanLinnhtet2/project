@@ -18,6 +18,8 @@ import {
   RotateCcw,
   Menu,
   X,
+  Award,
+  Users,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { toast } from "react-hot-toast";
@@ -46,6 +48,8 @@ const menus = [
     icon: HeadphonesIcon,
   },
   { title: "Sales Overview", path: "/admin/sales", icon: ShoppingCart },
+  { title: "Customers", path: "/admin/customers", icon: Users },
+  { title: "Membership Tiers", path: "/admin/membership-tiers", icon: Award },
   { title: "Discount Events", path: "/admin/discount-events", icon: Sparkles },
   { title: "Discount Approvals", path: "/admin/approvals", icon: Clock },
   { title: "Returns", path: "/admin/returns", icon: RotateCcw },

@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Menu,
   X,
+  UserCircle,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { useAuth } from "../../context/useAuth";
@@ -37,6 +38,7 @@ const menus = [
   { title: "Analytics", path: "/manager/analytics", icon: BarChart3 },
   { title: "Discount Approvals", path: "/manager/approvals", icon: Clock },
   { title: "Returns", path: "/manager/returns", icon: RotateCcw },
+  { title: "Customers", path: "/manager/customers", icon: UserCircle },
 ];
 
 export const ManagerSidebar = ({

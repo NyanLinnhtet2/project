@@ -32,6 +32,9 @@ export interface Sale {
   approvedByName?: string; // set when a discount over the normal cap was manager-approved
   linkedReturnId?: string; // set when this sale is the replacement half of an exchange
   linkedReturnNumber?: string; // human-readable code for the above
+  customerId?: string; // set when this sale was linked to a known customer
+  couponCode?: string; // set when a coupon was redeemed on this sale
+  couponDiscountAmount?: number; // Ks amount the coupon took off, on top of the manual discount
   canReturn?: boolean; // only present on getMySales/getBranchSales — whether anything is still returnable
   returnType?: "return" | "exchange"; // only present on the same — set if this sale has had a return processed against it
   createdAt: string;
@@ -52,6 +55,8 @@ export interface CreateSalePayload {
   discountValue?: number; // 10 for 10% or a flat Ks amount, depending on discountType
   taxRate?: number; // percent
   linkedReturnId?: string; // Return _id or returnNumber — marks this sale as the replacement half of an exchange
+  customerId?: string; // link this sale to a known customer for purchase tracking
+  couponCode?: string; // redeem a coupon issued to that customer (requires customerId)
 }
 
 export interface SaleSummary {

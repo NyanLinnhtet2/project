@@ -394,6 +394,9 @@ export const Branch = () => {
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
+  // NEW: state for code uniqueness validation error
+  const [codeError, setCodeError] = useState<string | null>(null);
+
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -536,7 +539,16 @@ export const Branch = () => {
     return () => clearTimeout(t);
   }, [searchTerm, statusFilter, branches, sortField, sortOrder]);
 
-  // Handle form input change
+  // ========== UNIQUENESS CHECK ==========
+  const isCodeDuplicate = (code: string, excludeId?: string): boolean => {
+    return branches.some(
+      (branch) =>
+        branch.code.toLowerCase() === code.toLowerCase() &&
+        branch._id !== excludeId,
+    );
+  };
+
+  // Handle form input change (with validation)
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -547,6 +559,34 @@ export const Branch = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Validate branch code uniqueness
+    if (name === "code") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        setCodeError("Branch code is required");
+      } else if (isCodeDuplicate(trimmed, editingBranch?._id)) {
+        setCodeError(
+          "This branch code is already in use. Please choose a unique code.",
+        );
+      } else {
+        setCodeError(null);
+      }
+    }
+  };
+
+  // Reset form (clear error too)
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      code: "",
+      phone: "",
+      manager: "",
+      address: "",
+      email: "",
+      status: "active",
+    });
+    setCodeError(null);
   };
 
   // Handle create branch
@@ -560,6 +600,12 @@ export const Branch = () => {
       !formData.address
     ) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Extra safety: prevent submission if code error exists
+    if (codeError) {
+      toast.error("Please fix the branch code before submitting");
       return;
     }
 
@@ -592,6 +638,12 @@ export const Branch = () => {
     e.preventDefault();
 
     if (!editingBranch) return;
+
+    // Safety check
+    if (codeError) {
+      toast.error("Please fix the branch code before updating");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -682,20 +734,9 @@ export const Branch = () => {
       email: branch.email || "",
       status: branch.status,
     });
+    // Clear any previous error
+    setCodeError(null);
     setIsEditModalOpen(true);
-  };
-
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      code: "",
-      phone: "",
-      manager: "",
-      address: "",
-      email: "",
-      status: "active",
-    });
   };
 
   // Get status badge
@@ -1023,7 +1064,9 @@ export const Branch = () => {
         )}
       </div>
 
-      {/* Add Branch Modal - responsive */}
+      {/* ==========================================================
+          ADD BRANCH MODAL (with user notice)
+          ========================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1040,6 +1083,15 @@ export const Branch = () => {
               >
                 <X size={20} className="text-slate-500" />
               </button>
+            </div>
+
+            {/* -------- USER NOTICE BANNER -------- */}
+            <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-start gap-2 text-sm text-blue-800">
+              <AlertCircle size={18} className="text-blue-600 mt-0.5 shrink-0" />
+              <span>
+                <strong>Important:</strong> The <strong>Branch Code</strong> must be
+                unique across all branches. Duplicate codes are not allowed.
+              </span>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -1061,6 +1113,7 @@ export const Branch = () => {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Branch Code <span className="text-red-500">*</span>
+                    <span className="ml-1 text-xs text-slate-400">(unique)</span>
                   </label>
                   <input
                     type="text"
@@ -1068,9 +1121,17 @@ export const Branch = () => {
                     value={formData.code}
                     onChange={handleInputChange}
                     placeholder="e.g., YGN001"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                      codeError ? "border-red-500 bg-red-50" : "border-slate-200"
+                    }`}
                     required
                   />
+                  {codeError && (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      {codeError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1178,8 +1239,8 @@ export const Branch = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={isSubmitting || !!codeError}
+                  className={`flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1196,7 +1257,9 @@ export const Branch = () => {
         </div>
       )}
 
-      {/* Edit Branch Modal - responsive */}
+      {/* ==========================================================
+          EDIT BRANCH MODAL (with user notice)
+          ========================================================== */}
       {isEditModalOpen && editingBranch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1214,6 +1277,15 @@ export const Branch = () => {
               >
                 <X size={20} className="text-slate-500" />
               </button>
+            </div>
+
+            {/* -------- USER NOTICE BANNER -------- */}
+            <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-start gap-2 text-sm text-blue-800">
+              <AlertCircle size={18} className="text-blue-600 mt-0.5 shrink-0" />
+              <span>
+                <strong>Important:</strong> The <strong>Branch Code</strong> must be
+                unique across all branches. You cannot change it to a code already used by another branch.
+              </span>
             </div>
 
             <form onSubmit={handleUpdate} className="mt-6 space-y-4">
@@ -1235,6 +1307,7 @@ export const Branch = () => {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Branch Code <span className="text-red-500">*</span>
+                    <span className="ml-1 text-xs text-slate-400">(unique)</span>
                   </label>
                   <input
                     type="text"
@@ -1242,10 +1315,17 @@ export const Branch = () => {
                     value={formData.code}
                     onChange={handleInputChange}
                     placeholder="e.g., YGN001"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                      codeError ? "border-red-500 bg-red-50" : "border-slate-200"
+                    }`}
                     required
-                    readOnly
                   />
+                  {codeError && (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      {codeError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1349,8 +1429,8 @@ export const Branch = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={isSubmitting || !!codeError}
+                  className={`flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">

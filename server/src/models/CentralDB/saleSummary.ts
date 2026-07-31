@@ -15,6 +15,7 @@ export interface ISaleSummary extends Document {
   totalAmount: number;
   paymentMethod: string;
   status: "completed" | "voided";
+  customerId?: Types.ObjectId;
   createdAt: Date;
 }
 
@@ -37,12 +38,14 @@ const saleSummarySchema = new Schema<ISaleSummary>(
       enum: ["completed", "voided"],
       default: "completed",
     },
+    customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
   },
   { timestamps: true },
 );
 
 // Admin's main query: filter by branch + date range
 saleSummarySchema.index({ branchId: 1, createdAt: -1 });
+saleSummarySchema.index({ customerId: 1, createdAt: -1 });
 
 export const getCentralSaleSummaryModel = (): Model<ISaleSummary> => {
   if (!centralDBConnection) {

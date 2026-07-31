@@ -28,6 +28,9 @@ export interface ISale extends Document {
   approvedByName?: string;
   linkedReturnId?: Types.ObjectId; // set when this sale is the replacement half of an exchange
   linkedReturnNumber?: string;
+  customerId?: Types.ObjectId;
+  couponCode?: string;
+  couponDiscountAmount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +79,9 @@ const saleSchema = new Schema<ISale>(
     approvedByName: { type: String },
     linkedReturnId: { type: Schema.Types.ObjectId },
     linkedReturnNumber: { type: String },
+    customerId: { type: Schema.Types.ObjectId },
+    couponCode: { type: String },
+    couponDiscountAmount: { type: Number },
   },
   { timestamps: true },
 );

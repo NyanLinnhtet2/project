@@ -340,7 +340,7 @@ const ViewProductModal = ({
 };
 
 // ============================================================
-// Variant Form Component (unchanged)
+// Variant Form Component
 // ============================================================
 interface VariantFormProps {
   variants: ProductVariant[];
@@ -519,7 +519,7 @@ type SortField =
 type SortOrder = "asc" | "desc";
 
 export const Product = () => {
-  // States (unchanged)
+  // States
   const [products, setProducts] = useState<Products[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Products[]>([]);
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
@@ -554,6 +554,11 @@ export const Product = () => {
     totalValue: 0,
   });
 
+  // NEW: SKU uniqueness error state
+  const [skuError, setSkuError] = useState<string | null>(null);
+  // NEW: Image validation error state
+  const [imageError, setImageError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -575,7 +580,7 @@ export const Product = () => {
   const units = ["pcs", "pairs", "sets", "boxes", "dozens"];
 
   // ============================================================
-  // API Functions (unchanged)
+  // API Functions
   // ============================================================
   const fetchCategories = async () => {
     try {
@@ -626,9 +631,10 @@ export const Product = () => {
         setError(response.message || "Failed to fetch products");
         toast.error(response.message || "Failed to fetch products");
       }
-    } catch (error) {
-      setError(`${(error as { data: { message: string } }).data.message}`);
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      setError(`${err.response?.data?.message}`);
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     } finally {
       setIsLoading(false);
     }
@@ -646,7 +652,7 @@ export const Product = () => {
   };
 
   // ============================================================
-  // Effects (unchanged)
+  // Effects
   // ============================================================
   useEffect(() => {
     const t = setTimeout(() => {
@@ -718,7 +724,15 @@ export const Product = () => {
   ]);
 
   // ============================================================
-  // Form Handlers (unchanged)
+  // ========== SKU UNIQUENESS CHECK ==========
+  const isSkuDuplicate = (sku: string, excludeId?: string): boolean => {
+    return products.some(
+      (p) => p.sku.toLowerCase() === sku.toLowerCase() && p._id !== excludeId,
+    );
+  };
+
+  // ============================================================
+  // Form Handlers (with SKU validation)
   // ============================================================
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -730,17 +744,38 @@ export const Product = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Validate SKU uniqueness
+    if (name === "sku") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        setSkuError("SKU is required");
+      } else if (isSkuDuplicate(trimmed, editingProduct?._id)) {
+        setSkuError("This SKU is already in use. Please choose a unique SKU.");
+      } else {
+        setSkuError(null);
+      }
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate the file (size, type, etc.)
     const validation = validateImageFile(file);
     if (!validation.valid) {
+      setImageError(validation.message || "Invalid image file");
       toast.error(validation.message || "Invalid image file");
+      // Reset the file input so the same file can be re-selected
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
+
+    // Clear previous image error
+    setImageError(null);
 
     try {
       toast.loading("Compressing image...");
@@ -754,9 +789,9 @@ export const Product = () => {
       }));
 
       toast.success("Image uploaded successfully!");
-    } catch (error) {
-      toast.error("Failed to process image. Please try again.");
-      console.error("Image processing error:", error);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -766,6 +801,7 @@ export const Product = () => {
       image: null,
       imagePreview: "",
     }));
+    setImageError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -794,10 +830,12 @@ export const Product = () => {
       imagePreview: "",
       variants: [],
     });
+    setSkuError(null);
+    setImageError(null);
   };
 
   // ============================================================
-  // CRUD Handlers (unchanged)
+  // CRUD Handlers (with extra SKU check)
   // ============================================================
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -810,6 +848,12 @@ export const Product = () => {
       !formData.price
     ) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Extra safety: prevent submission if SKU error exists
+    if (skuError) {
+      toast.error("Please fix the SKU before submitting");
       return;
     }
 
@@ -853,8 +897,10 @@ export const Product = () => {
       } else {
         toast.error(response.message || "Failed to create product");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      setError(`${err.response?.data?.message}`);
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -864,6 +910,12 @@ export const Product = () => {
     e.preventDefault();
 
     if (!editingProduct) return;
+
+    // Extra safety
+    if (skuError) {
+      toast.error("Please fix the SKU before updating");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -906,8 +958,9 @@ export const Product = () => {
       } else {
         toast.error(response.message || "Failed to update product");
       }
-    } catch (error) {
-      toast.error(`${(error as { data: { message: string } }).data.message}`);
+    }catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
@@ -969,11 +1022,13 @@ export const Product = () => {
       imagePreview: product.image?.url || "",
       variants: product.variants || [],
     });
+    setSkuError(null);
+    setImageError(null);
     setIsEditModalOpen(true);
   };
 
   // ============================================================
-  // Helper Functions (unchanged)
+  // Helper Functions
   // ============================================================
   const getStatusBadge = (status: string) => {
     const statusMap = {
@@ -1000,7 +1055,7 @@ export const Product = () => {
   };
 
   // ============================================================
-  // Loading & Error States (responsive)
+  // Loading & Error States
   // ============================================================
   if (isLoading) {
     return (
@@ -1067,7 +1122,7 @@ export const Product = () => {
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header - responsive */}
+        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -1097,7 +1152,7 @@ export const Product = () => {
           </button>
         </div>
 
-        {/* Stats Cards - responsive */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
@@ -1161,7 +1216,7 @@ export const Product = () => {
           </div>
         </div>
 
-        {/* Search and Filter - responsive stacking */}
+        {/* Search and Filter */}
         <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="relative flex-1 w-full">
             <Search
@@ -1530,7 +1585,9 @@ export const Product = () => {
         )}
       </div>
 
-      {/* Add Product Modal - responsive */}
+      {/* ==========================================================
+          ADD PRODUCT MODAL (with SKU & Image notices)
+          ========================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-3xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1547,6 +1604,19 @@ export const Product = () => {
               >
                 <X size={20} className="text-slate-500" />
               </button>
+            </div>
+
+            {/* -------- USER NOTICE BANNER -------- */}
+            <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-start gap-2 text-sm text-blue-800">
+              <AlertCircle
+                size={18}
+                className="text-blue-600 mt-0.5 shrink-0"
+              />
+              <span>
+                <strong>Important:</strong> The <strong>SKU</strong> must be
+                unique across all products. Duplicate SKUs are not allowed.
+                Images must be under 5MB.
+              </span>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -1598,6 +1668,12 @@ export const Product = () => {
                       Max 5MB • JPG, PNG, GIF, WebP
                     </p>
                   </div>
+                  {imageError && (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      {imageError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1619,6 +1695,9 @@ export const Product = () => {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     SKU <span className="text-red-500">*</span>
+                    <span className="ml-1 text-xs text-slate-400">
+                      (unique)
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -1626,9 +1705,17 @@ export const Product = () => {
                     value={formData.sku}
                     onChange={handleInputChange}
                     placeholder="e.g., PRD-001"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                      skuError ? "border-red-500 bg-red-50" : "border-slate-200"
+                    }`}
                     required
                   />
+                  {skuError && (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      {skuError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1812,8 +1899,8 @@ export const Product = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={isSubmitting || !!skuError}
+                  className={`flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1830,7 +1917,9 @@ export const Product = () => {
         </div>
       )}
 
-      {/* Edit Product Modal - responsive */}
+      {/* ==========================================================
+          EDIT PRODUCT MODAL (with SKU & Image notices)
+          ========================================================== */}
       {isEditModalOpen && editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="w-full max-w-3xl rounded-3xl bg-white p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1848,6 +1937,19 @@ export const Product = () => {
               >
                 <X size={20} className="text-slate-500" />
               </button>
+            </div>
+
+            {/* -------- USER NOTICE BANNER -------- */}
+            <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 p-3 flex items-start gap-2 text-sm text-blue-800">
+              <AlertCircle
+                size={18}
+                className="text-blue-600 mt-0.5 shrink-0"
+              />
+              <span>
+                <strong>Important:</strong> The <strong>SKU</strong> must be
+                unique across all products. You cannot change it to an SKU
+                already used by another product. Images must be under 5MB.
+              </span>
             </div>
 
             <form onSubmit={handleUpdate} className="mt-6 space-y-4">
@@ -1899,6 +2001,12 @@ export const Product = () => {
                       Max 5MB • JPG, PNG, GIF, WebP
                     </p>
                   </div>
+                  {imageError && (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      {imageError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1920,6 +2028,9 @@ export const Product = () => {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     SKU <span className="text-red-500">*</span>
+                    <span className="ml-1 text-xs text-slate-400">
+                      (unique)
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -1927,9 +2038,17 @@ export const Product = () => {
                     value={formData.sku}
                     onChange={handleInputChange}
                     placeholder="e.g., PRD-001"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none transition focus:border-blue-500"
+                    className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                      skuError ? "border-red-500 bg-red-50" : "border-slate-200"
+                    }`}
                     required
                   />
+                  {skuError && (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
+                      <AlertCircle size={14} />
+                      {skuError}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2103,8 +2222,8 @@ export const Product = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={isSubmitting || !!skuError}
+                  className={`flex-1 rounded-xl bg-linear-to-r from-blue-600 to-blue-700 py-3 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">

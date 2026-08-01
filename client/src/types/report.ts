@@ -54,6 +54,19 @@ export interface BranchComparisonItem {
   transactionCount: number;
 }
 
+export interface CouponTypeBreakdown {
+  type: string; // "birthday" | "level_up" | "unknown"
+  count: number;
+  discount: number;
+}
+
+export interface CouponStats {
+  redemptionCount: number;
+  totalDiscountGiven: number;
+  redemptionRatePercent: number;
+  breakdown: CouponTypeBreakdown[];
+}
+
 export interface ReportSummary {
   kpis: ReportKpis;
   dailyTrend: DailyTrendPoint[];
@@ -63,6 +76,7 @@ export interface ReportSummary {
   categoryBreakdown: CategoryBreakdown[];
   discountReturnRate: DiscountReturnRate;
   branchComparison: BranchComparisonItem[];
+  couponStats: CouponStats;
 }
 
 export interface GetReportSummaryParams {

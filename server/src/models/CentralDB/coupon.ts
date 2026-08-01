@@ -15,6 +15,7 @@ export interface ICoupon extends Document {
   expiresAt: Date;
   usedInSaleId?: Types.ObjectId;
   usedAt?: Date;
+  emailSentAt?: Date; // set once the birthday/level-up notification email actually goes out
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +32,7 @@ const couponSchema = new Schema<ICoupon>(
     expiresAt: { type: Date, required: true },
     usedInSaleId: { type: Schema.Types.ObjectId },
     usedAt: { type: Date },
+    emailSentAt: { type: Date },
   },
   { timestamps: true },
 );

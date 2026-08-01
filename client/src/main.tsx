@@ -23,7 +23,6 @@ import { TransferStock } from "./pages/manager/transeferStock";
 //Manager
 import { ManagerDashboard } from "./pages/manager/Dashboard";
 import { ManagerReports } from "./pages/manager/ManagerReport";
-import { ManagerAnalytics } from "./pages/manager/ManagerAnalytics";
 import { ManagerInventory } from "./pages/manager/ManagerInventory";
 import { EmployeeStatusRequests } from "./pages/admin/EmployeeStatusRequests";
 import { ManagerEmployees } from "./pages/manager/ManagerEmployees";
@@ -243,14 +242,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
-        path: "analytics",
-        element: (
-          <ProtectedRoute allowedRoles={["manager"]}>
-            <ManagerAnalytics />
-          </ProtectedRoute>
-        ),
-      },
+
       {
         path: "employees",
         element: (

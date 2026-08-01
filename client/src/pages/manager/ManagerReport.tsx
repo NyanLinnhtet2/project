@@ -13,6 +13,7 @@ import {
   CreditCard,
   Award,
   RefreshCw,
+  Ticket,
 } from "lucide-react";
 import { getReportSummaryApi } from "../../services/reportService";
 import { RankedBarList } from "../../components/ui/RankedBarList";
@@ -288,6 +289,53 @@ export const ManagerReports: React.FC = () => {
               return
               {report.discountReturnRate.returnCount !== 1 ? "s" : ""} processed
             </p>
+
+            {/* ─── Coupon Usage ────────────────────────────────────── */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <StatCard
+                label="Coupons Redeemed"
+                value={report.couponStats.redemptionCount.toLocaleString()}
+                icon={<Ticket size={20} className="text-white" />}
+                accent="bg-indigo-500"
+              />
+              <StatCard
+                label="Coupon Discount Given"
+                value={`${report.couponStats.totalDiscountGiven.toLocaleString()} Ks`}
+                icon={<Ticket size={20} className="text-white" />}
+                accent="bg-indigo-500"
+              />
+              <StatCard
+                label="Redemption Rate"
+                value={`${report.couponStats.redemptionRatePercent}%`}
+                icon={<Ticket size={20} className="text-white" />}
+                accent="bg-indigo-500"
+              />
+            </div>
+            {report.couponStats.breakdown.length > 0 && (
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <div className="flex items-center gap-2 mb-4">
+                  <Ticket size={20} className="text-indigo-600" />
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Coupon Breakdown
+                  </h2>
+                </div>
+                <RankedBarList
+                  barColorClass="bg-indigo-500"
+                  items={report.couponStats.breakdown.map((b) => ({
+                    label:
+                      b.type === "birthday"
+                        ? "🎂 Birthday"
+                        : b.type === "level_up"
+                          ? "⬆️ Level-Up"
+                          : b.type,
+                    sublabel: `${b.count} redemption${b.count !== 1 ? "s" : ""}`,
+                    value: b.discount,
+                    valueLabel: `${b.discount.toLocaleString()} Ks`,
+                  }))}
+                  emptyMessage="No coupons redeemed in this period"
+                />
+              </div>
+            )}
 
             {/* ─── Cashier Performance ────────────────────────────── */}
             <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">

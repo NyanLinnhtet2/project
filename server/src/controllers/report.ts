@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { resolveReportBranches, collectSalesAndReturns } from "../utils/reportData";
+import { getCentralCustomerModel } from "../models/CentralDB/customer";
+import { getCentralCouponModel } from "../models/CentralDB/coupon";
 
 // ============================================================
 // GET /api/reports/summary — Manager: own branch. Admin: pass ?branchId=
@@ -177,6 +179,48 @@ export const getReportSummary = async (req: AuthenticatedRequest, res: Response)
       (a, b) => b.revenue - a.revenue,
     );
 
+    // ---- Coupon usage — redemptions within this same branch/date scope,
+    // so it lines up with every other metric on the report ----
+    const salesWithCoupon = completedSales.filter((s) => s.couponCode);
+    const totalCouponDiscount = salesWithCoupon.reduce(
+      (sum, s) => sum + (s.couponDiscountAmount || 0),
+      0,
+    );
+
+    const couponCodes = [...new Set(salesWithCoupon.map((s) => s.couponCode as string))];
+    const Coupon = getCentralCouponModel();
+    const couponDocs =
+      couponCodes.length > 0
+        ? await Coupon.find({ code: { $in: couponCodes } }).select("code type")
+        : [];
+    const codeTypeMap = new Map(couponDocs.map((c) => [c.code, c.type]));
+
+    const couponTypeMap = new Map<string, { count: number; discount: number }>();
+    for (const s of salesWithCoupon) {
+      const type = codeTypeMap.get(s.couponCode as string) || "unknown";
+      const discount = s.couponDiscountAmount || 0;
+      const existing = couponTypeMap.get(type);
+      if (existing) {
+        existing.count += 1;
+        existing.discount += discount;
+      } else {
+        couponTypeMap.set(type, { count: 1, discount });
+      }
+    }
+    const couponBreakdown = Array.from(couponTypeMap.entries())
+      .map(([type, v]) => ({ type, count: v.count, discount: v.discount }))
+      .sort((a, b) => b.discount - a.discount);
+
+    const couponStats = {
+      redemptionCount: salesWithCoupon.length,
+      totalDiscountGiven: totalCouponDiscount,
+      redemptionRatePercent:
+        completedSales.length > 0
+          ? Number(((salesWithCoupon.length / completedSales.length) * 100).toFixed(2))
+          : 0,
+      breakdown: couponBreakdown,
+    };
+
     return res.status(200).json({
       success: true,
       data: {
@@ -188,6 +232,7 @@ export const getReportSummary = async (req: AuthenticatedRequest, res: Response)
         categoryBreakdown,
         discountReturnRate,
         branchComparison,
+        couponStats,
       },
       branches: branches.map((b) => ({ _id: b._id, name: b.name })),
     });

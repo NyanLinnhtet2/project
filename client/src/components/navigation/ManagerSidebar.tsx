@@ -35,7 +35,6 @@ const menus = [
   { title: "Employees", path: "/manager/employees", icon: Users },
   { title: "Sales", path: "/manager/sales", icon: BarChart3 },
   { title: "Reports", path: "/manager/reports", icon: FileText },
-  { title: "Analytics", path: "/manager/analytics", icon: BarChart3 },
   { title: "Discount Approvals", path: "/manager/approvals", icon: Clock },
   { title: "Returns", path: "/manager/returns", icon: RotateCcw },
   { title: "Customers", path: "/manager/customers", icon: UserCircle },

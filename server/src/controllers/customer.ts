@@ -1,15 +1,44 @@
 import { Response } from "express";
 import mongoose from "mongoose";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
-import { getCentralCustomerModel } from "../models/CentralDB/customer";
+import { getCentralCustomerModel, ICustomer } from "../models/CentralDB/customer";
 import { getCentralMembershipTierModel } from "../models/CentralDB/membershiptier";
 import { getCentralCouponModel } from "../models/CentralDB/coupon";
 import { getCentralSaleSummaryModel } from "../models/CentralDB/saleSummary";
 import { getCentralBranchModel } from "../models/CentralDB/branches";
 import { getBranchConnection } from "../db/db";
 import { getSaleModel } from "../models/BranchDB/sale";
+import {
+  isBirthdayToday,
+  getOrCreateBirthdayCoupon,
+  sendBirthdayCouponEmail,
+} from "../utils/birthdaycoupon";
 
 const isValidObjectId = (id: string): boolean => mongoose.Types.ObjectId.isValid(id);
+
+// Tags each customer with whether this year's birthday coupon has already
+// been redeemed — the customer list/search pages use this to stop showing
+// the 🎂 badge once there's nothing left to send/redeem for the year,
+// instead of just going by the date (which never changes back to "no").
+const withBirthdayCouponStatus = async (customers: ICustomer[]) => {
+  const ids = customers.map((c) => c._id);
+  if (ids.length === 0) return [];
+
+  const Coupon = getCentralCouponModel();
+  const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+  const usedCoupons = await Coupon.find({
+    customerId: { $in: ids },
+    type: "birthday",
+    status: "used",
+    createdAt: { $gte: startOfYear },
+  }).select("customerId");
+  const usedIds = new Set(usedCoupons.map((c) => c.customerId.toString()));
+
+  return customers.map((c) => ({
+    ...c.toObject(),
+    birthdayCouponUsedThisYear: usedIds.has((c._id as mongoose.Types.ObjectId).toString()),
+  }));
+};
 
 // ============================================================
 // POST /api/customers — Cashier/Manager/Admin registers a new customer
@@ -80,7 +109,7 @@ export const searchCustomers = async (req: AuthenticatedRequest, res: Response) 
       .limit(10)
       .sort({ name: 1 });
 
-    return res.status(200).json({ success: true, data: customers });
+    return res.status(200).json({ success: true, data: await withBirthdayCouponStatus(customers) });
   } catch (error: any) {
     console.error("❌ Search Customers Error:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -106,7 +135,7 @@ export const listCustomers = async (req: AuthenticatedRequest, res: Response) =>
 
     return res.status(200).json({
       success: true,
-      data: customers,
+      data: await withBirthdayCouponStatus(customers),
       page,
       totalPages: Math.ceil(total / limit),
       total,
@@ -228,6 +257,81 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response) =
     return res.status(200).json({ success: true, data: customer });
   } catch (error: any) {
     console.error("❌ Update Customer Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// GET /api/customers/:id/active-coupons — Cashier/Manager/Admin, called
+// right after picking a customer at checkout, so an unused birthday or
+// level-up coupon surfaces even when the customer never got (or missed)
+// the notification email — many customers don't have an email on file.
+// ============================================================
+export const getActiveCoupons = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id || typeof id !== "string" || !isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid customer ID" });
+    }
+
+    const Coupon = getCentralCouponModel();
+    const coupons = await Coupon.find({
+      customerId: id,
+      status: "active",
+      expiresAt: { $gt: new Date() },
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: coupons });
+  } catch (error: any) {
+    console.error("❌ Get Active Coupons Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// POST /api/customers/:id/send-birthday-email — Admin only. Manually issues
+// (or reuses this year's already-issued) birthday coupon and emails it —
+// for when the cron already ran before the customer's email was on file,
+// or the admin just wants to trigger it themselves.
+// ============================================================
+export const sendBirthdayEmail = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id || typeof id !== "string" || !isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid customer ID" });
+    }
+
+    const Customer = getCentralCustomerModel();
+    const customer = await Customer.findById(id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "Customer not found" });
+    }
+
+    if (!isBirthdayToday(customer.dateOfBirth)) {
+      return res.status(400).json({
+        success: false,
+        message: "It's not this customer's birthday today",
+      });
+    }
+    if (!customer.email) {
+      return res.status(400).json({
+        success: false,
+        message: "This customer has no email on file — add one first",
+      });
+    }
+
+    const coupon = await getOrCreateBirthdayCoupon(customer);
+    const sent = await sendBirthdayCouponEmail(customer, coupon);
+    if (!sent) {
+      return res.status(502).json({
+        success: false,
+        message: "Coupon was issued, but the email failed to send. Check SMTP settings and try again.",
+      });
+    }
+
+    return res.status(200).json({ success: true, data: coupon });
+  } catch (error: any) {
+    console.error("❌ Send Birthday Email Error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

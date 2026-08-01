@@ -22,6 +22,19 @@ export const listCustomersApi = async (page = 1) => {
   return response.data;
 };
 
+// Active, unexpired coupons for this customer — used at checkout to
+// surface a birthday/level-up coupon even if they never got the email
+export const getActiveCouponsApi = async (id: string) => {
+  const response = await api.get(`/customers/${id}/active-coupons`);
+  return response.data;
+};
+
+// Admin only — manually issues/resends the birthday coupon email
+export const sendBirthdayEmailApi = async (id: string) => {
+  const response = await api.post(`/customers/${id}/send-birthday-email`);
+  return response.data;
+};
+
 // Full profile: purchase history, favorite products, coupons, membership progress
 export const getCustomerProfileApi = async (id: string) => {
   const response = await api.get(`/customers/${id}`);

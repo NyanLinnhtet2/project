@@ -14,12 +14,19 @@ import {
   WifiOff,
   RefreshCw,
   User,
-  UserPlus,
+  UserX,
   Ticket,
-  Star,
+  CheckCircle2,
 } from "lucide-react";
 import { getBranchInventoryApi } from "../../services/inventoryService";
 import { createSaleApi } from "../../services/saleService";
+import {
+  searchCustomersApi,
+  getActiveCouponsApi,
+  createCustomerApi,
+} from "../../services/customerService";
+import { validateCouponApi } from "../../services/couponService";
+import type { Customer, Coupon } from "../../types/customer";
 import { getEffectiveDiscountCapApi } from "../../services/discountEventService";
 import {
   createDiscountApprovalRequestApi,
@@ -44,12 +51,7 @@ import type {
   Sale,
 } from "../../types/sale";
 import { printReceipt } from "../../utils/printReceipt";
-import {
-  searchCustomersApi,
-  createCustomerApi,
-} from "../../services/customerService";
 import type { DiscountApprovalRequest } from "../../types/discountApprovalRequest";
-import type { Customer } from "../../types/customer";
 import { useAuth } from "../../context/useAuth";
 
 interface StockWithProduct extends Stock {
@@ -327,70 +329,98 @@ export const NewSale: React.FC = () => {
     useState<DiscountApprovalRequest | null>(null);
   const [exchangeCode, setExchangeCode] = useState("");
 
-  // Customer (optional — a sale with none selected is a normal guest/
-  // walk-in transaction, no registration required)
+  // Customer lookup — optional, links the sale to a customer for
+  // purchase-history/membership tracking and unlocks coupon redemption
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [searchingCustomer, setSearchingCustomer] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
   );
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [searchingCustomer, setSearchingCustomer] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
-  const [newCustomerName, setNewCustomerName] = useState("");
-  const [newCustomerPhone, setNewCustomerPhone] = useState("");
-  const [creatingCustomer, setCreatingCustomer] = useState(false);
+  // Any active coupons this customer already has (birthday/level-up) —
+  // surfaced proactively since many customers have no email on file to
+  // have been notified with in the first place
+  const [suggestedCoupons, setSuggestedCoupons] = useState<Coupon[]>([]);
 
   useEffect(() => {
-    const query = customerSearch.trim();
-    if (query.length < 2) {
-      const t = setTimeout(() => setCustomerResults([]), 0);
+    if (!customerSearch.trim() || selectedCustomer) {
+      const t = setTimeout(() => {
+        setCustomerResults([]);
+      }, 0);
       return () => clearTimeout(t);
     }
+
     const t = setTimeout(async () => {
-      setSearchingCustomer(true);
       try {
-        const res = await searchCustomersApi(query);
+        setSearchingCustomer(true);
+        const res = await searchCustomersApi(customerSearch.trim());
         if (res.success) setCustomerResults(res.data);
       } catch {
-        // search failing shouldn't block checkout — guest sale still works
+        // non-fatal — checkout still works without a customer attached
       } finally {
         setSearchingCustomer(false);
       }
-    }, 350);
+    }, 300);
     return () => clearTimeout(t);
-  }, [customerSearch]);
+  }, [customerSearch, selectedCustomer]);
 
-  const handleSelectCustomer = (customer: Customer) => {
+  const pickCustomer = async (customer: Customer) => {
     setSelectedCustomer(customer);
     setCustomerSearch("");
     setCustomerResults([]);
-    setShowCustomerDropdown(false);
+    setSuggestedCoupons([]);
+    try {
+      const res = await getActiveCouponsApi(customer._id);
+      if (res.success) setSuggestedCoupons(res.data);
+    } catch {
+      // non-fatal — cashier can still type a coupon code manually
+    }
   };
 
-  const handleRemoveCustomer = () => {
-    setSelectedCustomer(null);
-    setCouponCode("");
+  // Register-on-the-spot when a search comes up empty — this is the only
+  // place email/date-of-birth get captured, so it's worth surfacing here
+  // rather than making the cashier send the customer to a separate page
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    dateOfBirth: "",
+  });
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  const openAddCustomer = () => {
+    const looksLikePhone = /^[\d+\-\s]+$/.test(customerSearch.trim());
+    setNewCustomerForm({
+      name: looksLikePhone ? "" : customerSearch.trim(),
+      phone: looksLikePhone ? customerSearch.trim() : "",
+      email: "",
+      dateOfBirth: "",
+    });
+    setShowAddCustomer(true);
   };
 
   const handleCreateCustomer = async () => {
-    if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+    if (!newCustomerForm.name.trim() || !newCustomerForm.phone.trim()) {
       toast.error("Name and phone are required");
       return;
     }
     setCreatingCustomer(true);
     try {
       const res = await createCustomerApi({
-        name: newCustomerName.trim(),
-        phone: newCustomerPhone.trim(),
+        name: newCustomerForm.name.trim(),
+        phone: newCustomerForm.phone.trim(),
+        ...(newCustomerForm.email.trim()
+          ? { email: newCustomerForm.email.trim() }
+          : {}),
+        ...(newCustomerForm.dateOfBirth
+          ? { dateOfBirth: newCustomerForm.dateOfBirth }
+          : {}),
       });
       if (res.success) {
         toast.success("Customer registered");
-        handleSelectCustomer(res.data);
-        setShowNewCustomerForm(false);
-        setNewCustomerName("");
-        setNewCustomerPhone("");
+        setShowAddCustomer(false);
+        await pickCustomer(res.data);
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -399,6 +429,60 @@ export const NewSale: React.FC = () => {
       setCreatingCustomer(false);
     }
   };
+
+  // Coupon — only redeemable once a customer is attached, since a coupon
+  // is issued to a specific customer (see backend validateCoupon)
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
+
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setSuggestedCoupons([]);
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setCouponError("");
+  };
+
+  const applyCouponCode = async (code: string) => {
+    if (!selectedCustomer || !code.trim()) return;
+    setCheckingCoupon(true);
+    setCouponError("");
+    try {
+      const res = await validateCouponApi(code.trim(), selectedCustomer._id);
+      if (res.success) {
+        setAppliedCoupon(res.data);
+        setCouponCode(code.trim());
+        toast.success("Coupon applied");
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message ?? "Invalid coupon";
+      setCouponError(message);
+      setAppliedCoupon(null);
+    } finally {
+      setCheckingCoupon(false);
+    }
+  };
+
+  const handleApplyCoupon = () => applyCouponCode(couponCode);
+
+  const clearCoupon = () => {
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setCouponError("");
+  };
+
+  // Preview only — the backend recomputes and clamps this the same way at
+  // checkout, so this is just so the cashier can see it before submitting
+  const rawCouponDiscount = appliedCoupon
+    ? appliedCoupon.discountType === "percent"
+      ? (subtotal * appliedCoupon.discountValue) / 100
+      : appliedCoupon.discountValue
+    : 0;
+  const couponDiscountAmount = Math.min(Math.max(rawCouponDiscount, 0), total);
+  const finalTotal = total - couponDiscountAmount;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -448,7 +532,11 @@ export const NewSale: React.FC = () => {
     if (discountOverCap) {
       setCheckingOut(true);
       try {
-        const res = await createDiscountApprovalRequestApi(payload);
+        const res = await createDiscountApprovalRequestApi({
+          ...payload,
+          ...(selectedCustomer ? { customerId: selectedCustomer._id } : {}),
+          ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
+        });
         if (res.success) {
           setPendingRequest(res.data);
           toast.success("Approval request sent");
@@ -468,7 +556,7 @@ export const NewSale: React.FC = () => {
         ...payload,
         ...(exchangeCode.trim() ? { linkedReturnId: exchangeCode.trim() } : {}),
         ...(selectedCustomer ? { customerId: selectedCustomer._id } : {}),
-        ...(couponCode.trim() ? { couponCode: couponCode.trim() } : {}),
+        ...(appliedCoupon ? { couponCode: appliedCoupon.code } : {}),
       });
       if (res.success) {
         toast.success(`Sale ${res.data.saleNumber} recorded`);
@@ -479,8 +567,7 @@ export const NewSale: React.FC = () => {
         setDiscountValue(0);
         setTaxRate(0);
         setExchangeCode("");
-        setSelectedCustomer(null);
-        setCouponCode("");
+        clearCustomer();
         fetchInventory(); // stock just changed
       }
     } catch (error: unknown) {
@@ -524,6 +611,7 @@ export const NewSale: React.FC = () => {
   // React once the request leaves "pending"
   useEffect(() => {
     if (!pendingRequest || pendingRequest.status === "pending") return;
+
     const t = setTimeout(() => {
       if (pendingRequest.status === "approved") {
         toast.success("Approved — sale recorded");
@@ -532,6 +620,7 @@ export const NewSale: React.FC = () => {
         setDiscountType("amount");
         setDiscountValue(0);
         setTaxRate(0);
+        clearCustomer();
       } else if (pendingRequest.status === "rejected") {
         toast.error(
           pendingRequest.reviewNote
@@ -755,140 +844,79 @@ export const NewSale: React.FC = () => {
         <div className="mt-4 border-t border-slate-100 pt-4">
           <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Customer{" "}
-            <span className="normal-case text-slate-400">
-              (optional — leave blank for a guest sale)
-            </span>
+            <span className="normal-case text-slate-400">(optional)</span>
           </label>
-
           {selectedCustomer ? (
-            <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+            <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <User size={16} className="shrink-0 text-emerald-600" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-700">
+                  <p className="truncate text-sm font-semibold text-slate-700">
                     {selectedCustomer.name}
                   </p>
-                  <p className="flex items-center gap-1 text-xs text-slate-500">
-                    {selectedCustomer.phone}
-                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                      <Star size={9} />
-                      {selectedCustomer.membershipLevel}
-                    </span>
+                  <p className="text-xs text-slate-500">
+                    {selectedCustomer.phone} ·{" "}
+                    {selectedCustomer.membershipLevel}
                   </p>
                 </div>
               </div>
               <button
-                onClick={handleRemoveCustomer}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-white hover:text-red-500"
+                onClick={clearCustomer}
+                className="shrink-0 text-slate-400 hover:text-red-500"
               >
-                <X size={16} />
+                <UserX size={16} />
               </button>
             </div>
-          ) : !isOnline ? (
-            <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-400">
-              Customer lookup requires internet connection — this will be a
-              guest sale
-            </p>
           ) : (
             <div className="relative mb-4">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={customerSearch}
-                  onChange={(e) => {
-                    setCustomerSearch(e.target.value);
-                    setShowCustomerDropdown(true);
-                  }}
-                  onFocus={() => setShowCustomerDropdown(true)}
-                  placeholder="Search name or phone..."
-                  className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {showCustomerDropdown && customerSearch.trim().length >= 2 && (
-                <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+              <input
+                type="text"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                placeholder={
+                  isOnline
+                    ? "Search by name or phone..."
+                    : "Requires internet connection"
+                }
+                disabled={!isOnline}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              />
+              {customerSearch.trim() && (
+                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                   {searchingCustomer ? (
-                    <div className="flex items-center justify-center py-3">
-                      <Loader2
-                        size={16}
-                        className="animate-spin text-slate-400"
-                      />
-                    </div>
-                  ) : customerResults.length > 0 ? (
-                    customerResults.map((c) => (
-                      <button
-                        key={c._id}
-                        onClick={() => handleSelectCustomer(c)}
-                        className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-slate-50"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">
-                            {c.name}
-                          </p>
-                          <p className="text-xs text-slate-400">{c.phone}</p>
-                        </div>
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                          {c.membershipLevel}
-                        </span>
-                      </button>
-                    ))
+                    <p className="px-3 py-2.5 text-sm text-slate-400">
+                      Searching...
+                    </p>
                   ) : (
-                    <div className="px-2.5 py-2">
-                      <p className="mb-1.5 text-xs text-slate-400">
-                        No customer found
-                      </p>
-                      {!showNewCustomerForm && (
-                        <button
-                          onClick={() => {
-                            setShowNewCustomerForm(true);
-                            setNewCustomerName(customerSearch);
-                          }}
-                          className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700"
-                        >
-                          <UserPlus size={12} />
-                          Register new customer
-                        </button>
+                    <>
+                      {customerResults.length === 0 ? (
+                        <p className="px-3 py-2.5 text-sm text-slate-400">
+                          No customer found
+                        </p>
+                      ) : (
+                        customerResults.map((c) => (
+                          <button
+                            key={c._id}
+                            onClick={() => pickCustomer(c)}
+                            className="block w-full px-3 py-2.5 text-left text-sm hover:bg-emerald-50"
+                          >
+                            <span className="font-medium text-slate-700">
+                              {c.name}
+                            </span>
+                            <span className="ml-1.5 text-xs text-slate-400">
+                              {c.phone}
+                            </span>
+                          </button>
+                        ))
                       )}
-                    </div>
-                  )}
-
-                  {showNewCustomerForm && (
-                    <div className="space-y-2 border-t border-slate-100 p-2.5">
-                      <input
-                        type="text"
-                        value={newCustomerName}
-                        onChange={(e) => setNewCustomerName(e.target.value)}
-                        placeholder="Name"
-                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      <input
-                        type="text"
-                        value={newCustomerPhone}
-                        onChange={(e) => setNewCustomerPhone(e.target.value)}
-                        placeholder="Phone"
-                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => setShowNewCustomerForm(false)}
-                          className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleCreateCustomer}
-                          disabled={creatingCustomer}
-                          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-500 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
-                        >
-                          {creatingCustomer ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            "Save"
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                      <button
+                        onClick={openAddCustomer}
+                        className="flex w-full items-center gap-1.5 border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-emerald-600 hover:bg-emerald-50"
+                      >
+                        <User size={14} /> Add "{customerSearch.trim()}" as new
+                        customer
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -897,25 +925,89 @@ export const NewSale: React.FC = () => {
 
           {selectedCustomer && (
             <>
+              {!appliedCoupon &&
+                suggestedCoupons.map((c) => (
+                  <button
+                    key={c._id}
+                    onClick={() => applyCouponCode(c.code)}
+                    disabled={!isOnline || checkingCoupon}
+                    className="mb-3 flex w-full items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-left transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="flex items-center gap-2 text-sm">
+                      <span>{c.type === "birthday" ? "🎂" : "⬆️"}</span>
+                      <span className="text-slate-700">
+                        Has an unused{" "}
+                        <span className="font-semibold">
+                          {c.type === "birthday" ? "birthday" : "level-up"}
+                        </span>{" "}
+                        coupon —{" "}
+                        {c.discountType === "percent"
+                          ? `${c.discountValue}% off`
+                          : `${c.discountValue.toLocaleString()} Ks off`}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white">
+                      Apply
+                    </span>
+                  </button>
+                ))}
+
               <label className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <Ticket size={12} />
-                Coupon Code{" "}
+                <Ticket size={12} /> Coupon Code{" "}
                 <span className="normal-case text-slate-400">(optional)</span>
               </label>
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder={
-                  isOnline ? "e.g. GOLD-8F3K2Q" : "Requires internet connection"
-                }
-                disabled={!isOnline}
-                className={`mb-4 w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
-                  couponCode.trim()
-                    ? "border-emerald-400 bg-emerald-50"
-                    : "border-slate-200"
-                }`}
-              />
+              {appliedCoupon ? (
+                <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                    <span className="text-sm font-semibold text-slate-700">
+                      {appliedCoupon.code}
+                    </span>
+                    <span className="text-xs text-emerald-600">
+                      {appliedCoupon.discountType === "percent"
+                        ? `${appliedCoupon.discountValue}% off`
+                        : `${appliedCoupon.discountValue.toLocaleString()} Ks off`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={clearCoupon}
+                    className="shrink-0 text-slate-400 hover:text-red-500"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-1 flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value);
+                      setCouponError("");
+                    }}
+                    placeholder="e.g. GOLD-8F3K2Q"
+                    disabled={!isOnline}
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                  />
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={!isOnline || !couponCode.trim() || checkingCoupon}
+                    className="shrink-0 rounded-xl bg-slate-800 px-4 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {checkingCoupon ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      "Apply"
+                    )}
+                  </button>
+                </div>
+              )}
+              {couponError && (
+                <p className="mb-4 text-xs font-medium text-red-500">
+                  {couponError}
+                </p>
+              )}
+              {!appliedCoupon && !couponError && <div className="mb-4" />}
             </>
           )}
 
@@ -1069,10 +1161,20 @@ export const NewSale: React.FC = () => {
                 </span>
               </div>
             )}
+            {appliedCoupon && couponDiscountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1 text-slate-500">
+                  <Ticket size={12} /> Coupon ({appliedCoupon.code})
+                </span>
+                <span className="font-medium text-red-500">
+                  -{couponDiscountAmount.toLocaleString()} Ks
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
               <span className="text-sm font-medium text-slate-500">Total</span>
               <span className="text-2xl font-bold text-slate-800">
-                {total.toLocaleString()} Ks
+                {finalTotal.toLocaleString()} Ks
               </span>
             </div>
           </div>
@@ -1138,6 +1240,115 @@ export const NewSale: React.FC = () => {
               <X size={14} />
               Cancel Request
             </button>
+          </div>
+        </div>
+      )}
+
+      {showAddCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-800">New Customer</h2>
+              <button
+                onClick={() => setShowAddCustomer(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCustomerForm.name}
+                  onChange={(e) =>
+                    setNewCustomerForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  placeholder="Customer name"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Phone <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={newCustomerForm.phone}
+                  onChange={(e) =>
+                    setNewCustomerForm((f) => ({
+                      ...f,
+                      phone: e.target.value,
+                    }))
+                  }
+                  placeholder="09xxxxxxxxx"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Email{" "}
+                  <span className="normal-case text-slate-400">
+                    (optional — needed for birthday coupon emails)
+                  </span>
+                </label>
+                <input
+                  type="email"
+                  value={newCustomerForm.email}
+                  onChange={(e) =>
+                    setNewCustomerForm((f) => ({
+                      ...f,
+                      email: e.target.value,
+                    }))
+                  }
+                  placeholder="name@example.com"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Date of Birth{" "}
+                  <span className="normal-case text-slate-400">
+                    (optional — needed for the birthday coupon)
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={newCustomerForm.dateOfBirth}
+                  onChange={(e) =>
+                    setNewCustomerForm((f) => ({
+                      ...f,
+                      dateOfBirth: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setShowAddCustomer(false)}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateCustomer}
+                disabled={creatingCustomer}
+                className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {creatingCustomer ? (
+                  <Loader2 size={16} className="mx-auto animate-spin" />
+                ) : (
+                  "Register"
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

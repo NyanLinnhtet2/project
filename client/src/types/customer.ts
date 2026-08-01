@@ -8,6 +8,10 @@ export interface Customer {
   purchaseCount: number;
   membershipLevel: string;
   registeredBranch: string;
+  // Only present on list/search results — true once this year's birthday
+  // coupon has already been redeemed, so the UI can stop flagging "today's
+  // the birthday" once there's nothing left to send.
+  birthdayCouponUsedThisYear?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +46,7 @@ export interface Coupon {
   expiresAt: string;
   usedInSaleId?: string;
   usedAt?: string;
+  emailSentAt?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -42,6 +42,21 @@ const LoadingSpinner: React.FC = () => (
   </div>
 );
 
+// ─── Empty State ────────────────────────────────────────────────
+const EmptyState: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="rounded-full bg-blue-50 p-4">
+      <Activity className="h-12 w-12 text-blue-500" />
+    </div>
+    <h3 className="mt-4 text-xl font-semibold text-slate-600">
+      No data available
+    </h3>
+    <p className="mt-2 text-slate-400">
+      No sales data found for the selected branch or period.
+    </p>
+  </div>
+);
+
 // ─── Stat Card ──────────────────────────────────────────────────
 const StatCard: React.FC<{
   label: string;
@@ -80,6 +95,7 @@ export const Overview = () => {
   const [branchId, setBranchId] = useState("");
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem("userInfo") || "null");
@@ -99,12 +115,19 @@ export const Overview = () => {
 
   const fetchOverview = async () => {
     setLoading(true);
+    setHasError(false);
     try {
       const res = await getDashboardOverviewApi(branchId || undefined);
-      if (res.success) setData(res.data);
+      if (res.success) {
+        setData(res.data);
+      } else {
+        setHasError(true);
+        toast.error(res.message || "Failed to load overview");
+      }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message ?? "Failed to load overview");
+      setHasError(true);
     } finally {
       setLoading(false);
     }
@@ -171,8 +194,11 @@ export const Overview = () => {
           </div>
         </div>
 
-        {loading || !data ? (
+        {/* ─── Content ────────────────────────────────────────────── */}
+        {loading ? (
           <LoadingSpinner />
+        ) : hasError || !data ? (
+          <EmptyState />
         ) : (
           <>
             {/* ─── Today's Stats ────────────────────────────────────── */}

@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function Orders() {
   const currentOrders = [
     { orderId: '#TX-1002', time: '10:24 AM', items: 'Linen Shirt x 2', total: '$70.00', branch: 'Yangon Branch ', sync: 'Synced [cite: 28]' },

@@ -3,12 +3,13 @@ import { toast } from "react-hot-toast"; // သို့မဟုတ် သင�
 import { deductBranchStockApi } from "../../services/inventoryService"; // အပေါ်က API function ကို Import လုပ်ပါ
 import axios from "axios";
 import type { ErrorResponse } from "../../types/ErrorResponse";
+import type { Stock } from "../../types/inventory";
 
 interface DeductStockModalProps {
   isOpen: boolean;
   onClose: () => void;
   branchId: string;
-  stockItem: any;
+  stockItem: Stock | null;
   onSuccess: () => void;
 }
 

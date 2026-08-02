@@ -29,6 +29,9 @@ export interface Sale {
   paymentMethod: PaymentMethod;
   status: SaleStatus;
   voidedReason?: string;
+  voidedBy?: string;
+  voidedByName?: string;
+  voidedAt?: string;
   approvedByName?: string; // set when a discount over the normal cap was manager-approved
   linkedReturnId?: string; // set when this sale is the replacement half of an exchange
   linkedReturnNumber?: string; // human-readable code for the above

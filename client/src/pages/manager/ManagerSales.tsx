@@ -32,6 +32,8 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   type?: "danger" | "warning" | "info";
   isLoading?: boolean;
+  confirmDisabled?: boolean;
+  children?: React.ReactNode;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -44,6 +46,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
   type = "danger",
   isLoading = false,
+  confirmDisabled = false,
+  children,
 }) => {
   if (!isOpen) return null;
 
@@ -91,6 +95,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </h3>
         <p className="text-sm text-slate-600 text-center mb-6">{message}</p>
 
+        {children}
+
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onCancel}
@@ -101,7 +107,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </button>
           <button
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isLoading || confirmDisabled}
             className={`flex-1 rounded-xl px-4 py-2.5 font-medium text-white transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${styles.button}`}
           >
             {isLoading ? (
@@ -293,6 +299,12 @@ const SaleDetailModal: React.FC<{
             {sale.couponDiscountAmount
               ? ` (-${sale.couponDiscountAmount.toLocaleString()} Ks)`
               : ""}
+          </p>
+        )}
+        {sale.status === "voided" && sale.voidedReason && (
+          <p className="mt-2 text-xs text-red-500">
+            🚫 Voided{sale.voidedByName ? ` by ${sale.voidedByName}` : ""} —{" "}
+            {sale.voidedReason}
           </p>
         )}
       </div>
@@ -579,6 +591,7 @@ export const ManagerSales: React.FC = () => {
   // ── Void Confirm Dialog state ──
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<Sale | null>(null);
+  const [voidReason, setVoidReason] = useState("");
 
   // Stats
   const [stats, setStats] = useState({
@@ -641,15 +654,16 @@ export const ManagerSales: React.FC = () => {
   // ── Open void confirm dialog ──
   const openVoidConfirm = (sale: Sale) => {
     setVoidTarget(sale);
+    setVoidReason("");
     setVoidConfirmOpen(true);
   };
 
   // ── Actual void action ──
   const handleConfirmVoid = async () => {
-    if (!voidTarget) return;
+    if (!voidTarget || !voidReason.trim()) return;
     setVoidingId(voidTarget._id);
     try {
-      const res = await voidSaleApi(voidTarget._id, "Voided by manager");
+      const res = await voidSaleApi(voidTarget._id, voidReason.trim());
       if (res.success) {
         toast.success("Sale voided");
         fetchSales();
@@ -661,12 +675,14 @@ export const ManagerSales: React.FC = () => {
       setVoidingId(null);
       setVoidConfirmOpen(false);
       setVoidTarget(null);
+      setVoidReason("");
     }
   };
 
   const cancelVoid = () => {
     setVoidConfirmOpen(false);
     setVoidTarget(null);
+    setVoidReason("");
   };
 
   return (
@@ -932,7 +948,24 @@ export const ManagerSales: React.FC = () => {
         onCancel={cancelVoid}
         type="danger"
         isLoading={voidingId !== null}
-      />
+        confirmDisabled={!voidReason.trim()}
+      >
+        <div className="mb-6 text-left">
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Reason for voiding <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={voidReason}
+            onChange={(e) => setVoidReason(e.target.value)}
+            rows={3}
+            placeholder="e.g. Customer changed their mind, wrong items rung up..."
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            This will be recorded with your name and shown to admins.
+          </p>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 };

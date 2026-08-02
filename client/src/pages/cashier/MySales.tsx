@@ -252,7 +252,7 @@ export const MySales: React.FC = () => {
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
+      
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -281,7 +281,7 @@ export const MySales: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+       
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">

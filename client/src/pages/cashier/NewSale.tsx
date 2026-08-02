@@ -75,8 +75,6 @@ const getProduct = (stock: Stock): Product | null => {
   return null;
 };
 
-// So the product grid, cart math, etc. don't need to know or care whether
-// a row came from the live API or the offline cache.
 const cachedProductToStock = (cp: CachedProduct): Stock => ({
   _id: cp.productId,
   productId: cp.productId,
@@ -99,7 +97,7 @@ const LoadingSpinner: React.FC<{ label?: string }> = ({
   label = "Loading...",
 }) => (
   <div className="flex flex-col items-center justify-center py-16">
-    <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+    <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
     <p className="mt-4 text-sm text-slate-500 font-medium">{label}</p>
   </div>
 );
@@ -133,8 +131,7 @@ export const NewSale: React.FC = () => {
     try {
       setPendingSyncCount(await getPendingSaleCount(branchId));
     } catch {
-      // IndexedDB not available (private browsing, etc.) — offline mode
-      // just won't work on this device, online checkout is unaffected
+      // IndexedDB not available
     }
   };
 
@@ -161,8 +158,6 @@ export const NewSale: React.FC = () => {
         cacheProductsForBranch(branchId, res.data).catch(() => {});
       }
     } catch (error: unknown) {
-      // navigator.onLine can lie — if the request actually failed, fall
-      // back to whatever we last cached instead of showing an empty grid
       try {
         const cached = await getCachedProductsForBranch(branchId);
         if (cached.length > 0) {
@@ -190,8 +185,7 @@ export const NewSale: React.FC = () => {
         );
       }
     } catch {
-      // non-fatal — checkout still works, backend re-validates regardless;
-      // the UI just won't show a cap hint until this succeeds
+      // non-fatal
     }
   };
 
@@ -230,7 +224,6 @@ export const NewSale: React.FC = () => {
     }
   };
 
-  // Auto-sync the moment connectivity comes back
   const wasOnline = useRef(isOnline);
   useEffect(() => {
     if (!wasOnline.current && isOnline) {
@@ -329,17 +322,13 @@ export const NewSale: React.FC = () => {
     useState<DiscountApprovalRequest | null>(null);
   const [exchangeCode, setExchangeCode] = useState("");
 
-  // Customer lookup — optional, links the sale to a customer for
-  // purchase-history/membership tracking and unlocks coupon redemption
+  // Customer lookup
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
   const [searchingCustomer, setSearchingCustomer] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
   );
-  // Any active coupons this customer already has (birthday/level-up) —
-  // surfaced proactively since many customers have no email on file to
-  // have been notified with in the first place
   const [suggestedCoupons, setSuggestedCoupons] = useState<Coupon[]>([]);
 
   useEffect(() => {
@@ -356,7 +345,7 @@ export const NewSale: React.FC = () => {
         const res = await searchCustomersApi(customerSearch.trim());
         if (res.success) setCustomerResults(res.data);
       } catch {
-        // non-fatal — checkout still works without a customer attached
+        // non-fatal
       } finally {
         setSearchingCustomer(false);
       }
@@ -373,13 +362,10 @@ export const NewSale: React.FC = () => {
       const res = await getActiveCouponsApi(customer._id);
       if (res.success) setSuggestedCoupons(res.data);
     } catch {
-      // non-fatal — cashier can still type a coupon code manually
+      // non-fatal
     }
   };
 
-  // Register-on-the-spot when a search comes up empty — this is the only
-  // place email/date-of-birth get captured, so it's worth surfacing here
-  // rather than making the cashier send the customer to a separate page
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [newCustomerForm, setNewCustomerForm] = useState({
     name: "",
@@ -430,8 +416,6 @@ export const NewSale: React.FC = () => {
     }
   };
 
-  // Coupon — only redeemable once a customer is attached, since a coupon
-  // is issued to a specific customer (see backend validateCoupon)
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState("");
@@ -474,8 +458,6 @@ export const NewSale: React.FC = () => {
     setCouponError("");
   };
 
-  // Preview only — the backend recomputes and clamps this the same way at
-  // checkout, so this is just so the cashier can see it before submitting
   const rawCouponDiscount = appliedCoupon
     ? appliedCoupon.discountType === "percent"
       ? (subtotal * appliedCoupon.discountValue) / 100
@@ -520,7 +502,7 @@ export const NewSale: React.FC = () => {
         setDiscountValue(0);
         setTaxRate(0);
         await refreshPendingSyncCount();
-        await fetchInventory(); // re-render from the now-decremented cache
+        await fetchInventory();
       } catch {
         toast.error("Couldn't save this sale offline on this device");
       } finally {
@@ -568,7 +550,7 @@ export const NewSale: React.FC = () => {
         setTaxRate(0);
         setExchangeCode("");
         clearCustomer();
-        fetchInventory(); // stock just changed
+        fetchInventory();
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -584,15 +566,13 @@ export const NewSale: React.FC = () => {
       await cancelApprovalRequestApi(pendingRequest._id);
       toast("Request cancelled");
     } catch {
-      // best-effort — it may have already resolved server-side, which the
-      // next poll tick or the current state will reflect either way
+      // best-effort
     } finally {
       setPendingRequest(null);
       fetchInventory();
     }
   };
 
-  // Poll while a request is pending — no websockets needed for this volume
   useEffect(() => {
     if (!pendingRequest || pendingRequest.status !== "pending") return;
     const interval = setInterval(async () => {
@@ -602,13 +582,12 @@ export const NewSale: React.FC = () => {
           setPendingRequest(res.data);
         }
       } catch {
-        // transient poll failure — try again next tick
+        // ignore
       }
     }, 3000);
     return () => clearInterval(interval);
   }, [pendingRequest]);
 
-  // React once the request leaves "pending"
   useEffect(() => {
     if (!pendingRequest || pendingRequest.status === "pending") return;
 
@@ -630,7 +609,7 @@ export const NewSale: React.FC = () => {
       } else if (pendingRequest.status === "expired") {
         toast.error("Request expired — please try again");
       }
-      fetchInventory(); // stock was reserved/released either way
+      fetchInventory();
       setPendingRequest(null);
     }, 0);
 
@@ -639,16 +618,26 @@ export const NewSale: React.FC = () => {
   }, [pendingRequest?.status]);
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="flex flex-col lg:flex-row h-full gap-6 p-4 lg:p-6">
       {/* Product picker */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="mb-6 flex items-start justify-between gap-4">
+        {/* ─── Header ────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">New Sale</h1>
-            <p className="text-sm text-slate-500">{userInfo?.branch}</p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+                <ShoppingCart size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">New Sale</h1>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  {userInfo?.branch || "Select a branch"}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {pendingSyncCount > 0 && (
               <button
                 onClick={handleSync}
@@ -686,7 +675,7 @@ export const NewSale: React.FC = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search product name or SKU..."
-            className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -704,7 +693,7 @@ export const NewSale: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {availableStock.map((stock) => {
                 const product = getProduct(stock);
                 if (!product) return null;
@@ -719,11 +708,11 @@ export const NewSale: React.FC = () => {
                     className={`relative rounded-xl border p-3 text-left transition active:scale-95 ${
                       isMaxed
                         ? "cursor-not-allowed border-slate-100 bg-slate-100 opacity-60"
-                        : "border-slate-200 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50"
+                        : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-blue-50"
                     }`}
                   >
                     {inCart > 0 && (
-                      <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white shadow z-10">
+                      <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white shadow z-10">
                         {inCart}
                       </span>
                     )}
@@ -746,7 +735,7 @@ export const NewSale: React.FC = () => {
                     </p>
                     <p className="text-xs text-slate-400">{product.sku}</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm font-bold text-emerald-600">
+                      <span className="text-sm font-bold text-blue-600">
                         {(product.price ?? 0).toLocaleString()} Ks
                       </span>
                       <span
@@ -770,11 +759,11 @@ export const NewSale: React.FC = () => {
       </div>
 
       {/* Cart */}
-      <div className="flex w-96 shrink-0 flex-col rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="w-full lg:w-96 shrink-0 flex flex-col rounded-2xl border border-slate-200 bg-white p-5">
         <div className="mb-4 flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5 text-emerald-600" />
+          <ShoppingCart className="h-5 w-5 text-blue-600" />
           <h2 className="text-lg font-bold text-slate-800">Cart</h2>
-          <span className="ml-auto rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+          <span className="ml-auto rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
             {cart.length} item{cart.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -782,7 +771,7 @@ export const NewSale: React.FC = () => {
         {lastCompletedSale && cart.length === 0 && (
           <button
             onClick={() => printReceipt(lastCompletedSale, userInfo?.branch)}
-            className="mb-4 flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            className="mb-4 flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100"
           >
             <Printer size={14} />
             Print Receipt ({lastCompletedSale.saleNumber})
@@ -847,16 +836,18 @@ export const NewSale: React.FC = () => {
             <span className="normal-case text-slate-400">(optional)</span>
           </label>
           {selectedCustomer ? (
-            <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+            <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5">
               <div className="flex items-center gap-2 min-w-0">
-                <User size={16} className="shrink-0 text-emerald-600" />
+                <User size={16} className="shrink-0 text-blue-600" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-700">
                     {selectedCustomer.name}
                   </p>
                   <p className="text-xs text-slate-500">
                     {selectedCustomer.phone} ·{" "}
-                    {selectedCustomer.membershipLevel}
+                    <span className="font-medium text-blue-600">
+                      {selectedCustomer.membershipLevel}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -879,7 +870,7 @@ export const NewSale: React.FC = () => {
                     : "Requires internet connection"
                 }
                 disabled={!isOnline}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               />
               {customerSearch.trim() && (
                 <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -898,7 +889,7 @@ export const NewSale: React.FC = () => {
                           <button
                             key={c._id}
                             onClick={() => pickCustomer(c)}
-                            className="block w-full px-3 py-2.5 text-left text-sm hover:bg-emerald-50"
+                            className="block w-full px-3 py-2.5 text-left text-sm hover:bg-blue-50"
                           >
                             <span className="font-medium text-slate-700">
                               {c.name}
@@ -906,12 +897,15 @@ export const NewSale: React.FC = () => {
                             <span className="ml-1.5 text-xs text-slate-400">
                               {c.phone}
                             </span>
+                            <span className="ml-2 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                              {c.membershipLevel}
+                            </span>
                           </button>
                         ))
                       )}
                       <button
                         onClick={openAddCustomer}
-                        className="flex w-full items-center gap-1.5 border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-emerald-600 hover:bg-emerald-50"
+                        className="flex w-full items-center gap-1.5 border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-blue-600 hover:bg-blue-50"
                       >
                         <User size={14} /> Add "{customerSearch.trim()}" as new
                         customer
@@ -957,13 +951,13 @@ export const NewSale: React.FC = () => {
                 <span className="normal-case text-slate-400">(optional)</span>
               </label>
               {appliedCoupon ? (
-                <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-emerald-600" />
+                    <CheckCircle2 size={16} className="text-blue-600" />
                     <span className="text-sm font-semibold text-slate-700">
                       {appliedCoupon.code}
                     </span>
-                    <span className="text-xs text-emerald-600">
+                    <span className="text-xs text-blue-600">
                       {appliedCoupon.discountType === "percent"
                         ? `${appliedCoupon.discountValue}% off`
                         : `${appliedCoupon.discountValue.toLocaleString()} Ks off`}
@@ -987,7 +981,7 @@ export const NewSale: React.FC = () => {
                     }}
                     placeholder="e.g. GOLD-8F3K2Q"
                     disabled={!isOnline}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                   />
                   <button
                     onClick={handleApplyCoupon}
@@ -1025,14 +1019,14 @@ export const NewSale: React.FC = () => {
                 : "Requires internet connection"
             }
             disabled={!isOnline}
-            className={`mb-4 w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
+            className={`mb-4 w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
               exchangeCode.trim()
-                ? "border-emerald-400 bg-emerald-50"
+                ? "border-blue-400 bg-blue-50"
                 : "border-slate-200"
             }`}
           />
           {exchangeCode.trim() && (
-            <p className="-mt-3 mb-4 text-xs text-emerald-600">
+            <p className="-mt-3 mb-4 text-xs text-blue-600">
               🔄 This sale will be linked as an exchange for{" "}
               {exchangeCode.trim()}
             </p>
@@ -1044,7 +1038,7 @@ export const NewSale: React.FC = () => {
           <select
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-            className="mb-4 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="mb-4 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {PAYMENT_METHODS.map((m) => (
               <option key={m.value} value={m.value}>
@@ -1085,7 +1079,7 @@ export const NewSale: React.FC = () => {
                     onClick={() => setDiscountType("amount")}
                     className={`px-3 text-sm font-semibold transition-colors ${
                       discountType === "amount"
-                        ? "bg-emerald-500 text-white"
+                        ? "bg-blue-500 text-white"
                         : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                     }`}
                   >
@@ -1096,7 +1090,7 @@ export const NewSale: React.FC = () => {
                     onClick={() => setDiscountType("percent")}
                     className={`px-3 text-sm font-semibold transition-colors ${
                       discountType === "percent"
-                        ? "bg-emerald-500 text-white"
+                        ? "bg-blue-500 text-white"
                         : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                     }`}
                   >
@@ -1130,7 +1124,7 @@ export const NewSale: React.FC = () => {
                   setTaxRate(Math.min(100, Math.max(0, Number(e.target.value))))
                 }
                 placeholder="0"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -1190,7 +1184,7 @@ export const NewSale: React.FC = () => {
             className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-semibold text-white shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
               discountOverCap
                 ? "bg-linear-to-r from-amber-500 to-amber-600 shadow-amber-500/30 hover:from-amber-600 hover:to-amber-700"
-                : "bg-linear-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/30 hover:from-emerald-600 hover:to-emerald-700"
+                : "bg-linear-to-r from-blue-500 to-blue-600 shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700"
             }`}
           >
             {checkingOut ? (
@@ -1269,7 +1263,7 @@ export const NewSale: React.FC = () => {
                     setNewCustomerForm((f) => ({ ...f, name: e.target.value }))
                   }
                   placeholder="Customer name"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -1286,7 +1280,7 @@ export const NewSale: React.FC = () => {
                     }))
                   }
                   placeholder="09xxxxxxxxx"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -1306,7 +1300,7 @@ export const NewSale: React.FC = () => {
                     }))
                   }
                   placeholder="name@example.com"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -1325,7 +1319,7 @@ export const NewSale: React.FC = () => {
                       dateOfBirth: e.target.value,
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -1340,7 +1334,7 @@ export const NewSale: React.FC = () => {
               <button
                 onClick={handleCreateCustomer}
                 disabled={creatingCustomer}
-                className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {creatingCustomer ? (
                   <Loader2 size={16} className="mx-auto animate-spin" />

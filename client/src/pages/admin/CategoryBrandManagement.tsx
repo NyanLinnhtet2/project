@@ -1,4 +1,3 @@
-// src/pages/admin/CategoryBrand.tsx
 import {
   Plus,
   Search,
@@ -34,9 +33,10 @@ import type { Brand } from "../../types/brand";
 import axios from "axios";
 import type { ErrorResponse } from "../../types/ErrorResponse";
 
-// ============================================================
-// Confirm Dialog Component (Responsive)
-// ============================================================
+type QueryParams = {
+  status?: string;
+  search?: string;
+};
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -189,7 +189,7 @@ export const CategoryBrand = () => {
   // ============================================================
   const fetchCategories = async () => {
     try {
-      const params: any = {};
+      const params: QueryParams = {};
       if (statusFilter !== "All") params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
       const response = await getCategoriesWithCountApi(params);
@@ -207,7 +207,7 @@ export const CategoryBrand = () => {
 
   const fetchBrands = async () => {
     try {
-      const params: any = {};
+      const params: QueryParams = {};
       if (statusFilter !== "All") params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
       const response = await getBrandsWithCountApi(params);

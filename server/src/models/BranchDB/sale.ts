@@ -24,6 +24,9 @@ export interface ISale extends Document {
   paymentMethod: "cash" | "kbz_pay" | "wave_pay" | "card" | "other";
   status: "completed" | "voided";
   voidedReason?: string;
+  voidedBy?: string; // CentralDB User _id of the manager/admin who voided it
+  voidedByName?: string;
+  voidedAt?: Date;
   approvedBy?: string; // CentralDB User _id of the manager/admin who authorized an over-cap discount
   approvedByName?: string;
   linkedReturnId?: Types.ObjectId; // set when this sale is the replacement half of an exchange
@@ -75,6 +78,9 @@ const saleSchema = new Schema<ISale>(
       default: "completed",
     },
     voidedReason: { type: String, default: "" },
+    voidedBy: { type: String },
+    voidedByName: { type: String },
+    voidedAt: { type: Date },
     approvedBy: { type: String },
     approvedByName: { type: String },
     linkedReturnId: { type: Schema.Types.ObjectId },

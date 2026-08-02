@@ -16,10 +16,12 @@ import discountEventRoute from "./routes/discountEventRoute";
 import discountApprovalRequestRoute from "./routes/discountApprovalRoute";
 import returnRoute from "./routes/returnRoute";
 import reportRoute from "./routes/reportRoute";
+import dashboardRoute from "./routes/dashboardRoute";
 import aiAssistantRoute from "./routes/aiAssistantRoute";
 import customerRoute from "./routes/customerRoute";
 import memebershiptierRoute from "./routes/membershiptierRoute";
 import couponRoute from "./routes/couponRoute";
+import { startBirthdayEmailCron } from "./utils/birthdayemailcorn";
 
 dotenv.config({
   path: "./.env",
@@ -27,7 +29,6 @@ dotenv.config({
 
 const app = express();
 
-app.use(express.json({ limit: "5mb" }));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -51,6 +52,7 @@ app.use("/api/discount-events", discountEventRoute);
 app.use("/api/discount-approval-requests", discountApprovalRequestRoute);
 app.use("/api/returns", returnRoute);
 app.use("/api/reports", reportRoute);
+app.use("/api/dashboard", dashboardRoute);
 app.use("/api/customers", customerRoute);
 app.use("/api/membership-tiers", memebershiptierRoute);
 app.use("/api/coupons", couponRoute);
@@ -86,6 +88,8 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}...`);
     });
+
+    startBirthdayEmailCron();
   } catch (error) {
     console.error("❌ Server not running -", error);
     process.exit(1);

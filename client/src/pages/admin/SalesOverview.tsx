@@ -253,6 +253,22 @@ const SaleDetailModal: React.FC<SaleDetailModalProps> = ({
                   : ""}
               </p>
             )}
+            {sale.status === "voided" && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+                <p className="text-xs font-semibold text-red-700">
+                  🚫 Voided
+                  {sale.voidedByName ? ` by ${sale.voidedByName}` : ""}
+                  {sale.voidedAt
+                    ? ` on ${new Date(sale.voidedAt).toLocaleString()}`
+                    : ""}
+                </p>
+                {sale.voidedReason && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Reason: {sale.voidedReason}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -29,7 +29,7 @@ interface ManagerSidebarProps {
 }
 
 const menus = [
-  { title: "Dashboard", path: "/manager/overviews", icon: LayoutDashboard },
+  { title: "Overviews", path: "/manager/overviews", icon: LayoutDashboard },
   { title: "Inventory", path: "/manager/my-inventory", icon: ClipboardList },
   { title: "Branch Transfers", path: "/manager/transfers", icon: GitBranch },
   { title: "Employees", path: "/manager/employees", icon: Users },

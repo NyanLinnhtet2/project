@@ -562,7 +562,13 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { reason } = req.body;
+    const { reason } = req.body as { reason?: string };
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "A reason is required to void a sale",
+      });
+    }
 
     const branchIdOrName =
       req.user.role === "admin" && req.body.branchId
@@ -595,7 +601,10 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     sale.status = "voided";
-    sale.voidedReason = reason || "";
+    sale.voidedReason = reason.trim();
+    sale.voidedBy = req.user.id;
+    sale.voidedByName = req.user.name;
+    sale.voidedAt = new Date();
     await sale.save();
 
     // keep CentralDB summary in sync

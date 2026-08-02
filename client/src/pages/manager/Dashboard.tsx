@@ -1,253 +1,301 @@
-import { Package, ShoppingCart, Users, DollarSign } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
+import {
+  ShoppingCart,
+  DollarSign,
+  TrendingUp,
+  Users,
+  Activity,
+  Clock,
+  Cake,
+  AlertTriangle,
+  Ban,
+  RefreshCw,
+  BarChart3,
+} from "lucide-react";
+import { getDashboardOverviewApi } from "../../services/dashboardService";
+import { RankedBarList } from "../../components/ui/RankedBarList";
+import { AreaTrendChart } from "../../components/ui/Areatrendchart";
+import { DonutChart } from "../../components/ui/DonutChart";
+import type { DashboardOverview } from "../../types/dashboard";
 
+// ─── Loading Spinner ────────────────────────────────────────────
+const LoadingSpinner: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-16">
+    <div className="relative">
+      <div className="h-16 w-16 rounded-full border-4 border-slate-200"></div>
+      <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+    </div>
+    <p className="mt-4 text-sm text-slate-500 font-medium">Loading overview...</p>
+  </div>
+);
+
+// ─── Stat Card ──────────────────────────────────────────────────
+const StatCard: React.FC<{
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  accent: string;
+  link?: string;
+}> = ({ label, value, icon, accent, link }) => {
+  const card = (
+    <div className="group relative overflow-hidden rounded-2xl bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 border border-slate-200/50">
+      <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-linear-to-br from-slate-100 to-transparent opacity-50"></div>
+      <div className="relative flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            {label}
+          </p>
+          <h2 className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-slate-900">{value}</h2>
+        </div>
+        <div className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl ${accent}`}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+  return link ? <Link to={link}>{card}</Link> : card;
+};
+
+// ─── Main Component ─────────────────────────────────────────────
 export const ManagerDashboard = () => {
-  const stats = [
-    {
-      title: "Today's Revenue",
-      value: "$4,850",
-      change: "+12%",
-      icon: DollarSign,
-      color: "bg-emerald-50 text-emerald-600",
-    },
-    {
-      title: "Total Orders",
-      value: "58",
-      change: "+8%",
-      icon: ShoppingCart,
-      color: "bg-blue-50 text-blue-600",
-    },
-    {
-      title: "Total Products",
-      value: "1,248",
-      change: "+5%",
-      icon: Package,
-      color: "bg-violet-50 text-violet-600",
-    },
-    {
-      title: "Active Employees",
-      value: "342",
-      change: "+3%",
-      icon: Users,
-      color: "bg-orange-50 text-orange-600",
-    },
-  ];
+  const [data, setData] = useState<DashboardOverview | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const recentOrders = [
-    {
-      id: "#ORD-001",
-      customer: "Aung Aung",
-      amount: "$245.00",
-      status: "Completed",
-    },
-    {
-      id: "#ORD-002",
-      customer: "Mya Mya",
-      amount: "$189.50",
-      status: "Processing",
-    },
-    {
-      id: "#ORD-003",
-      customer: "Kyaw Kyaw",
-      amount: "$432.00",
-      status: "Shipped",
-    },
-    { id: "#ORD-004", customer: "Su Su", amount: "$127.75", status: "Pending" },
-  ];
+  const fetchOverview = async () => {
+    setLoading(true);
+    try {
+      const res = await getDashboardOverviewApi();
+      if (res.success) setData(res.data);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message ?? "Failed to load overview");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchOverview(), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-emerald-50/30 p-6">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/50 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Welcome back, Manager! Here's what's happening today.
-            </p>
-          </div>
+        {/* ─── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-white px-5 py-3 shadow-sm">
-              <p className="text-xs font-medium text-slate-500">Today's Date</p>
-              <h3 className="font-semibold text-slate-900">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </h3>
+            <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
+              <Activity size={24} className="text-white" />
             </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.title}
-                className="relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      {stat.title}
-                    </p>
-                    <h2 className="mt-2 text-3xl font-bold text-slate-900">
-                      {stat.value}
-                    </h2>
-                  </div>
-                  <div
-                    className={`flex h-14 w-14 items-center justify-center rounded-2xl ${stat.color}`}
-                  >
-                    <Icon className="h-7 w-7" />
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-1">
-                  <span className="text-xs font-medium text-emerald-600">
-                    ↑ {stat.change}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    from last month
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Sales Overview */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Sales Overview
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Last 7 days performance
-                </p>
-              </div>
-              <select className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-emerald-500">
-                <option>This Week</option>
-                <option>This Month</option>
-                <option>This Year</option>
-              </select>
-            </div>
-            <div className="mt-6 h-72 flex items-center justify-center rounded-xl border-2 border-dashed border-slate-200 text-slate-400">
-              Sales Chart Here
-            </div>
-          </div>
-
-          {/* Branch Performance */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Branch Performance
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Sales comparison between branches
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 space-y-5">
-              {[
-                ["Yangon Branch", 95, "bg-emerald-500"],
-                ["Mandalay Branch", 72, "bg-blue-500"],
-                ["Naypyitaw Branch", 56, "bg-violet-500"],
-                ["Taunggyi Branch", 40, "bg-orange-500"],
-              ].map(([branch, percent, color]) => (
-                <div key={branch}>
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-700">{branch}</span>
-                    <span className="text-sm font-semibold text-slate-900">
-                      {percent}%
-                    </span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full bg-linear-to-r ${color}`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Orders */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Recent Orders
-              </h2>
-              <p className="text-sm text-slate-500">
-                Latest transactions from all branches
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Branch Overview
+              </h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Your branch's performance at a glance
               </p>
             </div>
-            <button className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
-              View All →
-            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                    Order
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recentOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-slate-50/50 transition"
-                  >
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                      {order.id}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {order.customer}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-slate-900">
-                      {order.amount}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          order.status === "Completed"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : order.status === "Processing"
-                              ? "bg-blue-100 text-blue-700"
-                              : order.status === "Shipped"
-                                ? "bg-violet-100 text-violet-700"
-                                : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={fetchOverview}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-60 flex-1 sm:flex-none"
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <Link
+              to="/manager/reports"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-5 py-3.5 font-semibold text-white shadow-lg shadow-blue-200 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 w-full sm:w-auto"
+            >
+              <BarChart3 size={18} />
+              Full Reports
+            </Link>
           </div>
         </div>
+
+        {loading || !data ? (
+          <LoadingSpinner />
+        ) : (
+          <>
+            {/* ─── Today's Stats ────────────────────────────────────── */}
+            <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Today's Revenue"
+                value={`${data.today.revenue.toLocaleString()} Ks`}
+                icon={<DollarSign className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
+                accent="bg-linear-to-br from-emerald-500 to-emerald-600"
+              />
+              <StatCard
+                label="Today's Sales"
+                value={data.today.transactions.toLocaleString()}
+                icon={<ShoppingCart className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
+                accent="bg-linear-to-br from-violet-500 to-violet-600"
+              />
+              <StatCard
+                label="Today's Avg Basket"
+                value={`${data.today.avgBasket.toLocaleString()} Ks`}
+                icon={<TrendingUp className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
+                accent="bg-linear-to-br from-blue-500 to-blue-600"
+              />
+              <StatCard
+                label="Pending Approvals"
+                value={data.counts.pendingApprovals.toLocaleString()}
+                icon={<Clock className="h-6 w-6 sm:h-7 sm:w-7 text-white" />}
+                accent="bg-linear-to-br from-orange-500 to-orange-600"
+                link="/manager/approvals"
+              />
+            </div>
+
+            {/* ─── Quick Counts ────────────────────────────────────── */}
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
+              <StatCard
+                label="Customers"
+                value={data.counts.totalCustomers.toLocaleString()}
+                icon={<Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />}
+                accent="bg-slate-500"
+                link="/manager/customers"
+              />
+              <StatCard
+                label="Birthdays Today"
+                value={data.counts.birthdaysToday.toLocaleString()}
+                icon={<Cake className="h-5 w-5 sm:h-6 sm:w-6 text-white" />}
+                accent="bg-amber-500"
+                link="/manager/customers"
+              />
+              <StatCard
+                label="Low Stock"
+                value={data.counts.lowStockCount.toLocaleString()}
+                icon={<AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />}
+                accent="bg-red-500"
+                link="/manager/my-inventory"
+              />
+            </div>
+
+            {/* ─── Revenue Trend ───────────────────────────────────── */}
+            <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Revenue Trend</h2>
+                <p className="text-sm text-slate-500">Last 7 days</p>
+              </div>
+              <div className="mt-4">
+                <AreaTrendChart
+                  points={data.weeklyTrend.map((p) => ({ date: p.date, value: p.revenue }))}
+                  color="#3b82f6" // blue-500
+                  valueFormatter={(v) => `${v.toLocaleString()} Ks`}
+                />
+              </div>
+            </div>
+
+            {/* ─── Pie Charts ───────────────────────────────────────── */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <h2 className="mb-4 text-lg font-semibold text-slate-900">
+                  Payment Methods
+                </h2>
+                <DonutChart
+                  items={data.paymentBreakdown.map((p) => ({
+                    label: p.method.replace("_", " "),
+                    value: p.amount,
+                  }))}
+                  centerLabel="This week"
+                  centerValue={`${data.paymentBreakdown
+                    .reduce((s, p) => s + p.amount, 0)
+                    .toLocaleString()} Ks`}
+                  valueFormatter={(v) => `${v.toLocaleString()} Ks`}
+                  emptyMessage="No sales this week"
+                />
+              </div>
+
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <h2 className="mb-4 text-lg font-semibold text-slate-900">
+                  Sales by Category
+                </h2>
+                <DonutChart
+                  items={data.categoryBreakdown.map((c) => ({
+                    label: c.category,
+                    value: c.revenue,
+                  }))}
+                  centerLabel="This week"
+                  centerValue={`${data.categoryBreakdown
+                    .reduce((s, c) => s + c.revenue, 0)
+                    .toLocaleString()} Ks`}
+                  valueFormatter={(v) => `${v.toLocaleString()} Ks`}
+                  emptyMessage="No sales this week"
+                />
+              </div>
+            </div>
+
+            {/* ─── Recent Sales + Top Products ────────────────────── */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-slate-900">Recent Sales</h2>
+                  <ShoppingCart className="h-5 w-5 text-slate-400" />
+                </div>
+                <div className="mt-4 space-y-3">
+                  {data.recentSales.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-slate-400">
+                      No recent sales
+                    </p>
+                  ) : (
+                    data.recentSales.map((sale) => (
+                      <div
+                        key={sale.saleNumber}
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-xl border border-slate-100 p-4 transition hover:bg-slate-50"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">
+                            {sale.saleNumber}
+                          </p>
+                          <p className="text-xs sm:text-sm text-slate-500">
+                            {sale.cashierName}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <p className="font-semibold text-slate-900 text-sm sm:text-base">
+                            {sale.totalAmount.toLocaleString()} Ks
+                          </p>
+                          {sale.status === "voided" ? (
+                            <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
+                              <Ban size={12} /> Voided
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200/50">
+                <h2 className="text-lg font-semibold text-slate-900">Top Products</h2>
+                <p className="text-sm text-slate-500">This week</p>
+                <div className="mt-4">
+                  <RankedBarList
+                    barColorClass="bg-purple-500"
+                    items={data.topProducts.map((p) => ({
+                      label: p.name,
+                      sublabel: `${p.quantity} sold`,
+                      value: p.revenue,
+                      valueLabel: `${p.revenue.toLocaleString()} Ks`,
+                    }))}
+                    emptyMessage="No sales this week"
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

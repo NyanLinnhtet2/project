@@ -19,13 +19,14 @@ const getTransporter = (): Transporter | null => {
     return null;
   }
 
-  transporter = nodemailer.createTransport({
+  const transportOptions = {
     host: SMTP_HOST,
     port: Number(SMTP_PORT) || 587,
     secure: Number(SMTP_PORT) === 465,
     family: 4,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-  } as any);
+  };
+  transporter = nodemailer.createTransport(transportOptions);
   return transporter;
 };
 

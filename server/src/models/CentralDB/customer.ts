@@ -28,7 +28,6 @@ const customerSchema = new Schema<ICustomer>(
   { timestamps: true },
 );
 
-customerSchema.index({ phone: 1 });
 customerSchema.index({ name: "text" });
 
 export const getCentralCustomerModel = (): Model<ICustomer> => {

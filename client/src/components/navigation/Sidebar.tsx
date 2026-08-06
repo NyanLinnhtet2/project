@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -22,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
+import { getUnreadNotificationCountApi } from "../../services/notificationService";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/useAuth";
 
@@ -48,6 +50,7 @@ const menus = [
     icon: HeadphonesIcon,
   },
   { title: "Sales Overview", path: "/admin/sales", icon: ShoppingCart },
+  { title: "Notifications", path: "/admin/notifications", icon: Bell },
   { title: "Customers", path: "/admin/customers", icon: Users },
   { title: "Membership Tiers", path: "/admin/membership-tiers", icon: Award },
   { title: "Discount Events", path: "/admin/discount-events", icon: Sparkles },
@@ -63,6 +66,25 @@ export const Sidebar = ({
 }: SidebarProps) => {
   const navigate = useNavigate();
   const { userInfo, logout } = useAuth();
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await getUnreadNotificationCountApi();
+        if (!cancelled && res.success) setUnreadCount(res.unreadCount);
+      } catch {
+        // silent — badge just won't update this cycle
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const logutHandler = async () => {
     try {
@@ -215,6 +237,16 @@ export const Sidebar = ({
                     >
                       {menu.title}
                     </span>
+                    {menu.path === "/admin/notifications" && unreadCount > 0 && (
+                      <span
+                        className={`
+                          flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white
+                          ${collapsed ? "lg:absolute lg:top-1 lg:right-1" : ""}
+                        `}
+                      >
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                     {isActive && (
                       <ChevronRight
                         size={16}

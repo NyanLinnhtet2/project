@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -21,6 +22,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
+import { getUnreadNotificationCountApi } from "../../services/notificationService";
 import { useAuth } from "../../context/useAuth";
 
 interface ManagerSidebarProps {
@@ -29,15 +31,17 @@ interface ManagerSidebarProps {
 }
 
 const menus = [
-  { title: "Overviews", path: "/manager/overviews", icon: LayoutDashboard },
+  { title: "Dashboard", path: "/manager/overviews", icon: LayoutDashboard },
   { title: "Inventory", path: "/manager/my-inventory", icon: ClipboardList },
   { title: "Branch Transfers", path: "/manager/transfers", icon: GitBranch },
   { title: "Employees", path: "/manager/employees", icon: Users },
   { title: "Sales", path: "/manager/sales", icon: BarChart3 },
   { title: "Reports", path: "/manager/reports", icon: FileText },
+  { title: "Analytics", path: "/manager/analytics", icon: BarChart3 },
   { title: "Discount Approvals", path: "/manager/approvals", icon: Clock },
   { title: "Returns", path: "/manager/returns", icon: RotateCcw },
   { title: "Customers", path: "/manager/customers", icon: UserCircle },
+  { title: "Notifications", path: "/manager/notifications", icon: Bell },
 ];
 
 export const ManagerSidebar = ({
@@ -46,6 +50,25 @@ export const ManagerSidebar = ({
 }: ManagerSidebarProps) => {
   const navigate = useNavigate();
   const { userInfo, logout } = useAuth();
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await getUnreadNotificationCountApi();
+        if (!cancelled && res.success) setUnreadCount(res.unreadCount);
+      } catch {
+        // silent — badge just won't update this cycle
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const logoutHandler = async () => {
     try {
@@ -193,6 +216,11 @@ export const ManagerSidebar = ({
                     <span className="flex-1 overflow-hidden transition-all duration-300 whitespace-nowrap w-auto opacity-100 block">
                       {menu.title}
                     </span>
+                    {menu.path === "/manager/notifications" && unreadCount > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                     {isActive && (
                       <div className="flex items-center gap-1">
                         <ChevronRight

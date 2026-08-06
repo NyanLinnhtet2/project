@@ -4,7 +4,7 @@ import { getBranchConnection } from "../db/db";
 import { getSaleModel, ISale } from "../models/BranchDB/sale";
 import { getReturnModel, IReturn } from "../models/BranchDB/return";
 
-interface BranchLite {
+export interface BranchLite {
   _id: Types.ObjectId;
   name: string;
   dbName: string;

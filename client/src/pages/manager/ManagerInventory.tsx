@@ -26,33 +26,20 @@ interface StockWithProduct extends Stock {
 }
 
 // ─── Status Badge (stock quantity level) ──────────────────────
-const StatusBadge: React.FC<{ quantity: number }> = ({ quantity }) => {
-  const getStatus = (qty: number) => {
-    if (qty === 0) {
-      return {
-        label: "Out of Stock",
-        className: "bg-red-100 text-red-700",
-        icon: "🔴",
-      };
-    } else if (qty < 10) {
-      return {
-        label: "Low Stock",
-        className: "bg-amber-100 text-amber-700",
-        icon: "🟡",
-      };
-    }
-    return {
-      label: "In Stock",
-      className: "bg-blue-100 text-blue-700",
-      icon: "🟢",
-    };
+const StatusBadge: React.FC<{ status: "In Stock" | "Low Stock" | "Out of Stock" }> = ({
+  status,
+}) => {
+  const STYLES: Record<"In Stock" | "Low Stock" | "Out of Stock", { className: string; icon: string }> = {
+    "Out of Stock": { className: "bg-red-100 text-red-700", icon: "🔴" },
+    "Low Stock": { className: "bg-amber-100 text-amber-700", icon: "🟡" },
+    "In Stock": { className: "bg-blue-100 text-blue-700", icon: "🟢" },
   };
-  const status = getStatus(quantity);
+  const style = STYLES[status] || STYLES["In Stock"];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${style.className}`}
     >
-      {status.icon} {status.label}
+      {style.icon} {status}
     </span>
   );
 };
@@ -153,10 +140,8 @@ export const ManagerInventory: React.FC = () => {
 
   // ── compute stats ──
   const totalProducts = inventory.length;
-  const lowStock = inventory.filter(
-    (item) => item.quantity > 0 && item.quantity < 10,
-  ).length;
-  const outOfStock = inventory.filter((item) => item.quantity === 0).length;
+  const lowStock = inventory.filter((item) => item.status === "Low Stock").length;
+  const outOfStock = inventory.filter((item) => item.status === "Out of Stock").length;
   const pendingRequests = myRequests.filter(
     (r) => r.status === "PENDING",
   ).length;
@@ -406,7 +391,7 @@ export const ManagerInventory: React.FC = () => {
                               </p>
                             </td>
                             <td className="px-4 sm:px-6 py-4">
-                              <StatusBadge quantity={item.quantity} />
+                              <StatusBadge status={item.status} />
                             </td>
                             <td className="px-4 sm:px-6 py-4">
                               <div className="flex justify-center">

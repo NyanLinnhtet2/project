@@ -43,6 +43,7 @@ import { AIAssistant } from "./pages/admin/AIAssistant";
 import { MembershipTiers } from "./pages/admin/MemberShipTier";
 import { Customers } from "./pages/customer/customer";
 import { CustomerProfile } from "./pages/customer/customerprofile";
+import { Notifications } from "./pages/Notification";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -202,6 +203,14 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: "notifications",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Notifications />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 
@@ -242,7 +251,6 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-
       {
         path: "employees",
         element: (
@@ -288,6 +296,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["manager"]}>
             <CustomerProfile />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "notifications",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <Notifications />
           </ProtectedRoute>
         ),
       },

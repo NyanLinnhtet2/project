@@ -39,7 +39,7 @@ import type { ErrorResponse } from "../../types/ErrorResponse";
 // Types
 // ============================================================
 interface StatusBadgeProps {
-  quantity: number;
+  status: "In Stock" | "Low Stock" | "Out of Stock";
 }
 
 interface TransactionTypeBadgeProps {
@@ -88,38 +88,19 @@ const LoadingSpinner: React.FC = () => (
 // ============================================================
 // Status Badge Component
 // ============================================================
-const StatusBadge: React.FC<StatusBadgeProps> = ({ quantity }) => {
-  const getStatus = (
-    qty: number,
-  ): { label: string; className: string; icon: string } => {
-    if (qty === 0) {
-      return {
-        label: "Out of Stock",
-        className: "bg-red-100 text-red-700",
-        icon: "🔴",
-      };
-    } else if (qty < 10) {
-      return {
-        label: "Low Stock",
-        className: "bg-amber-100 text-amber-700",
-        icon: "🟡",
-      };
-    } else {
-      return {
-        label: "In Stock",
-        className: "bg-blue-100 text-blue-700",
-        icon: "🟢",
-      };
-    }
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+  const STYLES: Record<StatusBadgeProps["status"], { className: string; icon: string }> = {
+    "Out of Stock": { className: "bg-red-100 text-red-700", icon: "🔴" },
+    "Low Stock": { className: "bg-amber-100 text-amber-700", icon: "🟡" },
+    "In Stock": { className: "bg-blue-100 text-blue-700", icon: "🟢" },
   };
-
-  const status = getStatus(quantity);
+  const style = STYLES[status] || STYLES["In Stock"];
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${status.className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${style.className}`}
     >
-      {status.icon} {status.label}
+      {style.icon} {status}
     </span>
   );
 };
@@ -828,7 +809,7 @@ export const Inventory: React.FC = () => {
                                 </p>
                               </td>
                               <td className="px-4 sm:px-6 py-4">
-                                <StatusBadge quantity={item.quantity} />
+                                <StatusBadge status={item.status} />
                               </td>
                               <td className="px-4 sm:px-6 py-4">
                                 <div className="flex justify-center gap-2">

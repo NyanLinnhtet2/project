@@ -14,9 +14,11 @@ import {
   priceAndValidateItems,
   deductStockForItems,
   computeDiscountAndTax,
+  applyStockDelta,
 } from "../utils/salePricing";
 import { attachReturnInfo } from "../utils/returnInfo";
 import { getCentralCustomerModel } from "../models/CentralDB/customer";
+import { getCentralCouponModel } from "../models/CentralDB/coupon";
 import { validateCoupon, recordCustomerPurchase } from "../utils/membership";
 
 const isValidObjectId = (id: string): boolean => {
@@ -31,8 +33,6 @@ const ALLOWED_PAYMENT_METHODS: ISale["paymentMethod"][] = [
   "other",
 ];
 
-// req.body.paymentMethod arrives as a plain string — narrow it to the
-// schema's literal union (or fall back to "cash") instead of casting blindly.
 const resolvePaymentMethod = (value: unknown): ISale["paymentMethod"] => {
   if (
     typeof value === "string" &&
@@ -43,9 +43,6 @@ const resolvePaymentMethod = (value: unknown): ISale["paymentMethod"] => {
   return "cash";
 };
 
-// Same dual-purpose resolver used in inventory.ts — accepts either a real
-// ObjectId (admin dashboard) or a branch name string (manager/cashier,
-// since req.user.branch stores the name from the JWT payload).
 const resolveBranch = async (branchIdOrName: string) => {
   const Branch = getCentralBranchModel();
   if (isValidObjectId(branchIdOrName)) {
@@ -54,9 +51,6 @@ const resolveBranch = async (branchIdOrName: string) => {
   return await Branch.findOne({ name: branchIdOrName });
 };
 
-// ============================================================
-// POST /api/sales  — Cashier (or Manager) records a sale
-// ============================================================
 export const createSale = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
@@ -141,21 +135,22 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
     const branchDb = getBranchConnection(branch.dbName);
     const Sale = getSaleModel(branchDb);
 
-    // Optional: attach this sale to a known customer for purchase tracking
     let customer = null;
     if (customerId) {
       if (!isValidObjectId(customerId)) {
-        return res.status(400).json({ success: false, message: "Invalid customer ID" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid customer ID" });
       }
       const Customer = getCentralCustomerModel();
       customer = await Customer.findById(customerId);
       if (!customer) {
-        return res.status(404).json({ success: false, message: "Customer not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Customer not found" });
       }
     }
 
-    // Optional: a coupon can only be redeemed against the customer it was
-    // issued to — reject it up-front rather than silently ignoring it
     if (couponCode && !customer) {
       return res.status(400).json({
         success: false,
@@ -170,7 +165,9 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
         ? await Return.findById(linkedReturnId)
         : await Return.findOne({ returnNumber: linkedReturnId });
       if (!linkedReturn) {
-        return res.status(404).json({ success: false, message: "Linked return not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Linked return not found" });
       }
       if (linkedReturn.type !== "exchange") {
         return res.status(400).json({
@@ -186,11 +183,11 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    // 1) Price snapshot from CentralDB + stock availability check for every
-    //    item (checked up-front so we don't deduct half the cart before failing)
     const priced = await priceAndValidateItems(items, branchDb);
     if (!priced.ok) {
-      return res.status(priced.status).json({ success: false, message: priced.message });
+      return res
+        .status(priced.status)
+        .json({ success: false, message: priced.message });
     }
     const saleItems = priced.items;
     const { discountAmount, taxAmount, totalAmount } = computeDiscountAndTax(
@@ -234,14 +231,19 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
     if (couponCode && customer) {
       const couponResult = await validateCoupon(couponCode, customer.id);
       if (!couponResult.ok) {
-        return res.status(400).json({ success: false, message: couponResult.message });
+        return res
+          .status(400)
+          .json({ success: false, message: couponResult.message });
       }
       redeemedCoupon = couponResult.coupon;
       const rawCouponDiscount =
         redeemedCoupon.discountType === "percent"
           ? Math.round((subtotal * redeemedCoupon.discountValue) / 100)
           : Math.round(redeemedCoupon.discountValue);
-      couponDiscountAmount = Math.min(Math.max(rawCouponDiscount, 0), totalAmount);
+      couponDiscountAmount = Math.min(
+        Math.max(rawCouponDiscount, 0),
+        totalAmount,
+      );
     }
     const finalTotalAmount = totalAmount - couponDiscountAmount;
 
@@ -344,7 +346,10 @@ export const createSale = async (req: AuthenticatedRequest, res: Response) => {
 // Admin: pass ?branchId= (SaleSummary rows carry it already).
 // Manager/Cashier: scoped to their own branch automatically.
 // ============================================================
-export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) => {
+export const getSaleDetail = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -352,7 +357,9 @@ export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) =>
 
     const id = req.params.id;
     if (!id || typeof id !== "string" || !isValidObjectId(id)) {
-      return res.status(400).json({ success: false, message: "Invalid Sale ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Sale ID" });
     }
 
     const branchIdOrName =
@@ -362,7 +369,9 @@ export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) =>
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -370,7 +379,9 @@ export const getSaleDetail = async (req: AuthenticatedRequest, res: Response) =>
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
     }
 
     // Cashiers may only drill into their own sales
@@ -400,7 +411,9 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(req.user.branch);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -431,7 +444,10 @@ export const getMySales = async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/sales/branch — Manager: every sale in their own branch
 // (Admin can also call this with ?branchId= to inspect one branch)
 // ============================================================
-export const getBranchSales = async (req: AuthenticatedRequest, res: Response) => {
+export const getBranchSales = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -444,7 +460,9 @@ export const getBranchSales = async (req: AuthenticatedRequest, res: Response) =
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -485,7 +503,10 @@ export const getBranchSales = async (req: AuthenticatedRequest, res: Response) =
 // GET /api/sales/overview — Admin: all branches, filterable by branchId
 // Reads from CentralDB SaleSummary (no need to touch every branch DB)
 // ============================================================
-export const getSalesOverview = async (req: AuthenticatedRequest, res: Response) => {
+export const getSalesOverview = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
     const { branchId, startDate, endDate } = req.query;
 
@@ -513,7 +534,10 @@ export const getSalesOverview = async (req: AuthenticatedRequest, res: Response)
     // for a return), so the same branchId/date filter applies as-is.
     const ReturnSummary = getCentralReturnSummaryModel();
     const returnSummaries = await ReturnSummary.find(filter);
-    const totalRefunded = returnSummaries.reduce((sum, r) => sum + r.refundAmount, 0);
+    const totalRefunded = returnSummaries.reduce(
+      (sum, r) => sum + r.refundAmount,
+      0,
+    );
 
     const totalRevenue = grossRevenue - totalRefunded;
 
@@ -524,7 +548,10 @@ export const getSalesOverview = async (req: AuthenticatedRequest, res: Response)
     }
 
     // Per-branch breakdown — handy for an admin dashboard chart
-    const byBranch: Record<string, { branchName: string; total: number; count: number }> = {};
+    const byBranch: Record<
+      string,
+      { branchName: string; total: number; count: number }
+    > = {};
     for (const s of summaries) {
       if (s.status !== "completed") continue;
       const key = s.branchId.toString();
@@ -577,7 +604,9 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const branch = await resolveBranch(branchIdOrName);
     if (!branch) {
-      return res.status(404).json({ success: false, message: "Branch not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Branch not found" });
     }
 
     const branchDb = getBranchConnection(branch.dbName);
@@ -586,18 +615,19 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
     }
     if (sale.status === "voided") {
-      return res.status(400).json({ success: false, message: "Sale is already voided" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Sale is already voided" });
     }
 
     // restock every item from the voided sale
     for (const item of sale.items) {
-      await Stock.updateOne(
-        { productId: item.productId },
-        { $inc: { quantity: item.quantity } },
-      );
+      await applyStockDelta(Stock, item.productId, item.quantity);
     }
 
     sale.status = "voided";
@@ -606,6 +636,21 @@ export const voidSale = async (req: AuthenticatedRequest, res: Response) => {
     sale.voidedByName = req.user.name;
     sale.voidedAt = new Date();
     await sale.save();
+
+    // The purchase never actually happened, so give the coupon back — same
+    // best-effort reasoning as elsewhere: this shouldn't be able to undo
+    // the void itself if it fails.
+    if (sale.couponCode) {
+      try {
+        const Coupon = getCentralCouponModel();
+        await Coupon.updateOne(
+          { code: sale.couponCode, usedInSaleId: sale._id },
+          { status: "active", $unset: { usedInSaleId: "", usedAt: "" } },
+        );
+      } catch (couponErr) {
+        console.error("⚠️ Failed to restore coupon after void:", couponErr);
+      }
+    }
 
     // keep CentralDB summary in sync
     const SaleSummary = getCentralSaleSummaryModel();

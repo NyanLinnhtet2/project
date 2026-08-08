@@ -2,7 +2,10 @@ import { Model } from "mongoose";
 import { getCentralDiscountApprovalRequestModel } from "../models/CentralDB/discountApproval";
 import { getCentralStockEditRequestModel } from "../models/CentralDB/stockEditRequest";
 import { getCentralEmployeeStatusRequestModel } from "../models/CentralDB/employeeStatusRequest";
-import { getCentralTransferModel, ITransfer } from "../models/CentralDB/transfers";
+import {
+  getCentralTransferModel,
+  ITransfer,
+} from "../models/CentralDB/transfers";
 import { getCentralCustomerModel } from "../models/CentralDB/customer";
 import { getBranchConnection } from "../db/db";
 import { getBranchStockModel } from "../models/BranchDB/stock";
@@ -37,7 +40,9 @@ export const getDerivedNotifications = async (
     requiredApproverLevel: role,
   };
   if (role === "manager") discountFilter.branchId = { $in: branchIds };
-  const discountRequests = await DiscountApprovalRequest.find(discountFilter).sort({
+  const discountRequests = await DiscountApprovalRequest.find(
+    discountFilter,
+  ).sort({
     createdAt: -1,
   });
   for (const r of discountRequests) {
@@ -59,7 +64,8 @@ export const getDerivedNotifications = async (
       .populate("productId", "name")
       .sort({ createdAt: -1 });
     for (const r of stockEditRequests) {
-      const productName = (r.productId as unknown as { name?: string })?.name || "a product";
+      const productName =
+        (r.productId as unknown as { name?: string })?.name || "a product";
       items.push({
         id: `stock_edit:${r._id}`,
         type: "stock_edit",
@@ -73,7 +79,9 @@ export const getDerivedNotifications = async (
 
     // ---- Employee status change requests (admin reviews these) ----
     const EmployeeStatusRequest = getCentralEmployeeStatusRequestModel();
-    const employeeRequests = await EmployeeStatusRequest.find({ status: "PENDING" }).sort({
+    const employeeRequests = await EmployeeStatusRequest.find({
+      status: "PENDING",
+    }).sort({
       createdAt: -1,
     });
     for (const r of employeeRequests) {
@@ -83,7 +91,7 @@ export const getDerivedNotifications = async (
         severity: "warning",
         title: "Employee status change request",
         message: `${r.requestedBy} requested changing ${r.employeeName} (${r.branch}) from ${r.currentStatus} to ${r.requestedStatus}.`,
-        link: "/admin/employees",
+        link: "/admin/staff-requests",
         createdAt: r.createdAt,
       });
     }
@@ -96,16 +104,19 @@ export const getDerivedNotifications = async (
       .populate("productId", "name")
       .sort({ createdAt: -1 });
     for (const r of transferRequests) {
-      const fromName = (r.fromBranchId as unknown as { name?: string })?.name || "a branch";
-      const toName = (r.toBranchId as unknown as { name?: string })?.name || "a branch";
-      const productName = (r.productId as unknown as { name?: string })?.name || "a product";
+      const fromName =
+        (r.fromBranchId as unknown as { name?: string })?.name || "a branch";
+      const toName =
+        (r.toBranchId as unknown as { name?: string })?.name || "a branch";
+      const productName =
+        (r.productId as unknown as { name?: string })?.name || "a product";
       items.push({
         id: `transfer:${r._id}`,
         type: "transfer_request",
         severity: "info",
         title: "Stock transfer request",
         message: `${r.quantity} x ${productName} requested from ${fromName} to ${toName}.`,
-        link: "/admin/branch",
+        link: "/admin/inventory",
         createdAt: r.createdAt,
       });
     }
@@ -121,7 +132,8 @@ export const getDerivedNotifications = async (
       .populate("productId", "name")
       .limit(20);
     for (const s of lowStock) {
-      const productName = (s.productId as unknown as { name?: string })?.name || "A product";
+      const productName =
+        (s.productId as unknown as { name?: string })?.name || "A product";
       items.push({
         id: `low_stock:${branch._id}:${s.productId}`,
         type: "low_stock",
@@ -154,10 +166,12 @@ export const getDerivedNotifications = async (
 
   // ---- Customer birthdays today (global — same for both roles) ----
   const Customer = getCentralCustomerModel();
-  const customersWithDob = await Customer.find({ dateOfBirth: { $exists: true } }).select(
-    "name dateOfBirth",
+  const customersWithDob = await Customer.find({
+    dateOfBirth: { $exists: true },
+  }).select("name dateOfBirth");
+  const birthdaysToday = customersWithDob.filter((c) =>
+    isBirthdayToday(c.dateOfBirth),
   );
-  const birthdaysToday = customersWithDob.filter((c) => isBirthdayToday(c.dateOfBirth));
   for (const c of birthdaysToday) {
     items.push({
       id: `birthday:${c._id}`,
@@ -165,7 +179,10 @@ export const getDerivedNotifications = async (
       severity: "info",
       title: "Customer birthday today",
       message: `${c.name}'s birthday is today.`,
-      link: role === "admin" ? `/admin/customers/${c._id}` : `/manager/customers/${c._id}`,
+      link:
+        role === "admin"
+          ? `/admin/customers/${c._id}`
+          : `/manager/customers/${c._id}`,
       createdAt: new Date(),
     });
   }

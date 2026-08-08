@@ -19,9 +19,7 @@ const resolveBranch = async (branchIdOrName: string) => {
   return await Branch.findOne({ name: branchIdOrName });
 };
 
-// ============================================================
-// POST /api/returns — Manager/Admin processes a return or exchange
-// ============================================================
+
 export const createReturn = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -80,9 +78,7 @@ export const createReturn = async (req: AuthenticatedRequest, res: Response) => 
       });
     }
 
-    // How much of each product has already been returned against this sale
-    // (across all prior Return docs), so we never let a return exceed what
-    // was actually sold.
+    
     const priorReturns = await Return.find({ originalSaleId: sale._id });
     const alreadyReturnedByProduct = new Map<string, number>();
     for (const priorReturn of priorReturns) {
@@ -95,9 +91,6 @@ export const createReturn = async (req: AuthenticatedRequest, res: Response) => 
       }
     }
 
-    // Proration: this sale's discount/tax were applied uniformly across the
-    // whole cart, so we spread them proportionally over whichever items are
-    // being returned rather than refunding the raw list price.
     const discountFraction = sale.subtotal > 0 ? sale.discountAmount / sale.subtotal : 0;
     const taxMultiplier = 1 + sale.taxRate / 100;
 
@@ -195,10 +188,7 @@ export const createReturn = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
-// ============================================================
-// GET /api/returns/overview — Admin: all branches, filterable by
-// branchId + date range. Reads from CentralDB ReturnSummary.
-// ============================================================
+
 export const getReturnsOverview = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { branchId, startDate, endDate } = req.query;
@@ -242,11 +232,7 @@ export const getReturnsOverview = async (req: AuthenticatedRequest, res: Respons
   }
 };
 
-// ============================================================
-// GET /api/returns/:id — full return with line items. Admin passes
-// ?branchId= (ReturnSummary rows carry it already); manager is scoped
-// to their own branch automatically.
-// ============================================================
+
 export const getReturnDetail = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -281,9 +267,6 @@ export const getReturnDetail = async (req: AuthenticatedRequest, res: Response) 
   }
 };
 
-// ============================================================
-// GET /api/returns — Manager: own branch. Admin: pass ?branchId=
-// ============================================================
 export const getBranchReturns = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {

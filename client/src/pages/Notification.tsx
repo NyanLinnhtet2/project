@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   BellRing,
@@ -15,17 +14,11 @@ import {
   AlertTriangle,
   Cake,
   Ban,
-  EyeOff,
-  Eye,
+  X,
 } from "lucide-react";
-import {
-  getNotificationsApi,
-  markNotificationReadApi,
-  markAllNotificationsReadApi,
-} from "../services/notificationService";
+import { useNotifications } from "../context/useNotification";
 import type { NotificationItem } from "../types/notification";
-
-const POLL_INTERVAL_MS = 30000;
+import { toast } from "react-hot-toast";
 
 type Category = "all" | "approvals" | "inventory" | "sales" | "customers";
 
@@ -96,85 +89,43 @@ const LoadingSpinner: React.FC = () => (
 );
 
 export const Notifications: React.FC = () => {
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { items, unreadCount, loading, refresh, dismiss, remove, markAllRead } =
+    useNotifications();
   const [category, setCategory] = useState<Category>("all");
   const [markingAll, setMarkingAll] = useState(false);
-  const [hideRead, setHideRead] = useState(false); // NEW: frontend filter
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const navigate = useNavigate();
 
-  const fetchNotifications = useCallback(async (showSpinner = false) => {
-    if (showSpinner) setLoading(true);
-    try {
-      const res = await getNotificationsApi();
-      if (res.success) setItems(res.data);
-    } catch {
-      // silent on background polls
-    } finally {
-      if (showSpinner) setLoading(false);
-    }
-  }, []);
+  const handleItemClick = (item: NotificationItem) => {
+    dismiss(item.id);
+    if (item.link) navigate(item.link);
+  };
 
-  useEffect(() => {
-    const t = setTimeout(() => fetchNotifications(true), 100);
-    pollRef.current = setInterval(() => fetchNotifications(), POLL_INTERVAL_MS);
-    return () => {
-      clearTimeout(t);
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [fetchNotifications]);
-
-  const handleItemClick = async (item: NotificationItem) => {
-    if (item.source === "persisted" && !item.read) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, read: true } : i)),
-      );
-      try {
-        await markNotificationReadApi(item.id);
-      } catch {
-        // best-effort
-      }
-    }
+  const handleDelete = (item: NotificationItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    remove(item.id);
   };
 
   const handleMarkAllRead = async () => {
+    if (markingAll) return; // prevent double-click
     setMarkingAll(true);
     try {
-      const res = await markAllNotificationsReadApi();
-      if (res.success) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.source === "persisted" ? { ...i, read: true } : i,
-          ),
-        );
-        toast.success("All caught up");
-      }
+      await markAllRead();
+      // Optional: toast feedback is inside the context function,
+      // but we could add a local one if needed.
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message ?? "Failed to mark all read");
+      toast.error(
+        err.response?.data?.message ?? "Failed to load return detail",
+      );
     } finally {
       setMarkingAll(false);
     }
   };
 
-  // ── Filtering (category + hideRead) ──
-  const filtered = (() => {
-    const base = category === "all"
+  const filtered =
+    category === "all"
       ? items
       : items.filter((i) => CATEGORY_BY_TYPE[i.type] === category);
-
-    if (!hideRead) return base;
-    // Show only unread: persisted items with read: false, plus non-persisted items (always visible)
-    return base.filter(
-      (i) => i.source !== "persisted" || (i.source === "persisted" && !i.read),
-    );
-  })();
-
-  const unreadPersistedCount = items.filter(
-    (i) => i.source === "persisted" && !i.read,
-  ).length;
-
-  const totalVisibleCount = filtered.length;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/30 p-4 sm:p-6">
@@ -183,7 +134,7 @@ export const Notifications: React.FC = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-linear-to-br from-blue-600 to-blue-700 p-2.5 shadow-lg shadow-blue-200">
-              {unreadPersistedCount > 0 ? (
+              {unreadCount > 0 ? (
                 <BellRing size={24} className="text-white" />
               ) : (
                 <Bell size={24} className="text-white" />
@@ -194,47 +145,34 @@ export const Notifications: React.FC = () => {
                 Notifications
               </h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                {totalVisibleCount === 0
+                {items.length === 0
                   ? "You're all caught up"
-                  : `${totalVisibleCount} item${totalVisibleCount !== 1 ? "s" : ""} shown`}
-                {hideRead && totalVisibleCount < items.length && (
-                  <span className="ml-1 text-blue-600">
-                    (unread only)
-                  </span>
-                )}
+                  : `${unreadCount} unread · ${items.length - unreadCount} read`}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => fetchNotifications(true)}
+              onClick={() => refresh(true)}
               disabled={loading}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-60 flex-1 sm:flex-none"
             >
               <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
 
-            {/* ── Hide read toggle ── */}
-            <button
-              onClick={() => setHideRead(!hideRead)}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium transition flex-1 sm:flex-none ${
-                hideRead
-                  ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {hideRead ? <EyeOff size={15} /> : <Eye size={15} />}
-              {hideRead ? "Unread only" : "Show all"}
-            </button>
-
-            {unreadPersistedCount > 0 && (
+            {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
                 disabled={markingAll}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-200 transition hover:scale-105 hover:shadow-xl hover:shadow-blue-300 active:scale-95 disabled:opacity-60 flex-1 sm:flex-none"
               >
-                <CheckCheck size={15} />
+                {markingAll ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <CheckCheck size={15} />
+                )}
                 Mark all read
               </button>
             )}
@@ -289,21 +227,22 @@ export const Notifications: React.FC = () => {
             <p className="mt-3 font-medium text-slate-500">Nothing here</p>
             <p className="text-sm text-slate-400">
               {category === "all"
-                ? hideRead
-                  ? "No unread notifications."
-                  : "You're all caught up."
-                : `No notifications in this category${hideRead ? " (unread only)" : ""}.`}
+                ? "You're all caught up."
+                : "No notifications in this category."}
             </p>
           </div>
         ) : (
           <div className="space-y-2">
             {filtered.map((item) => {
               const Icon = TYPE_ICON[item.type] || Bell;
-              const content = (
+              const isNew = !item.read;
+              return (
                 <div
-                  className={`flex items-start gap-3 rounded-2xl border-l-4 bg-white p-4 shadow-sm transition hover:shadow-md cursor-pointer ${
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className={`group flex items-start gap-3 rounded-2xl border-l-4 bg-white p-4 shadow-sm transition hover:shadow-md cursor-pointer ${
                     SEVERITY_STYLE[item.severity]
-                  } ${item.source === "persisted" && !item.read ? "ring-1 ring-blue-200" : ""}`}
+                  } ${isNew ? "ring-1 ring-blue-200" : ""}`}
                 >
                   <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${SEVERITY_ICON_COLOR[item.severity]}`}
@@ -315,8 +254,10 @@ export const Notifications: React.FC = () => {
                       <p className="font-semibold text-slate-800">
                         {item.title}
                       </p>
-                      {item.source === "persisted" && !item.read && (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                      {isNew && (
+                        <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-600">
+                          New
+                        </span>
                       )}
                     </div>
                     <p className="mt-0.5 text-sm text-slate-600">
@@ -326,19 +267,13 @@ export const Notifications: React.FC = () => {
                       {timeAgo(item.createdAt)}
                     </p>
                   </div>
-                </div>
-              );
-              return item.link ? (
-                <Link
-                  key={item.id}
-                  to={item.link}
-                  onClick={() => handleItemClick(item)}
-                >
-                  {content}
-                </Link>
-              ) : (
-                <div key={item.id} onClick={() => handleItemClick(item)}>
-                  {content}
+                  <button
+                    onClick={(e) => handleDelete(item, e)}
+                    title="Delete"
+                    className="shrink-0 rounded-lg p-1.5 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               );
             })}

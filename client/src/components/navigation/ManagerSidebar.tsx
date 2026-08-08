@@ -11,7 +11,6 @@ import {
   ClipboardList,
   TrendingUp,
   Bell,
-  HelpCircle,
   ChevronRight,
   Sparkles,
   Clock,
@@ -21,7 +20,9 @@ import {
   UserCircle,
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
+import { useNotifications } from "../../context/useNotification";
 import { useAuth } from "../../context/useAuth";
+import { toast } from "react-hot-toast";
 
 interface ManagerSidebarProps {
   sidebarOpen: boolean;
@@ -29,12 +30,11 @@ interface ManagerSidebarProps {
 }
 
 const menus = [
-  { title: "Overviews", path: "/manager/overviews", icon: LayoutDashboard },
+  { title: "Dashboard", path: "/manager/overviews", icon: LayoutDashboard },
   { title: "Inventory", path: "/manager/my-inventory", icon: ClipboardList },
   { title: "Branch Transfers", path: "/manager/transfers", icon: GitBranch },
   { title: "Employees", path: "/manager/employees", icon: Users },
   { title: "Sales", path: "/manager/sales", icon: BarChart3 },
-  { title: "Reports", path: "/manager/reports", icon: FileText },
   { title: "Discount Approvals", path: "/manager/approvals", icon: Clock },
   { title: "Returns", path: "/manager/returns", icon: RotateCcw },
   { title: "Customers", path: "/manager/customers", icon: UserCircle },
@@ -46,12 +46,14 @@ export const ManagerSidebar = ({
 }: ManagerSidebarProps) => {
   const navigate = useNavigate();
   const { userInfo, logout } = useAuth();
+  const { unreadCount } = useNotifications();
 
-  const logoutHandler = async () => {
+  const logutHandler = async () => {
     try {
       const response = await logoutUser();
       console.log(response);
       logout();
+      toast.success(`${response.message}`);
       navigate("/login");
     } catch (error) {
       console.log("Logout Error : ", error);
@@ -193,6 +195,12 @@ export const ManagerSidebar = ({
                     <span className="flex-1 overflow-hidden transition-all duration-300 whitespace-nowrap w-auto opacity-100 block">
                       {menu.title}
                     </span>
+                    {menu.path === "/manager/notifications" &&
+                      unreadCount > 0 && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
                     {isActive && (
                       <div className="flex items-center gap-1">
                         <ChevronRight
@@ -249,20 +257,37 @@ export const ManagerSidebar = ({
 
           {/* Quick Actions */}
           <div className="mb-2.5 gap-2 transition-all duration-300 flex">
-            <button className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm">
+            <button
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm"
+              onClick={() => {
+                navigate("/manager/notifications");
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+            >
               <Bell size={14} />
-              <span>Alerts</span>
+              <span>Notifications</span>
+
+              {unreadCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
-            <button className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm">
-              <HelpCircle size={14} />
-              <span>Help</span>
+            <button
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:shadow-sm"
+              onClick={() => {
+                navigate("/manager/reports");
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+            >
+              <FileText size={14} />
+              <span>Reports</span>
             </button>
           </div>
 
-          {/* Logout Button */}
           <button
             className="group cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-linear-to-r from-red-50 to-red-50/50 py-2 text-sm font-medium text-red-600 transition-all hover:from-red-100 hover:to-red-100 hover:shadow-md hover:shadow-red-200/50 active:scale-95"
-            onClick={logoutHandler}
+            onClick={logutHandler}
           >
             <LogOut className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:scale-110" />
             <span className="transition-all duration-300 whitespace-nowrap inline">

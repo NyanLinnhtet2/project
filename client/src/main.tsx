@@ -8,6 +8,11 @@ import Home from "./pages/Home";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import About from "./pages/About";
 import Login from "./pages/Login";
+import { Customers } from "./pages/customer/customer";
+import { CustomerProfile } from "./pages/customer/customerprofile";
+import { Notifications } from "./pages/Notification";
+
+//Admin
 import { AdminLayout } from "./layout/AdminLayout";
 import { Overview } from "./pages/admin/Overview";
 import { Branch } from "./pages/admin/Branch";
@@ -16,9 +21,16 @@ import { CategoryBrand } from "./pages/admin/CategoryBrandManagement";
 import { ProtectedRoute } from "./routes/ProtectRoute";
 import { Employees } from "./pages/admin/Employees";
 import { Toaster } from "react-hot-toast";
+import { DiscountEvents } from "./pages/admin/DiscountEvent";
 import { Inventory } from "./pages/admin/Inventory";
 import { AuthProvider } from "./context/AuthProvider";
 import { TransferStock } from "./pages/manager/transeferStock";
+import { SalesOverview } from "./pages/admin/SalesOverview";
+import { AdminApprovals } from "./pages/admin/AdminApproval";
+import { AdminReturns } from "./pages/admin/AdminReturn";
+import { AdminReports } from "./pages/admin/AdminReport";
+import { AIAssistant } from "./pages/admin/AIAssistant";
+import { MembershipTiers } from "./pages/admin/MemberShipTier";
 
 //Manager
 import { ManagerDashboard } from "./pages/manager/Dashboard";
@@ -26,23 +38,14 @@ import { ManagerReports } from "./pages/manager/ManagerReport";
 import { ManagerInventory } from "./pages/manager/ManagerInventory";
 import { EmployeeStatusRequests } from "./pages/admin/EmployeeStatusRequests";
 import { ManagerEmployees } from "./pages/manager/ManagerEmployees";
+import { ManagerApprovals } from "./pages/manager/ManagerApproval";
+import { ManagerSales } from "./pages/manager/ManagerSales";
+import { ManagerReturns } from "./pages/manager/ManagerReturn";
 
 //Cashier
 import { CashierLayout } from "./layout/CashierLayout";
 import { NewSale } from "./pages/cashier/NewSale";
 import { MySales } from "./pages/cashier/MySales";
-import { ManagerSales } from "./pages/manager/ManagerSales";
-import { SalesOverview } from "./pages/admin/SalesOverview";
-import { DiscountEvents } from "./pages/admin/DiscountEvent";
-import { ManagerApprovals } from "./pages/manager/ManagerApproval";
-import { AdminApprovals } from "./pages/admin/AdminApproval";
-import { AdminReturns } from "./pages/admin/AdminReturn";
-import { ManagerReturns } from "./pages/manager/ManagerReturn";
-import { AdminReports } from "./pages/admin/AdminReport";
-import { AIAssistant } from "./pages/admin/AIAssistant";
-import { MembershipTiers } from "./pages/admin/MemberShipTier";
-import { Customers } from "./pages/customer/customer";
-import { CustomerProfile } from "./pages/customer/customerprofile";
 
 const router = createBrowserRouter([
   // Public Routes
@@ -202,6 +205,14 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: "notifications",
+        element: (
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <Notifications />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 
@@ -242,7 +253,6 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-
       {
         path: "employees",
         element: (
@@ -288,6 +298,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={["manager"]}>
             <CustomerProfile />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "notifications",
+        element: (
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <Notifications />
           </ProtectedRoute>
         ),
       },

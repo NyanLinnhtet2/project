@@ -7,6 +7,7 @@ import { getCentralProductModel } from "../models/CentralDB/products";
 import { getBranchConnection } from "../db/db";
 import { getBranchStockModel } from "../models/BranchDB/stock";
 import { ITransfer } from "../models/CentralDB/transfers";
+import { createNotification } from "../utils/notify";
 
 export const getProductsForTransfer = async (req: Request, res: Response) => {
   try {
@@ -304,6 +305,23 @@ export const approveTransferRequest = async (req: Request, res: Response) => {
     transferDoc.status = "approved";
     transferDoc.approvedBy = approvedBy;
     await transferDoc.save();
+
+    // Best-effort — the transfer itself already committed, so a failure
+    // here should never undo it or fail the request.
+    try {
+      const Product = getCentralProductModel();
+      const product = await Product.findById(transferDoc.productId).select("name");
+      await createNotification({
+        recipientRole: "manager",
+        branchId: fromBranch._id,
+        type: "stock_transfer_out",
+        title: "Stock transferred out",
+        message: `${transferDoc.quantity} x ${product?.name || "a product"} was transferred from ${fromBranch.name} to ${toBranch.name}.`,
+        link: "/manager/my-inventory",
+      });
+    } catch (notifyErr) {
+      console.error("⚠️ Failed to create transfer-out notification:", notifyErr);
+    }
 
     return res.status(200).json({
       success: true,

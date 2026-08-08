@@ -1,6 +1,7 @@
-import mongoose, { Connection } from "mongoose";
+import mongoose, { Connection, Model } from "mongoose";
 import { getCentralProductModel } from "../models/CentralDB/products";
 import { getBranchStockModel } from "../models/BranchDB/stock";
+import type { IStock } from "../models/BranchDB/stock";
 
 export interface PricedItem {
   productId: mongoose.Types.ObjectId;
@@ -62,16 +63,30 @@ export const priceAndValidateItems = async (
   return { ok: true, items: priced, subtotal };
 };
 
+// Applies a quantity change via fetch → mutate → save so the Stock model's
+// pre-save hook (which recomputes `status`: In Stock/Low Stock/Out of
+// Stock) actually runs. A raw `updateOne({ $inc: { quantity } })` bypasses
+// Mongoose document middleware entirely — that was silently leaving
+// `status` stale after every sale, return, and void, which is why the
+// Inventory page and the low-stock notifications could disagree.
+export const applyStockDelta = async (
+  Stock: Model<IStock>,
+  productId: mongoose.Types.ObjectId,
+  delta: number,
+) => {
+  const stock = await Stock.findOne({ productId });
+  if (!stock) return;
+  stock.quantity = Math.max(0, stock.quantity + delta);
+  await stock.save();
+};
+
 export const deductStockForItems = async (
   items: { productId: mongoose.Types.ObjectId; quantity: number }[],
   branchDb: Connection,
 ) => {
   const Stock = getBranchStockModel(branchDb);
   for (const item of items) {
-    await Stock.updateOne(
-      { productId: item.productId },
-      { $inc: { quantity: -item.quantity } },
-    );
+    await applyStockDelta(Stock, item.productId, -item.quantity);
   }
 };
 
@@ -81,10 +96,7 @@ export const restockItems = async (
 ) => {
   const Stock = getBranchStockModel(branchDb);
   for (const item of items) {
-    await Stock.updateOne(
-      { productId: item.productId },
-      { $inc: { quantity: item.quantity } },
-    );
+    await applyStockDelta(Stock, item.productId, item.quantity);
   }
 };
 

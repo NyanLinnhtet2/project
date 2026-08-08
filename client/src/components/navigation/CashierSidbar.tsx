@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { logoutUser } from "../../services/authServices";
 import { useAuth } from "../../context/useAuth";
+import { toast } from "react-hot-toast";
 
 interface CashierSidebarProps {
   sidebarOpen: boolean;
@@ -38,14 +39,15 @@ export const CashierSidebar = ({
   const navigate = useNavigate();
   const { userInfo, logout } = useAuth();
 
-  const logoutHandler = async () => {
+   const logutHandler = async () => {
     try {
-      await logoutUser();
+      const response = await logoutUser();
+      console.log(response);
+      logout();
+      toast.success(`${response.message}`);
+      navigate("/login");
     } catch (error) {
       console.log("Logout Error : ", error);
-    } finally {
-      logout();
-      navigate("/login");
     }
   };
 
@@ -219,7 +221,7 @@ export const CashierSidebar = ({
 
           <button
             className="group cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-linear-to-r from-red-50 to-red-50/50 py-2 text-sm font-medium text-red-600 transition-all hover:from-red-100 hover:to-red-100 hover:shadow-md hover:shadow-red-200/50 active:scale-95"
-            onClick={logoutHandler}
+            onClick={logutHandler}
           >
             <LogOut className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
             <span>Logout</span>
